@@ -17,7 +17,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const { text, title_hint } = await req.json();
+    const { text, title_hint, knowledge_context } = await req.json();
 
     if (!text || text.trim().length < 50) {
       return new Response(
@@ -26,8 +26,26 @@ serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are a sales training content expert. Given source material, generate a structured training module for new sales reps.
+    // Build knowledge base context section if provided
+    let kbSection = "";
+    if (knowledge_context) {
+      const { documents, faqs } = knowledge_context;
+      if (documents && documents.length > 0) {
+        kbSection += "\n\n## REFERENCE DOCUMENTS (use as authoritative source material)\n";
+        for (const doc of documents) {
+          kbSection += `\n### ${doc.title}${doc.context ? ` — ${doc.context}` : ""}\n${doc.content}\n`;
+        }
+      }
+      if (faqs && faqs.length > 0) {
+        kbSection += "\n\n## REFERENCE FAQ (use these Q&A pairs as authoritative facts)\n";
+        for (const faq of faqs) {
+          kbSection += `\nQ: ${faq.question}\nA: ${faq.answer}\n`;
+        }
+      }
+    }
 
+    const systemPrompt = `You are a sales training content expert. Given source material, generate a structured training module for new sales reps.
+${kbSection ? "\nYou have access to the following knowledge base. Use it as authoritative reference to ensure accuracy and consistency:" + kbSection : ""}
 Return a JSON object using the generate_module tool with these fields:
 - title: concise module title (max 60 chars)
 - summary: 1-2 sentence overview of the module
