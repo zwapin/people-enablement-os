@@ -1,149 +1,88 @@
 
 
-# Klaaryo Academy — Full Flow Implementation Plan
+# Knowledge Base — Plan
 
 ## What We're Building
 
-The complete end-to-end flow described in your scenario: admin invites a rep, creates an onboarding plan, the rep logs in and works through modules and tasks. This is a large build — I'll break it into 5 sequential steps.
+A new "Knowledge Base" section in the Learn admin view where the manager can:
+1. **Upload documents** (PDF, DOCX, TXT) with an optional context/description per document
+2. **Create FAQ entries** (question/answer pairs) manually
+3. Both feed into the AI module generation as RAG context
 
-## Current State
+The idea is that when generating a module, the AI pulls relevant knowledge from uploaded docs + FAQs to produce better, more accurate content. The Q&A format is particularly interesting for RAG because it's already structured as retrieval-ready chunks with clear semantic intent.
 
-- Database schema: all tables exist (profiles, modules, assessment_questions, module_completions, onboarding_plans, onboarding_milestones, onboarding_tasks) with RLS
-- Auth: working with DEV_BYPASS as admin Federico
-- UI: app shell with sidebar nav, all 4 pages are empty states
-- No functional features yet
+## Architecture
 
----
+```text
+┌─────────────────────────────────────────┐
+│  Learn Page (Admin)                     │
+│  ┌─────────┐  ┌──────────────────────┐  │
+│  │ Modules  │  │ Knowledge Base (tab) │  │
+│  └─────────┘  └──────────────────────┘  │
+│                  ├─ Documents list       │
+│                  │   upload + context    │
+│                  └─ FAQ list             │
+│                     Q&A pairs           │
+└─────────────────────────────────────────┘
 
-## Step 1 — People Page (Admin)
+Module Generation:
+  source text + relevant KB docs + relevant FAQs → AI → module
+```
 
-**What the admin sees:** A table of all team members showing name, email, department, job role, modules completed, tasks completed, last activity. An "Invite a rep" button opens a dialog.
+## Database Changes
 
-**Invite flow:**
-- Dialog with fields: full name, email, department (dropdown: Sales, CS, Ops, Management), job role (text input)
-- On submit: calls an Edge Function `invite-user` that uses the Supabase Admin API to create the user with a temporary password and sends an invite email via `supabase.auth.admin.inviteUserByEmail()`
-- The Edge Function also sets department and job_role on the profile
-- The new rep appears in the table immediately
+**New table: `knowledge_documents`**
+- `id` (uuid, PK)
+- `title` (text) — file name or custom title
+- `context` (text, nullable) — admin's description of what this doc covers
+- `content` (text) — extracted text content from the file
+- `file_path` (text, nullable) — storage path if uploaded as file
+- `created_at` (timestamptz)
+- RLS: admin-only CRUD
 
-**Admin actions per row:** toggle is_active, change role (admin/rep)
+**New table: `knowledge_faqs`**
+- `id` (uuid, PK)
+- `question` (text)
+- `answer` (text)
+- `category` (text, nullable) — optional grouping (e.g. "Pricing", "Product", "Process")
+- `created_at` (timestamptz)
+- RLS: admin-only CRUD, reps can SELECT
 
-**Database changes:** None — existing schema supports this. Need an Edge Function for admin user creation (client-side can't create other users).
+**New storage bucket: `knowledge-files`** — for uploaded PDFs/DOCX
 
----
+## UI Changes
 
-## Step 2 — Learn: Module CRUD (Admin)
+**Learn page** — Add a tab switcher at the top for admins: "Modules" | "Knowledge Base"
 
-**What the admin sees:** A list of all modules (draft + published) with title, track, status, order. A "Create module" button.
+**Knowledge Base tab** has two sections:
+1. **Documents** — table with title, context preview, upload date. "Upload document" button opens a dialog where admin uploads a file + adds context. Text extraction happens server-side via edge function.
+2. **FAQs** — table with question, answer preview, category. "Add FAQ" button opens inline form. Supports edit/delete.
 
-**Create/Edit module flow:**
-- Step 1: Upload a source document (PDF/DOCX) or paste text manually
-- Step 2: AI generates structured content — title, summary, key_points, content_body (markdown), and 5-7 assessment questions with 4 options each
-- Step 3: Admin reviews and edits everything in a rich form
-- Step 4: Save as draft or publish
+**Module Editor** — When generating with AI, the edge function now also queries `knowledge_documents` and `knowledge_faqs` to inject relevant context into the prompt. The admin can optionally select which KB items to include.
 
-**AI generation:** Edge Function `generate-module` that receives document text, calls an AI model (Gemini 2.5 Flash via Lovable AI), returns structured JSON.
+## Edge Functions
 
-**File upload:** Create a `source-documents` storage bucket for uploaded PDFs/DOCX. Use an Edge Function to extract text from the document.
+**New: `extract-document`** — receives uploaded file, extracts text (PDF via basic parsing, DOCX via XML extraction, TXT direct), stores extracted text in `knowledge_documents.content`.
 
-**Module list:** Drag-to-reorder (updates order_index), status badge (draft/published), edit/delete actions.
+**Updated: `generate-module`** — accepts optional `knowledge_context` parameter (array of doc contents + FAQ pairs). Injects them into the system prompt as reference material for more accurate generation.
 
----
+## Why Q&A Format Works Well for RAG
 
-## Step 3 — Learn: Module View + Assessment (Rep)
+FAQ entries are self-contained semantic units — each question defines the retrieval intent and the answer provides the exact knowledge. When the AI generates a module, matching source questions to module topics is more precise than searching unstructured document text. Both formats complement each other: docs provide depth, FAQs provide precision.
 
-**What the rep sees:** A sequential list of modules. Module 1 is unlocked, the rest show a lock icon. Completed modules show a checkmark with score.
+## Build Steps
 
-**Module detail page** (`/learn/:id`):
-- Title, summary, key points as bullet list
-- Full content rendered as markdown
-- "Start Assessment" button at the bottom
-
-**Assessment flow:**
-- 5-7 multiple choice questions, one at a time
-- After answering, show immediate feedback (correct/wrong + explanation)
-- At the end: show score (e.g., 6/7)
-- If score >= 5: mark module as completed, next module unlocks
-- If score < 5: "Try again" button, no cooldown
-- Score and attempts saved to module_completions
-
-**Unlock logic:** A module at order_index N is unlocked if the user has a completion record for all modules with order_index < N (within the same track).
-
----
-
-## Step 4 — Grow: Onboarding Plan (Admin + Rep)
-
-**Admin view — Plan creation:**
-- Grow page shows list of reps who don't have a plan yet
-- "Create plan" button for a rep opens a plan builder
-- Select role template (AE, SDR, CSM — pre-fills default tasks/goals)
-- Three milestone tabs: 30d, 60d, 90d
-- Per milestone: editable goals (text list), editable tasks (title + type: module_link/activity/meeting)
-- For module_link tasks: dropdown to select a published module
-- Save creates the plan + milestones + tasks in one transaction
-
-**Admin view — Plan management:**
-- View any rep's plan, edit goals/tasks, add tasks
-- "Archive" button sets plan_status to archived (read-only)
-
-**Rep view:**
-- Sees their plan with milestones as collapsible sections
-- Current milestone (based on time since plan creation) is expanded
-- Tasks have checkboxes — checking one updates completed + completed_at
-- Goals shown as reference text
-- Archived plans are greyed out, checkboxes disabled
-
----
-
-## Step 5 — People Dashboard Metrics + Activity Tracking
-
-**Metrics per rep in People table:**
-- Modules completed / total published
-- Tasks completed / total in their plan
-- Last activity date
-
-**Activity tracking:**
-- Update `profiles.last_activity_at` on key actions (module completion, task check-off, page load)
-- Simple: update on each authenticated page load via AuthContext
-
----
+1. Create `knowledge_documents` and `knowledge_faqs` tables with RLS
+2. Create `knowledge-files` storage bucket
+3. Build Knowledge Base UI (tab on Learn page, document upload, FAQ CRUD)
+4. Build `extract-document` edge function for text extraction
+5. Update `generate-module` to pull KB context into AI prompt
+6. Add KB item selector to ModuleEditor's AI generation section
 
 ## Technical Details
 
-**New Edge Functions:**
-1. `invite-user` — uses service_role key to create user via admin API, sets profile fields
-2. `generate-module` — accepts document text, calls Lovable AI (Gemini 2.5 Flash), returns structured module JSON
-
-**New Storage Bucket:**
-- `source-documents` — for uploaded PDFs/DOCX
-
-**New Routes:**
-- `/learn/:id` — module detail + assessment
-- `/grow/:planId` — plan detail (optional, could be inline)
-
-**New Components (estimated):**
-- `PeopleTable` — data table with columns
-- `InviteDialog` — form dialog
-- `ModuleList` — admin module list with reorder
-- `ModuleEditor` — create/edit form with AI generation
-- `ModuleDetail` — rep view of module content
-- `Assessment` — quiz flow component
-- `PlanBuilder` — admin plan creation form
-- `PlanView` — rep plan view with checkable tasks
-- `MilestoneSection` — collapsible milestone with goals + tasks
-
-**No database schema changes needed** — all tables already exist with the right structure and RLS policies.
-
----
-
-## Build Order
-
-I recommend building in this exact order since each step is independently testable:
-
-1. **People page** — invite flow + table (enables creating test reps)
-2. **Learn admin** — module CRUD + AI generation (enables creating content)
-3. **Learn rep** — module view + assessment (enables learning flow)
-4. **Grow** — plan creation + task tracking (enables onboarding flow)
-5. **Metrics** — dashboard numbers + activity tracking (enables monitoring)
-
-Each step will be a separate implementation message. Approve to start with Step 1 (People page).
+- File upload: max 10MB, PDF/DOCX/TXT only
+- Text extraction: edge function using basic parsing (no heavy OCR in v1)
+- RAG approach: for now, pass full relevant KB text to the AI prompt (no vector embeddings in v1 — the context window of Gemini 2.5 Flash is large enough). Can add embeddings later if KB grows beyond prompt limits.
+- FAQ categories are optional but help with organization and filtering
 
