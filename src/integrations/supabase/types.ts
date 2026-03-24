@@ -55,6 +55,57 @@ export type Database = {
           },
         ]
       }
+      knowledge_documents: {
+        Row: {
+          content: string
+          context: string | null
+          created_at: string
+          file_path: string | null
+          id: string
+          title: string
+        }
+        Insert: {
+          content?: string
+          context?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          title: string
+        }
+        Update: {
+          content?: string
+          context?: string | null
+          created_at?: string
+          file_path?: string | null
+          id?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      knowledge_faqs: {
+        Row: {
+          answer: string
+          category: string | null
+          created_at: string
+          id: string
+          question: string
+        }
+        Insert: {
+          answer: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          question: string
+        }
+        Update: {
+          answer?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          question?: string
+        }
+        Relationships: []
+      }
       module_completions: {
         Row: {
           attempts: number
