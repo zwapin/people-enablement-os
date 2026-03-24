@@ -123,8 +123,25 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
 
     setGenerating(true);
     try {
+      // Build KB context
+      const knowledge_context: any = {};
+      if (selectedDocIds.length > 0 && kbDocs) {
+        knowledge_context.documents = kbDocs
+          .filter((d) => selectedDocIds.includes(d.id))
+          .map((d) => ({ title: d.title, context: d.context, content: d.content }));
+      }
+      if (selectedFaqIds.length > 0 && kbFaqs) {
+        knowledge_context.faqs = kbFaqs
+          .filter((f) => selectedFaqIds.includes(f.id))
+          .map((f) => ({ question: f.question, answer: f.answer }));
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-module", {
-        body: { text: sourceText, title_hint: title || undefined },
+        body: {
+          text: sourceText,
+          title_hint: title || undefined,
+          knowledge_context: (knowledge_context.documents || knowledge_context.faqs) ? knowledge_context : undefined,
+        },
       });
 
       if (error) throw error;
