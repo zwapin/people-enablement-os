@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, Sparkles, Plus, Trash2, GripVertical, Save } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Loader2, Sparkles, Plus, Trash2, GripVertical, Save, FileText, HelpCircle } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -47,6 +49,26 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
 
   // Source text for AI generation
   const [sourceText, setSourceText] = useState("");
+
+  // KB selection
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [selectedFaqIds, setSelectedFaqIds] = useState<string[]>([]);
+
+  const { data: kbDocs } = useQuery({
+    queryKey: ["kb-docs-for-editor"],
+    queryFn: async () => {
+      const { data } = await supabase.from("knowledge_documents").select("id, title, context, content").order("created_at", { ascending: false });
+      return data || [];
+    },
+  });
+
+  const { data: kbFaqs } = useQuery({
+    queryKey: ["kb-faqs-for-editor"],
+    queryFn: async () => {
+      const { data } = await supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at", { ascending: false });
+      return data || [];
+    },
+  });
 
   useEffect(() => {
     if (moduleId) {
