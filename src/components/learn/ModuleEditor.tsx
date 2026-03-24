@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, Sparkles, Plus, Trash2, GripVertical, Save } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Loader2, Sparkles, Plus, Trash2, GripVertical, Save, FileText, HelpCircle } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -47,6 +49,26 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
 
   // Source text for AI generation
   const [sourceText, setSourceText] = useState("");
+
+  // KB selection
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [selectedFaqIds, setSelectedFaqIds] = useState<string[]>([]);
+
+  const { data: kbDocs } = useQuery({
+    queryKey: ["kb-docs-for-editor"],
+    queryFn: async () => {
+      const { data } = await supabase.from("knowledge_documents").select("id, title, context, content").order("created_at", { ascending: false });
+      return data || [];
+    },
+  });
+
+  const { data: kbFaqs } = useQuery({
+    queryKey: ["kb-faqs-for-editor"],
+    queryFn: async () => {
+      const { data } = await supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at", { ascending: false });
+      return data || [];
+    },
+  });
 
   useEffect(() => {
     if (moduleId) {
@@ -101,8 +123,25 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
 
     setGenerating(true);
     try {
+      // Build KB context
+      const knowledge_context: any = {};
+      if (selectedDocIds.length > 0 && kbDocs) {
+        knowledge_context.documents = kbDocs
+          .filter((d) => selectedDocIds.includes(d.id))
+          .map((d) => ({ title: d.title, context: d.context, content: d.content }));
+      }
+      if (selectedFaqIds.length > 0 && kbFaqs) {
+        knowledge_context.faqs = kbFaqs
+          .filter((f) => selectedFaqIds.includes(f.id))
+          .map((f) => ({ question: f.question, answer: f.answer }));
+      }
+
       const { data, error } = await supabase.functions.invoke("generate-module", {
-        body: { text: sourceText, title_hint: title || undefined },
+        body: {
+          text: sourceText,
+          title_hint: title || undefined,
+          knowledge_context: (knowledge_context.documents || knowledge_context.faqs) ? knowledge_context : undefined,
+        },
       });
 
       if (error) throw error;
@@ -289,6 +328,58 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             placeholder="Paste your source material here (at least 50 characters)..."
             className="min-h-[120px]"
           />
+
+          {/* KB Context Selector */}
+          {((kbDocs && kbDocs.length > 0) || (kbFaqs && kbFaqs.length > 0)) && (
+            <div className="border border-border rounded-md p-3 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Include Knowledge Base Context
+              </p>
+
+              {kbDocs && kbDocs.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <FileText className="h-3 w-3" /> Documents
+                  </p>
+                  {kbDocs.map((doc) => (
+                    <label key={doc.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={selectedDocIds.includes(doc.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedDocIds((prev) =>
+                            checked ? [...prev, doc.id] : prev.filter((id) => id !== doc.id)
+                          );
+                        }}
+                      />
+                      <span className="truncate text-foreground">{doc.title}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {kbFaqs && kbFaqs.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <HelpCircle className="h-3 w-3" /> FAQs
+                  </p>
+                  {kbFaqs.map((faq) => (
+                    <label key={faq.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={selectedFaqIds.includes(faq.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedFaqIds((prev) =>
+                            checked ? [...prev, faq.id] : prev.filter((id) => id !== faq.id)
+                          );
+                        }}
+                      />
+                      <span className="truncate text-foreground">{faq.question}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <Button onClick={handleGenerate} disabled={generating}>
             {generating ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
