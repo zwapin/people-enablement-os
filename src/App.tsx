@@ -11,6 +11,7 @@ import Learn from "./pages/Learn";
 import Grow from "./pages/Grow";
 import Perform from "./pages/Perform";
 import People from "./pages/People";
+import KnowledgeBasePage from "./pages/KnowledgeBase";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AppLayout><People /></AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/knowledge"
+              element={
+                <ProtectedRoute>
+                  <AppLayout><KnowledgeBasePage /></AppLayout>
                 </ProtectedRoute>
               }
             />
