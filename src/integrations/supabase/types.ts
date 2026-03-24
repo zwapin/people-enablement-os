@@ -14,6 +14,222 @@ export type Database = {
   }
   public: {
     Tables: {
+      assessment_questions: {
+        Row: {
+          correct_index: number
+          feedback_correct: string | null
+          feedback_wrong: string | null
+          id: string
+          module_id: string
+          options: Json
+          order_index: number
+          question: string
+        }
+        Insert: {
+          correct_index?: number
+          feedback_correct?: string | null
+          feedback_wrong?: string | null
+          id?: string
+          module_id: string
+          options?: Json
+          order_index?: number
+          question: string
+        }
+        Update: {
+          correct_index?: number
+          feedback_correct?: string | null
+          feedback_wrong?: string | null
+          id?: string
+          module_id?: string
+          options?: Json
+          order_index?: number
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_questions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      module_completions: {
+        Row: {
+          attempts: number
+          completed_at: string
+          id: string
+          module_id: string
+          score: number
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string
+          id?: string
+          module_id: string
+          score?: number
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string
+          id?: string
+          module_id?: string
+          score?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "module_completions_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      modules: {
+        Row: {
+          content_body: string | null
+          created_at: string
+          id: string
+          key_points: Json | null
+          order_index: number
+          status: Database["public"]["Enums"]["module_status"]
+          summary: string | null
+          title: string
+          track: string
+          updated_at: string
+        }
+        Insert: {
+          content_body?: string | null
+          created_at?: string
+          id?: string
+          key_points?: Json | null
+          order_index?: number
+          status?: Database["public"]["Enums"]["module_status"]
+          summary?: string | null
+          title: string
+          track?: string
+          updated_at?: string
+        }
+        Update: {
+          content_body?: string | null
+          created_at?: string
+          id?: string
+          key_points?: Json | null
+          order_index?: number
+          status?: Database["public"]["Enums"]["module_status"]
+          summary?: string | null
+          title?: string
+          track?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      onboarding_milestones: {
+        Row: {
+          goals: Json
+          id: string
+          label: Database["public"]["Enums"]["milestone_label"]
+          plan_id: string
+        }
+        Insert: {
+          goals?: Json
+          id?: string
+          label: Database["public"]["Enums"]["milestone_label"]
+          plan_id: string
+        }
+        Update: {
+          goals?: Json
+          id?: string
+          label?: Database["public"]["Enums"]["milestone_label"]
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_milestones_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_plans: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          plan_status: Database["public"]["Enums"]["plan_status"]
+          rep_id: string
+          role_template: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          plan_status?: Database["public"]["Enums"]["plan_status"]
+          rep_id: string
+          role_template?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          plan_status?: Database["public"]["Enums"]["plan_status"]
+          rep_id?: string
+          role_template?: string | null
+        }
+        Relationships: []
+      }
+      onboarding_tasks: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          id: string
+          milestone_id: string
+          module_id: string | null
+          title: string
+          type: Database["public"]["Enums"]["task_type"]
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          id?: string
+          milestone_id: string
+          module_id?: string | null
+          title: string
+          type?: Database["public"]["Enums"]["task_type"]
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          id?: string
+          milestone_id?: string
+          module_id?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["task_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_tasks_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tasks_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -86,6 +302,10 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "rep"
+      milestone_label: "30d" | "60d" | "90d"
+      module_status: "draft" | "published"
+      plan_status: "active" | "archived"
+      task_type: "module_link" | "activity" | "meeting"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -214,6 +434,10 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "rep"],
+      milestone_label: ["30d", "60d", "90d"],
+      module_status: ["draft", "published"],
+      plan_status: ["active", "archived"],
+      task_type: ["module_link", "activity", "meeting"],
     },
   },
 } as const
