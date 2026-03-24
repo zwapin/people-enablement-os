@@ -1,20 +1,41 @@
-import { Users, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import PeopleTable from "@/components/people/PeopleTable";
+import InviteDialog from "@/components/people/InviteDialog";
+import { Loader2 } from "lucide-react";
 
 export default function People() {
+  const { data: profiles, isLoading, refetch } = useQuery({
+    queryKey: ["profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
-      <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
-        <Users className="h-6 w-6 text-muted-foreground" />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">People</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your team members and invite new reps.
+          </p>
+        </div>
+        <InviteDialog onInvited={() => refetch()} />
       </div>
-      <h2 className="text-lg font-semibold text-foreground">No team members yet</h2>
-      <p className="text-sm text-muted-foreground max-w-sm">
-        Invite your first rep to get started with onboarding.
-      </p>
-      <Button className="mt-2">
-        <Plus className="h-4 w-4 mr-2" />
-        Invite a rep
-      </Button>
+
+      {isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : (
+        <PeopleTable profiles={profiles ?? []} onRefresh={() => refetch()} />
+      )}
     </div>
   );
 }
