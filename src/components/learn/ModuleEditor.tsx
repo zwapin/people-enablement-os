@@ -328,6 +328,58 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             placeholder="Paste your source material here (at least 50 characters)..."
             className="min-h-[120px]"
           />
+
+          {/* KB Context Selector */}
+          {((kbDocs && kbDocs.length > 0) || (kbFaqs && kbFaqs.length > 0)) && (
+            <div className="border border-border rounded-md p-3 space-y-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Include Knowledge Base Context
+              </p>
+
+              {kbDocs && kbDocs.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <FileText className="h-3 w-3" /> Documents
+                  </p>
+                  {kbDocs.map((doc) => (
+                    <label key={doc.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={selectedDocIds.includes(doc.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedDocIds((prev) =>
+                            checked ? [...prev, doc.id] : prev.filter((id) => id !== doc.id)
+                          );
+                        }}
+                      />
+                      <span className="truncate text-foreground">{doc.title}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {kbFaqs && kbFaqs.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                    <HelpCircle className="h-3 w-3" /> FAQs
+                  </p>
+                  {kbFaqs.map((faq) => (
+                    <label key={faq.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={selectedFaqIds.includes(faq.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedFaqIds((prev) =>
+                            checked ? [...prev, faq.id] : prev.filter((id) => id !== faq.id)
+                          );
+                        }}
+                      />
+                      <span className="truncate text-foreground">{faq.question}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <Button onClick={handleGenerate} disabled={generating}>
             {generating ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
