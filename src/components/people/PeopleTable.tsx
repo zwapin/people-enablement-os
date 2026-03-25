@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
+import { it } from "date-fns/locale";
 
 interface ProfileRow {
   id: string;
@@ -32,7 +33,7 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
       .eq("id", profile.id);
 
     if (error) {
-      toast.error("Failed to update status");
+      toast.error("Errore nell'aggiornamento dello stato");
     } else {
       onRefresh();
     }
@@ -45,7 +46,7 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
       .eq("id", profile.id);
 
     if (error) {
-      toast.error("Failed to update role");
+      toast.error("Errore nell'aggiornamento del ruolo");
     } else {
       onRefresh();
     }
@@ -56,20 +57,20 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
+            <TableHead>Nome</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Department</TableHead>
-            <TableHead>Job Role</TableHead>
-            <TableHead>Role</TableHead>
-            <TableHead>Last Activity</TableHead>
-            <TableHead>Active</TableHead>
+            <TableHead>Reparto</TableHead>
+            <TableHead>Ruolo lavorativo</TableHead>
+            <TableHead>Ruolo</TableHead>
+            <TableHead>Ultima attività</TableHead>
+            <TableHead>Attivo</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {profiles.length === 0 ? (
             <TableRow>
               <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                No team members yet. Invite your first rep to get started.
+                Nessun membro del team. Invita il tuo primo rep per iniziare.
               </TableCell>
             </TableRow>
           ) : (
@@ -103,8 +104,8 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">
                   {p.last_activity_at
-                    ? formatDistanceToNow(new Date(p.last_activity_at), { addSuffix: true })
-                    : "Never"}
+                    ? formatDistanceToNow(new Date(p.last_activity_at), { addSuffix: true, locale: it })
+                    : "Mai"}
                 </TableCell>
                 <TableCell>
                   <Switch

@@ -17,13 +17,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 const navItems = [
-  { title: "Learn", url: "/learn", icon: BookOpen },
-  { title: "Grow", url: "/grow", icon: TrendingUp },
-  { title: "Perform", url: "/perform", icon: BarChart3 },
+  { title: "Formazione", url: "/learn", icon: BookOpen },
+  { title: "Crescita", url: "/grow", icon: TrendingUp },
+  { title: "Performance", url: "/perform", icon: BarChart3 },
 ];
 
 const adminItems = [
-  { title: "People", url: "/people", icon: Users },
+  { title: "Team", url: "/people", icon: Users },
   { title: "Knowledge Base", url: "/knowledge", icon: Database },
 ];
 
@@ -89,7 +89,7 @@ function AppSidebarContent() {
           className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 w-full"
         >
           <LogOut className="h-4 w-4 shrink-0" />
-          {!collapsed && <span>Sign out</span>}
+          {!collapsed && <span>Esci</span>}
         </button>
       </SidebarFooter>
     </Sidebar>

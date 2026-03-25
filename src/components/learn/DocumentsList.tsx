@@ -33,7 +33,7 @@ export default function DocumentsList() {
 
   const handleUpload = async () => {
     if (!file) {
-      toast.error("Please select a file");
+      toast.error("Seleziona un file");
       return;
     }
 
@@ -66,14 +66,14 @@ export default function DocumentsList() {
 
       if (insertError) throw insertError;
 
-      toast.success("Document uploaded and processed");
+      toast.success("Documento caricato ed elaborato");
       setDialogOpen(false);
       setTitle("");
       setContext("");
       setFile(null);
       refetch();
     } catch (err: any) {
-      toast.error(err.message || "Failed to upload document");
+      toast.error(err.message || "Errore nel caricamento del documento");
     } finally {
       setUploading(false);
     }
@@ -81,7 +81,7 @@ export default function DocumentsList() {
 
   const handleReExtract = async (id: string, filePath: string | null, fileName: string) => {
     if (!filePath) {
-      toast.error("No file associated with this document");
+      toast.error("Nessun file associato a questo documento");
       return;
     }
     setReExtracting(id);
@@ -97,26 +97,26 @@ export default function DocumentsList() {
         .eq("id", id);
       if (updateError) throw updateError;
 
-      toast.success("Document re-extracted successfully");
+      toast.success("Documento ri-estratto con successo");
       refetch();
     } catch (err: any) {
-      toast.error(err.message || "Failed to re-extract");
+      toast.error(err.message || "Errore nella ri-estrazione");
     } finally {
       setReExtracting(null);
     }
   };
 
   const handleDelete = async (id: string, filePath: string | null) => {
-    if (!confirm("Delete this document?")) return;
+    if (!confirm("Eliminare questo documento?")) return;
 
     if (filePath) {
       await supabase.storage.from("knowledge-files").remove([filePath]);
     }
     const { error } = await supabase.from("knowledge_documents").delete().eq("id", id);
     if (error) {
-      toast.error("Failed to delete");
+      toast.error("Errore nell'eliminazione");
     } else {
-      toast.success("Document deleted");
+      toast.success("Documento eliminato");
       refetch();
     }
   };
@@ -136,16 +136,16 @@ export default function DocumentsList() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Upload document
+              Carica documento
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Upload Document</DialogTitle>
+              <DialogTitle>Carica Documento</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>File (PDF, DOCX, or TXT — max 10MB)</Label>
+                <Label>File (PDF, DOCX o TXT — max 10MB)</Label>
                 <Input
                   type="file"
                   accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
@@ -153,19 +153,19 @@ export default function DocumentsList() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Title (optional)</Label>
+                <Label>Titolo (opzionale)</Label>
                 <Input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Custom title (defaults to file name)"
+                  placeholder="Titolo personalizzato (default: nome file)"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Context (optional)</Label>
+                <Label>Contesto (opzionale)</Label>
                 <Textarea
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
-                  placeholder="Describe what this document covers, e.g. 'Q1 pricing playbook for enterprise deals'"
+                  placeholder="Descrivi il contenuto del documento, es. 'Playbook pricing Q1 per deal enterprise'"
                   className="min-h-[80px]"
                 />
               </div>
@@ -175,7 +175,7 @@ export default function DocumentsList() {
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                {uploading ? "Processing..." : "Upload & Extract"}
+                {uploading ? "Elaborazione..." : "Carica ed Estrai"}
               </Button>
             </div>
           </DialogContent>
@@ -186,7 +186,7 @@ export default function DocumentsList() {
         <Card className="p-8 text-center bg-card border-border">
           <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">
-            No documents yet. Upload PDFs, DOCX, or TXT files to build your knowledge base.
+            Nessun documento caricato. Carica PDF, DOCX o TXT per costruire la tua knowledge base.
           </p>
         </Card>
       ) : (
@@ -203,8 +203,8 @@ export default function DocumentsList() {
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
                   {format(new Date(doc.created_at), "MMM d, yyyy")}
-                  {doc.content && !hasFailedContent && ` · ${doc.content.length.toLocaleString()} chars extracted`}
-                  {hasFailedContent && <span className="text-destructive"> · extraction failed</span>}
+                  {doc.content && !hasFailedContent && ` · ${doc.content.length.toLocaleString()} caratteri estratti`}
+                  {hasFailedContent && <span className="text-destructive"> · estrazione fallita</span>}
                 </p>
               </div>
               {hasFailedContent && doc.file_path && (
@@ -220,7 +220,7 @@ export default function DocumentsList() {
                   ) : (
                     <RefreshCw className="h-4 w-4 mr-1" />
                   )}
-                  Re-extract
+                  Ri-estrai
                 </Button>
               )}
               <Button

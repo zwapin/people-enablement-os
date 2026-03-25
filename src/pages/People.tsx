@@ -21,9 +21,9 @@ export default function People() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">People</h1>
+          <h1 className="text-2xl font-bold text-foreground">Team</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage your team members and invite new reps.
+            Gestisci i membri del team e invita nuovi rep.
           </p>
         </div>
         <InviteDialog onInvited={() => refetch()} />

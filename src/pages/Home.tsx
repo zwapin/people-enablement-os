@@ -11,16 +11,16 @@ export default function Home() {
         {profile ? (
           <>
             <p className="text-muted-foreground">
-              Welcome, <span className="font-medium text-foreground">{profile.full_name || profile.email}</span>
+              Bentornato, <span className="font-medium text-foreground">{profile.full_name || profile.email}</span>
             </p>
             <p className="text-sm text-muted-foreground">
-              Role: <span className="capitalize font-medium text-foreground">{profile.role}</span>
+              Ruolo: <span className="capitalize font-medium text-foreground">{profile.role}</span>
             </p>
           </>
         ) : (
-          <p className="text-muted-foreground">Loading profile...</p>
+          <p className="text-muted-foreground">Caricamento profilo...</p>
         )}
-        <Button variant="outline" onClick={signOut}>Sign out</Button>
+        <Button variant="outline" onClick={signOut}>Esci</Button>
       </div>
     </div>
   );
