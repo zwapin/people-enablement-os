@@ -65,9 +65,9 @@ serve(async (req) => {
 });
 
 async function extractTextWithAI(fileData: Blob, fileName: string): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY is not configured");
+  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+  if (!ANTHROPIC_API_KEY) {
+    throw new Error("ANTHROPIC_API_KEY is not configured");
   }
 
   const buffer = await fileData.arrayBuffer();
@@ -86,55 +86,74 @@ async function extractTextWithAI(fileData: Blob, fileName: string): Promise<stri
     ? "application/pdf"
     : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-  console.log("[extract-document] Calling AI gateway, base64 length:", base64.length);
+  console.log("[extract-document] Calling Anthropic API, base64 length:", base64.length);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 50000);
 
   try {
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Anthropic supports PDF natively via document type
+    const userContent = fileName.endsWith(".pdf")
+      ? [
+          {
+            type: "document",
+            source: {
+              type: "base64",
+              media_type: "application/pdf",
+              data: base64,
+            },
+          },
+          {
+            type: "text",
+            text: "Estrai tutto il testo da questo documento. Preserva la formattazione, la struttura, le tabelle in formato markdown e descrivi le immagini con placeholder markdown.",
+          },
+        ]
+      : [
+          {
+            type: "image",
+            source: {
+              type: "base64",
+              media_type: mimeType,
+              data: base64,
+            },
+          },
+          {
+            type: "text",
+            text: "Estrai tutto il testo da questo documento. Preserva la formattazione, la struttura, le tabelle in formato markdown e descrivi le immagini con placeholder markdown.",
+          },
+        ];
+
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
       signal: controller.signal,
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "claude-sonnet-4-20250514",
         max_tokens: 16384,
+        system: "Sei un estrattore di testo da documenti. Estrai TUTTO il contenuto testuale dal documento fornito. Preserva la struttura (titoli, paragrafi, elenchi puntati). IMPORTANTE: preserva TUTTE le tabelle in formato markdown (con | e ---). Per immagini, grafici o diagrammi presenti nel documento, inserisci un placeholder descrittivo in formato markdown: ![Descrizione dettagliata del contenuto visivo](image-placeholder). Non aggiungere commenti tuoi, restituisci solo il contenuto estratto.",
         messages: [
           {
-            role: "system",
-            content: "Sei un estrattore di testo da documenti. Estrai TUTTO il contenuto testuale dal documento fornito. Preserva la struttura (titoli, paragrafi, elenchi puntati). IMPORTANTE: preserva TUTTE le tabelle in formato markdown (con | e ---). Per immagini, grafici o diagrammi presenti nel documento, inserisci un placeholder descrittivo in formato markdown: ![Descrizione dettagliata del contenuto visivo](image-placeholder). Non aggiungere commenti tuoi, restituisci solo il contenuto estratto."
-          },
-          {
             role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Estrai tutto il testo da questo documento. Preserva la formattazione, la struttura, le tabelle in formato markdown e descrivi le immagini con placeholder markdown."
-              },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${base64}`
-                }
-              }
-            ]
-          }
+            content: userContent,
+          },
         ],
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Anthropic API error:", response.status, errorText);
       throw new Error(`AI extraction failed (${response.status})`);
     }
 
-    console.log("[extract-document] AI response received");
+    console.log("[extract-document] Anthropic response received");
     const result = await response.json();
-    const content = result.choices?.[0]?.message?.content;
+    const textBlock = result.content?.find((c: any) => c.type === "text");
+    const content = textBlock?.text;
 
     if (!content || !content.trim()) {
       return "[AI text extraction returned empty. The document may be blank or corrupted.]";

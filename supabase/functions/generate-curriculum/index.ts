@@ -23,8 +23,8 @@ serve(async (req) => {
     }
 
     console.log("[generate-curriculum] Starting... regenerateAll:", regenerateAll);
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -116,118 +116,99 @@ ISTRUZIONI:
 
 Restituisci il curriculum usando il tool propose_curriculum.`;
 
-    console.log("[generate-curriculum] Calling AI gateway, prompt length:", systemPrompt.length);
+    console.log("[generate-curriculum] Calling Anthropic API, prompt length:", systemPrompt.length);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
-        body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
         max_tokens: 16384,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: "Analizza la knowledge base e proponi un curriculum formativo completo. Progetta la struttura ottimale dei moduli, la sequenza e i contenuti. Tutto in italiano." },
-          ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "propose_curriculum",
-                description: "Proponi un curriculum formativo strutturato basato sulla knowledge base. Tutto in italiano.",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    modules: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          title: { type: "string", description: "Titolo del modulo in italiano (max 60 caratteri)" },
-                          summary: { type: "string", description: "Panoramica di 1-2 frasi in italiano" },
-                          track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
-                          key_points: { type: "array", items: { type: "string" }, description: "4-6 punti chiave in italiano" },
-                          content_body: { type: "string", description: "Contenuto formativo RICCO in markdown in italiano (800-1500 parole). Includi tabelle, esempi concreti e struttura con sezioni." },
-                          ai_rationale: { type: "string", description: "Motivazione dell'esistenza di questo modulo, in italiano" },
-                          source_document_ids: { type: "array", items: { type: "string" }, description: "ID dei documenti KB utilizzati" },
-                          source_faq_ids: { type: "array", items: { type: "string" }, description: "ID delle FAQ KB utilizzate" },
-                          questions: {
-                            type: "array",
-                            items: {
-                              type: "object",
-                              properties: {
-                                question: { type: "string" },
-                                options: { type: "array", items: { type: "string" } },
-                                correct_index: { type: "integer" },
-                                feedback_correct: { type: "string" },
-                                feedback_wrong: { type: "string" },
-                              },
-                              required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
-                              additionalProperties: false,
-                            },
+        system: systemPrompt,
+        messages: [
+          { role: "user", content: "Analizza la knowledge base e proponi un curriculum formativo completo. Progetta la struttura ottimale dei moduli, la sequenza e i contenuti. Tutto in italiano." },
+        ],
+        tools: [
+          {
+            name: "propose_curriculum",
+            description: "Proponi un curriculum formativo strutturato basato sulla knowledge base. Tutto in italiano.",
+            input_schema: {
+              type: "object",
+              properties: {
+                modules: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string", description: "Titolo del modulo in italiano (max 60 caratteri)" },
+                      summary: { type: "string", description: "Panoramica di 1-2 frasi in italiano" },
+                      track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
+                      key_points: { type: "array", items: { type: "string" }, description: "4-6 punti chiave in italiano" },
+                      content_body: { type: "string", description: "Contenuto formativo RICCO in markdown in italiano (800-1500 parole). Includi tabelle, esempi concreti e struttura con sezioni." },
+                      ai_rationale: { type: "string", description: "Motivazione dell'esistenza di questo modulo, in italiano" },
+                      source_document_ids: { type: "array", items: { type: "string" }, description: "ID dei documenti KB utilizzati" },
+                      source_faq_ids: { type: "array", items: { type: "string" }, description: "ID delle FAQ KB utilizzate" },
+                      questions: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            question: { type: "string" },
+                            options: { type: "array", items: { type: "string" } },
+                            correct_index: { type: "integer" },
+                            feedback_correct: { type: "string" },
+                            feedback_wrong: { type: "string" },
                           },
+                          required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
                         },
-                        required: ["title", "summary", "track", "key_points", "content_body", "ai_rationale", "source_document_ids", "source_faq_ids", "questions"],
-                        additionalProperties: false,
                       },
                     },
+                    required: ["title", "summary", "track", "key_points", "content_body", "ai_rationale", "source_document_ids", "source_faq_ids", "questions"],
                   },
-                  required: ["modules"],
-                  additionalProperties: false,
                 },
               },
+              required: ["modules"],
             },
-          ],
-          tool_choice: { type: "function", function: { name: "propose_curriculum" } },
-        }),
-      });
+          },
+        ],
+        tool_choice: { type: "tool", name: "propose_curriculum" },
+      }),
+    });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("[generate-curriculum] AI gateway error:", response.status, errText);
+      console.error("[generate-curriculum] Anthropic API error:", response.status, errText);
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Limite di richieste superato. Riprova tra qualche istante." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
+      if (response.status === 402 || response.status === 400) {
         return new Response(
-          JSON.stringify({ error: "Crediti AI esauriti. Aggiungi fondi per continuare." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ error: `Errore API Anthropic (${response.status}): ${errText}` }),
+          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       throw new Error(`Generazione AI fallita (${response.status})`);
     }
 
-    const responseText = await response.text();
-    console.log("[generate-curriculum] AI response length:", responseText.length);
+    const data = await response.json();
+    console.log("[generate-curriculum] Anthropic response stop_reason:", data.stop_reason);
 
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (parseErr) {
-      console.error("[generate-curriculum] Failed to parse AI response, length:", responseText.length, "last 100 chars:", responseText.slice(-100));
-      throw new Error("La risposta AI è stata troncata o malformata. Riprova.");
-    }
+    // Extract tool_use block from Anthropic response
+    const toolUseBlock = data.content?.find((c: any) => c.type === "tool_use");
 
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-
-    if (!toolCall) {
-      console.error("[generate-curriculum] No tool call in response:", JSON.stringify(data.choices?.[0]?.message).substring(0, 500));
+    if (!toolUseBlock) {
+      console.error("[generate-curriculum] No tool_use in response:", JSON.stringify(data.content?.map((c: any) => c.type)));
       throw new Error("L'AI non ha restituito un output strutturato");
     }
 
-    let curriculum;
-    try {
-      curriculum = JSON.parse(toolCall.function.arguments);
-    } catch (parseErr) {
-      console.error("[generate-curriculum] Failed to parse tool call arguments, length:", toolCall.function.arguments?.length);
-      throw new Error("Gli argomenti del tool call sono stati troncati. Riprova.");
-    }
-
+    const curriculum = toolUseBlock.input;
     const proposedModules = curriculum.modules || [];
     console.log("[generate-curriculum] Proposed modules:", proposedModules.length);
 
