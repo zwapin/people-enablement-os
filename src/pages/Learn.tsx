@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 import CurriculumList from "@/components/learn/CurriculumList";
@@ -288,6 +288,17 @@ export default function Learn() {
     refreshAll();
   };
 
+  // Auto-migrate orphan modules to curricula on first load
+  const migrationDone = useRef(false);
+  useEffect(() => {
+    if (migrationDone.current || !isAdmin || !modules || !curricula) return;
+    const orphans = modules.filter(m => !m.curriculum_id && (m.status === "published" || m.status === "draft"));
+    if (orphans.length > 0 && curricula.length === 0) {
+      migrationDone.current = true;
+      handleMigrateToCurricula();
+    }
+  }, [modules, curricula, isAdmin]);
+
   const handleEdit = (moduleId: string) => {
     setEditingModuleId(moduleId);
     setEditorOpen(true);
@@ -365,12 +376,6 @@ export default function Learn() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {orphanModules(["published", "draft"]).length > 0 && (
-            <Button variant="outline" size="sm" onClick={handleMigrateToCurricula}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Converti in Curricula
-            </Button>
-          )}
           <Button variant="outline" size="sm" onClick={handleCreateCurriculum}>
             <Plus className="h-4 w-4 mr-2" />
             Nuovo Curriculum
