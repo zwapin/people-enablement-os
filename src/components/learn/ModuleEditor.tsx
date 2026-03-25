@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save, Sparkles } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { Json } from "@/integrations/supabase/types";
 
@@ -31,6 +31,9 @@ interface ModuleEditorProps {
 export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [sourceDocIds, setSourceDocIds] = useState<string[] | null>(null);
+  const [sourceFaqIds, setSourceFaqIds] = useState<string[] | null>(null);
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -61,6 +64,8 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
       setContentBody(m.content_body || "");
       setKeyPoints(Array.isArray(m.key_points) ? (m.key_points as string[]) : []);
       setStatus(m.status);
+      setSourceDocIds(Array.isArray(m.source_document_ids) ? (m.source_document_ids as string[]) : null);
+      setSourceFaqIds(Array.isArray(m.source_faq_ids) ? (m.source_faq_ids as string[]) : null);
     }
 
     if (qResult.data) {
@@ -177,6 +182,67 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
   const removeKeyPoint = (i: number) => setKeyPoints(keyPoints.filter((_, j) => j !== i));
   const updateKeyPoint = (i: number, val: string) => setKeyPoints(keyPoints.map((kp, j) => (j === i ? val : kp)));
 
+  const handleGenerate = async () => {
+    if (!moduleId) {
+      toast.error("Salva prima il modulo come bozza");
+      return;
+    }
+    if (!title.trim()) {
+      toast.error("Il titolo è obbligatorio per la generazione");
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      // Resolve source IDs: use module's own or fallback to all KB docs/faqs
+      let docIds = sourceDocIds;
+      let faqIds = sourceFaqIds;
+
+      if (!docIds || docIds.length === 0) {
+        const { data: allDocs } = await supabase.from("knowledge_documents").select("id");
+        docIds = allDocs?.map(d => d.id) || [];
+      }
+      if (!faqIds || faqIds.length === 0) {
+        const { data: allFaqs } = await supabase.from("knowledge_faqs").select("id");
+        faqIds = allFaqs?.map(f => f.id) || [];
+      }
+
+      // Create generation job
+      const { data: job, error: jobError } = await supabase
+        .from("generation_jobs")
+        .insert({
+          job_type: "generate-module",
+          status: "pending",
+          input: {
+            module_id: moduleId,
+            module_title: title.trim(),
+            source_document_ids: docIds,
+            source_faq_ids: faqIds,
+          },
+        })
+        .select()
+        .single();
+
+      if (jobError) throw jobError;
+
+      // Invoke edge function (synchronous — waits for completion)
+      const { error: fnError } = await supabase.functions.invoke("generate-module", {
+        body: { job_id: job.id },
+      });
+
+      if (fnError) throw fnError;
+
+      // Reload module to get new content
+      await loadModule();
+      toast.success("Contenuto generato con successo!");
+    } catch (err: any) {
+      console.error("Generation error:", err);
+      toast.error(err.message || "Generazione fallita");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -237,8 +303,25 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
         </div>
 
         <div className="space-y-2">
-          <Label>Contenuto (Markdown)</Label>
-          <Textarea value={contentBody} onChange={(e) => setContentBody(e.target.value)} placeholder="Contenuto completo del modulo..." className="min-h-[200px] font-mono text-sm" />
+          <div className="flex items-center justify-between">
+            <Label>Contenuto (Markdown)</Label>
+            {moduleId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerate}
+                disabled={generating || saving}
+              >
+                {generating ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3 mr-1" />
+                )}
+                {generating ? "Generazione..." : contentBody ? "Rigenera con AI" : "Genera con AI"}
+              </Button>
+            )}
+          </div>
+          <Textarea value={contentBody} onChange={(e) => setContentBody(e.target.value)} placeholder="Contenuto completo del modulo..." className="min-h-[200px] font-mono text-sm" disabled={generating} />
         </div>
       </Card>
 
