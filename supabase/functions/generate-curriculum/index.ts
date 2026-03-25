@@ -158,9 +158,6 @@ Return the curriculum using the propose_curriculum tool.`;
           tool_choice: { type: "function", function: { name: "propose_curriculum" } },
         }),
       });
-    } finally {
-      clearTimeout(timeout);
-    }
 
     if (!response.ok) {
       const errText = await response.text();
