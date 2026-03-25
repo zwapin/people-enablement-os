@@ -1,85 +1,73 @@
 
 
-# Introduzione dei Curricula come contenitori di moduli
+# Ristrutturazione: da moduli piatti a curricula con sotto-moduli
 
-## Concetto
+## Situazione attuale
+- 5 moduli pubblicati, tutti senza `curriculum_id`
+- Tabella `curricula` vuota
+- I moduli attuali sono "macro-temi" che dovrebbero diventare **curricula** (contenitori)
 
-Attualmente i moduli sono "piatti" — una lista unica. L'utente vuole una gerarchia:
+## Cosa fare
 
+### 1. Migrare i moduli attuali in curricula
+Ogni modulo esistente diventa un **curriculum**. Il contenuto attuale viene preservato come descrizione/contesto del curriculum.
+
+Trasformazione:
 ```text
-Curriculum (es. "Essere Account Executive a Klaaryo")
-  ├── Modulo 1: Intro al ruolo AE
-  ├── Modulo 2: Discovery Call
-  ├── Modulo 3: Demo e Proposal
-  └── Modulo 4: Closing e Negoziazione
+PRIMA (piatto):
+  - Fondamenti del Sales Process Klaaryo
+  - ICP Targeting e Account Tiering Strategy
+  - SDR Mastery: Da Cold Call a Qualified Opportunity
+  - AE Excellence: Discovery, Demo e Closing
+  - Customer Success e Post-Sales Excellence
+
+DOPO (gerarchico):
+  Fondamenti del Sales Process Klaaryo (CURRICULUM)
+    ├── Modulo 1: ...
+    ├── Modulo 2: ...
+    └── Modulo 3: ...
+  AE Excellence (CURRICULUM)
+    ├── Discovery Call
+    ├── Demo e Presentazione
+    ├── Proposta Commerciale
+    ├── Negoziazione
+    └── Closing
+  ... etc.
 ```
 
-Il **curriculum** è il contenitore alto (un percorso tematico). I **moduli** restano le unità di contenuto con assessment, ma appartengono a un curriculum.
+### 2. Approccio di implementazione
 
-## Modifiche
+**Passo 1 — Conversione automatica** (nel codice Learn.tsx):
+- Aggiungere un pulsante "Converti in Curricula" o farlo automaticamente al prossimo "Aggiorna Curriculum"
+- Prende i 5 moduli attuali, crea 5 curricula con gli stessi titoli/descrizioni, poi cancella i vecchi moduli
+- Lancia la rigenerazione AI che ora genera sotto-moduli per ogni curriculum
 
-### 1. Nuova tabella `curricula`
+**Passo 2 — Aggiornare il prompt AI** (`process-curriculum`):
+- Il prompt deve sapere che i curricula esistono già come contenitori
+- L'AI deve generare 4-8 sotto-moduli **per ogni curriculum**, coprendo ogni aspetto del tema
+- Esempio per "AE Excellence": Discovery Call, Qualificazione BANT, Demo Structure, Gestione Obiezioni, Proposta e Pricing, Negoziazione, Closing Techniques, Handoff al CS
 
-```sql
-CREATE TABLE public.curricula (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  title text NOT NULL,
-  description text,
-  track text NOT NULL DEFAULT 'Generale',
-  order_index integer NOT NULL DEFAULT 0,
-  status module_status NOT NULL DEFAULT 'draft',
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
-);
+**Passo 3 — Azione concreta proposta**: 
+Siccome i curricula sono vuoti e i moduli sono "macro", il modo più pulito è:
+1. Creare i 5 curricula a partire dai titoli dei moduli attuali
+2. Assegnare `curriculum_id` ai moduli esistenti (come primo modulo "introduttivo" di ogni curriculum)
+3. Lanciare "Aggiorna Curriculum" che genererà nuovi sotto-moduli per ogni curriculum
 
-ALTER TABLE public.curricula ENABLE ROW LEVEL SECURITY;
--- RLS: admin full access, reps vedono solo published
-```
+### 3. File da modificare
 
-### 2. Aggiungere `curriculum_id` alla tabella `modules`
+| File | Modifica |
+|------|----------|
+| `src/pages/Learn.tsx` | Aggiungere funzione `handleMigrateToCurricula()` che converte i moduli orfani in curricula e li assegna |
+| `supabase/functions/process-curriculum/index.ts` | Aggiornare il prompt per generare sotto-moduli specifici per ogni curriculum esistente, non nuovi curricula |
 
-```sql
-ALTER TABLE public.modules ADD COLUMN curriculum_id uuid REFERENCES public.curricula(id) ON DELETE SET NULL;
-```
+### 4. Dettagli `handleMigrateToCurricula()`
+- Per ogni modulo orfano pubblicato: crea un curriculum con lo stesso titolo/summary
+- Assegna il modulo al curriculum appena creato (come modulo "introduttivo")
+- Toast di conferma
+- L'admin poi clicca "Aggiorna Curriculum" per far generare all'AI i sotto-moduli mancanti
 
-I moduli senza `curriculum_id` restano "orfani" (retrocompatibilità).
-
-### 3. UI Admin — `Learn.tsx`
-
-- La vista admin mostra i **curricula** come card espandibili (accordion/collapsible)
-- Ogni curriculum mostra i suoi moduli dentro
-- Pulsante "Nuovo Curriculum" per crearne uno manualmente
-- I moduli orfani (senza curriculum) vengono mostrati in una sezione "Moduli non assegnati"
-- Il pulsante "Aggiorna Curriculum" / "Rigenera tutto" continua a funzionare ma ora genera curricula + moduli
-
-### 4. UI Rep — `RepRoadmap.tsx`
-
-- Il roadmap mostra i curricula come sezioni con titolo e descrizione
-- Dentro ogni curriculum, la lista verticale dei moduli (come ora)
-- Progresso calcolato per curriculum e globale
-
-### 5. `ModuleEditor.tsx`
-
-- Aggiungere un dropdown "Curriculum" per assegnare il modulo a un curriculum esistente
-
-### 6. Edge functions (`process-curriculum`)
-
-- L'outline AI ora propone anche i **curricula** come raggruppamenti
-- L'AI riceve istruzione di organizzare i moduli in percorsi tematici (es. "Percorso AE", "Percorso CS")
-- Ogni modulo proposto include il `curriculum_title` a cui appartiene
-- Il worker crea prima i curricula, poi i moduli con `curriculum_id`
-
-### 7. Nuovo componente `CurriculumCard.tsx`
-
-- Card collapsible che mostra titolo curriculum, descrizione, conteggio moduli, stato
-- Dentro: lista dei moduli (riusa `CurriculumList` esistente)
-- Azioni admin: modifica titolo/descrizione, cambia stato, elimina
-
-## Dettagli tecnici
-
-- La tabella `curricula` usa lo stesso enum `module_status` (proposed → draft → published → archived)
-- RLS: stesse policy dei moduli (admin full, reps vedono published)
-- L'outline prompt viene modificato per raggruppare in curricula: l'AI propone `{ curricula: [{ title, description, modules: [...] }] }`
-- Il `generate-module` non cambia — genera contenuto per singolo modulo come prima
-- Realtime su `curricula` non serve — il polling/refetch esistente basta
+### 5. Dettagli aggiornamento prompt
+- Se esistono curricula con pochi moduli (< 4), l'AI deve proporre nuovi moduli per riempirli
+- Il prompt riceve la lista dei curricula con i loro moduli attuali e genera sotto-moduli aggiuntivi
+- Ogni sotto-modulo copre un aspetto specifico del tema del curriculum padre
 
