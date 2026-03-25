@@ -254,7 +254,7 @@ export default function ModuleView() {
 
       {/* Markdown content */}
       {module.content_body && (
-        <article className="module-content prose prose-invert prose-base max-w-none prose-headings:text-foreground prose-p:text-foreground/80 prose-strong:text-foreground prose-li:text-foreground/80 prose-headings:mt-8 prose-headings:mb-4 prose-p:mb-4 prose-p:leading-relaxed prose-ul:my-4 prose-ol:my-4 prose-li:my-1">
+        <article className="module-content prose prose-invert prose-base max-w-none prose-headings:text-foreground prose-p:text-foreground/80 prose-strong:text-foreground prose-li:text-foreground/80 prose-headings:mt-8 prose-headings:mb-4 prose-p:mb-4 prose-p:leading-relaxed prose-ul:my-6 prose-ol:my-6">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
             components={{
@@ -264,7 +264,8 @@ export default function ModuleView() {
                 </h2>
               ),
               h3: ({ children }) => (
-                <h3 className="text-lg font-semibold text-foreground mt-8 mb-3">
+                <h3 className="text-lg font-semibold text-foreground mt-8 mb-3 flex items-center gap-2">
+                  <span className="inline-block w-1 h-5 rounded-full bg-primary" />
                   {children}
                 </h3>
               ),
@@ -272,6 +273,26 @@ export default function ModuleView() {
                 <blockquote className="my-6 border-l-4 border-primary/50 bg-secondary/30 rounded-r-lg px-5 py-4 text-foreground/80 not-italic">
                   {children}
                 </blockquote>
+              ),
+              ul: ({ children }) => (
+                <ul className="my-5 space-y-2 pl-1">{children}</ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="my-5 space-y-2 pl-1 list-decimal list-inside">{children}</ol>
+              ),
+              li: ({ children }) => (
+                <li className="flex items-start gap-2.5 text-foreground/80 leading-relaxed">
+                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <span>{children}</span>
+                </li>
+              ),
+              strong: ({ children }) => (
+                <strong className="text-foreground font-semibold bg-primary/10 px-1 rounded">
+                  {children}
+                </strong>
+              ),
+              p: ({ children }) => (
+                <p className="text-foreground/80 leading-relaxed mb-4">{children}</p>
               ),
               table: ({ children }) => (
                 <div className="my-6 overflow-x-auto rounded-lg border border-border">
