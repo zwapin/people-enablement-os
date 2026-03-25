@@ -61,7 +61,7 @@ async function handleChildJob(
     return new Response(JSON.stringify({ error: "Job not found" }), { status: 404 });
   }
 
-  const { module_id, module_title, source_document_ids, source_faq_ids } = job.input;
+  const { module_id, module_title, source_document_ids, source_faq_ids, relevant_sections } = job.input;
 
   // Update child job to processing
   await supabase
@@ -84,9 +84,9 @@ async function handleChildJob(
         for (const doc of docs) {
           sourceContext += `### ${doc.title}\n`;
           if (doc.context) sourceContext += `Contesto: ${doc.context}\n`;
-          // Limit each doc to 8000 chars for single-module generation
-          const content = doc.content?.length > 8000
-            ? doc.content.substring(0, 8000) + "\n[... troncato ...]"
+          // Pass up to 25000 chars per doc for detailed module generation
+          const content = doc.content?.length > 25000
+            ? doc.content.substring(0, 25000) + "\n[... troncato ...]"
             : doc.content;
           sourceContext += `${content}\n\n`;
         }
@@ -107,10 +107,15 @@ async function handleChildJob(
       }
     }
 
+    // Build section hints if available
+    const sectionHint = relevant_sections
+      ? `\nSEZIONI RILEVANTI DEL DOCUMENTO SORGENTE DA CUI ESTRARRE IL CONTENUTO:\n${relevant_sections}\nConcentrati su queste sezioni ma includi anche contesto utile dalle altre parti.\n`
+      : "";
+
     const systemPrompt = `Sei un esperto di contenuti formativi per la vendita. Genera il contenuto completo per UN singolo modulo formativo.
 
 Modulo: "${module_title}"
-
+${sectionHint}
 ${sourceContext}
 
 ISTRUZIONI:
@@ -119,6 +124,14 @@ ISTRUZIONI:
 - Genera 3 domande di valutazione
 - PRESERVA le tabelle originali trovate nei documenti sorgente in formato markdown
 - Tutto in italiano
+
+REGOLE DI FEDELTÀ AL MATERIALE SORGENTE (OBBLIGATORIE):
+- Includi TUTTI i termini specifici, nomi di fasi, framework, tool e processi menzionati nel materiale sorgente
+- NON generalizzare: se il documento menziona "Disco Call", "Executive Call", "MCP", "Pipeline", questi termini DEVONO comparire nel modulo
+- Preserva la terminologia e i dettagli operativi esatti del playbook
+- Se il documento descrive step di un processo (es. fasi di vendita), elencali TUTTI con i loro nomi originali
+- Usa i nomi propri di strumenti, metodologie e framework così come appaiono nel documento
+- Quando il documento contiene numeri, KPI, percentuali o metriche, riportali fedelmente
 
 REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
 - Usa sottotitoli ### (h3) per spezzare il contenuto in sezioni tematiche chiare

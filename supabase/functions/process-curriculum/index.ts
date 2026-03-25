@@ -71,8 +71,8 @@ serve(async (req) => {
     for (const doc of docs) {
       kbContext += `### Documento: ${doc.title} (ID: ${doc.id})\n`;
       if (doc.context) kbContext += `Contesto: ${doc.context}\n`;
-      const content = doc.content && doc.content.length > 6000
-        ? doc.content.substring(0, 6000) + "\n[... troncato ...]"
+      const content = doc.content && doc.content.length > 25000
+        ? doc.content.substring(0, 25000) + "\n[... troncato ...]"
         : doc.content;
       kbContext += `${content}\n\n`;
     }
@@ -103,8 +103,9 @@ ${existingContext}
 
 ISTRUZIONI:
 - Proponi al massimo 5 moduli
-- Per ogni modulo fornisci SOLO: titolo, summary breve, track, rationale, fonti usate
+- Per ogni modulo fornisci SOLO: titolo, summary breve, track, rationale, fonti usate, e le sezioni rilevanti del documento sorgente
 - NON generare content_body, key_points o domande (verranno generati separatamente)
+- Per "relevant_sections" indica i capitoli/sezioni/paragrafi specifici del documento sorgente da cui estrarre il contenuto (es. "Sezione 9: Processo AE", "Capitolo Discovery Call", "Pipeline stages")
 - I moduli devono avere un flusso logico
 - Tutto in italiano`;
 
@@ -142,6 +143,7 @@ ISTRUZIONI:
                       ai_rationale: { type: "string" },
                       source_document_ids: { type: "array", items: { type: "string" } },
                       source_faq_ids: { type: "array", items: { type: "string" } },
+                      relevant_sections: { type: "string", description: "Sezioni/capitoli specifici del documento sorgente rilevanti per questo modulo" },
                     },
                     required: ["title", "summary", "track", "ai_rationale", "source_document_ids", "source_faq_ids"],
                   },
@@ -199,7 +201,8 @@ ISTRUZIONI:
         console.error("[process-curriculum] Failed to save module:", error);
         continue;
       }
-      savedModules.push(saved);
+      // Attach relevant_sections from outline (not stored in DB, passed to child job)
+      savedModules.push({ ...saved, relevant_sections: mod.relevant_sections || null });
     }
 
     console.log("[process-curriculum] Saved skeleton modules:", savedModules.length);
@@ -224,7 +227,7 @@ ISTRUZIONI:
           job_type: "module_content",
           parent_job_id: jobId,
           status: "pending",
-          input: { module_id: mod.id, module_title: mod.title, source_document_ids: mod.source_document_ids, source_faq_ids: mod.source_faq_ids },
+          input: { module_id: mod.id, module_title: mod.title, source_document_ids: mod.source_document_ids, source_faq_ids: mod.source_faq_ids, relevant_sections: mod.relevant_sections },
         })
         .select("id")
         .single();
