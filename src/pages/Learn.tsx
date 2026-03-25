@@ -31,17 +31,10 @@ export default function Learn() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
-  const activeJobId = useRef<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [viewAsRep, setViewAsRep] = useState(false);
   const activeJobId = useRef<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current);
-    };
-  }, []);
 
   const { data: modules, isLoading, refetch } = useQuery({
     queryKey: ["modules"],
