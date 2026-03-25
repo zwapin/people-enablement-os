@@ -201,7 +201,8 @@ ISTRUZIONI:
         console.error("[process-curriculum] Failed to save module:", error);
         continue;
       }
-      savedModules.push(saved);
+      // Attach relevant_sections from outline (not stored in DB, passed to child job)
+      savedModules.push({ ...saved, relevant_sections: mod.relevant_sections || null });
     }
 
     console.log("[process-curriculum] Saved skeleton modules:", savedModules.length);
