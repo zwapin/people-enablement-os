@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,13 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Loader2, Sparkles, Plus, Trash2, GripVertical, Save, FileText, HelpCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 import type { Json } from "@/integrations/supabase/types";
 
 type Module = Tables<"modules">;
-type Question = Tables<"assessment_questions">;
 
 interface QuestionForm {
   id?: string;
@@ -33,47 +30,18 @@ interface ModuleEditorProps {
 
 export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
   const [loading, setLoading] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Module fields
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [track, setTrack] = useState("Sales");
   const [contentBody, setContentBody] = useState("");
   const [keyPoints, setKeyPoints] = useState<string[]>([]);
-  const [status, setStatus] = useState<"draft" | "published">("draft");
-
-  // Questions
+  const [status, setStatus] = useState<string>("draft");
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
 
-  // Source text for AI generation
-  const [sourceText, setSourceText] = useState("");
-
-  // KB selection
-  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
-  const [selectedFaqIds, setSelectedFaqIds] = useState<string[]>([]);
-
-  const { data: kbDocs } = useQuery({
-    queryKey: ["kb-docs-for-editor"],
-    queryFn: async () => {
-      const { data } = await supabase.from("knowledge_documents").select("id, title, context, content").order("created_at", { ascending: false });
-      return data || [];
-    },
-  });
-
-  const { data: kbFaqs } = useQuery({
-    queryKey: ["kb-faqs-for-editor"],
-    queryFn: async () => {
-      const { data } = await supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at", { ascending: false });
-      return data || [];
-    },
-  });
-
   useEffect(() => {
-    if (moduleId) {
-      loadModule();
-    }
+    if (moduleId) loadModule();
   }, [moduleId]);
 
   const loadModule = async () => {
@@ -82,11 +50,7 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
 
     const [modResult, qResult] = await Promise.all([
       supabase.from("modules").select("*").eq("id", moduleId).single(),
-      supabase
-        .from("assessment_questions")
-        .select("*")
-        .eq("module_id", moduleId)
-        .order("order_index", { ascending: true }),
+      supabase.from("assessment_questions").select("*").eq("module_id", moduleId).order("order_index", { ascending: true }),
     ]);
 
     if (modResult.data) {
@@ -115,63 +79,9 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
     setLoading(false);
   };
 
-  const handleGenerate = async () => {
-    if (sourceText.trim().length < 50) {
-      toast.error("Please provide at least 50 characters of source text.");
-      return;
-    }
-
-    setGenerating(true);
-    try {
-      // Build KB context
-      const knowledge_context: any = {};
-      if (selectedDocIds.length > 0 && kbDocs) {
-        knowledge_context.documents = kbDocs
-          .filter((d) => selectedDocIds.includes(d.id))
-          .map((d) => ({ title: d.title, context: d.context, content: d.content }));
-      }
-      if (selectedFaqIds.length > 0 && kbFaqs) {
-        knowledge_context.faqs = kbFaqs
-          .filter((f) => selectedFaqIds.includes(f.id))
-          .map((f) => ({ question: f.question, answer: f.answer }));
-      }
-
-      const { data, error } = await supabase.functions.invoke("generate-module", {
-        body: {
-          text: sourceText,
-          title_hint: title || undefined,
-          knowledge_context: (knowledge_context.documents || knowledge_context.faqs) ? knowledge_context : undefined,
-        },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      setTitle(data.title || title);
-      setSummary(data.summary || "");
-      setKeyPoints(data.key_points || []);
-      setContentBody(data.content_body || "");
-      setQuestions(
-        (data.questions || []).map((q: any) => ({
-          question: q.question,
-          options: q.options || ["", "", "", ""],
-          correct_index: q.correct_index ?? 0,
-          feedback_correct: q.feedback_correct || "",
-          feedback_wrong: q.feedback_wrong || "",
-        }))
-      );
-
-      toast.success("Module generated! Review and edit before saving.");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to generate module");
-    } finally {
-      setGenerating(false);
-    }
-  };
-
-  const handleSave = async (publishStatus?: "draft" | "published") => {
+  const handleSave = async (publishStatus?: string) => {
     if (!title.trim()) {
-      toast.error("Title is required");
+      toast.error("Il titolo è obbligatorio");
       return;
     }
 
@@ -182,7 +92,6 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
       let modId = moduleId;
 
       if (moduleId) {
-        // Update existing
         const { error } = await supabase
           .from("modules")
           .update({
@@ -191,13 +100,12 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             track,
             content_body: contentBody.trim() || null,
             key_points: keyPoints as unknown as Json,
-            status: finalStatus,
+            status: finalStatus as any,
             updated_at: new Date().toISOString(),
           })
           .eq("id", moduleId);
         if (error) throw error;
       } else {
-        // Get next order_index
         const { data: existing } = await supabase
           .from("modules")
           .select("order_index")
@@ -214,7 +122,7 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             track,
             content_body: contentBody.trim() || null,
             key_points: keyPoints as unknown as Json,
-            status: finalStatus,
+            status: finalStatus as any,
             order_index: nextOrder,
           })
           .select()
@@ -223,7 +131,6 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
         modId = newMod.id;
       }
 
-      // Save questions — delete all existing, re-insert
       if (modId) {
         await supabase.from("assessment_questions").delete().eq("module_id", modId);
 
@@ -238,59 +145,37 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             order_index: i,
           }));
 
-          const { error: qError } = await supabase
-            .from("assessment_questions")
-            .insert(qRows);
+          const { error: qError } = await supabase.from("assessment_questions").insert(qRows);
           if (qError) throw qError;
         }
       }
 
-      toast.success(`Module ${finalStatus === "published" ? "published" : "saved as draft"}`);
+      toast.success(`Modulo ${finalStatus === "published" ? "pubblicato" : "salvato come bozza"}`);
       onClose();
     } catch (err: any) {
-      toast.error(err.message || "Failed to save module");
+      toast.error(err.message || "Salvataggio fallito");
     } finally {
       setSaving(false);
     }
   };
 
   const addQuestion = () => {
-    setQuestions([
-      ...questions,
-      {
-        question: "",
-        options: ["", "", "", ""],
-        correct_index: 0,
-        feedback_correct: "",
-        feedback_wrong: "",
-      },
-    ]);
+    setQuestions([...questions, { question: "", options: ["", "", "", ""], correct_index: 0, feedback_correct: "", feedback_wrong: "" }]);
   };
 
-  const removeQuestion = (index: number) => {
-    setQuestions(questions.filter((_, i) => i !== index));
-  };
+  const removeQuestion = (index: number) => setQuestions(questions.filter((_, i) => i !== index));
 
   const updateQuestion = (index: number, field: keyof QuestionForm, value: any) => {
-    setQuestions(
-      questions.map((q, i) => (i === index ? { ...q, [field]: value } : q))
-    );
+    setQuestions(questions.map((q, i) => (i === index ? { ...q, [field]: value } : q)));
   };
 
   const updateOption = (qIndex: number, optIndex: number, value: string) => {
-    setQuestions(
-      questions.map((q, i) =>
-        i === qIndex
-          ? { ...q, options: q.options.map((o, j) => (j === optIndex ? value : o)) }
-          : q
-      )
-    );
+    setQuestions(questions.map((q, i) => i === qIndex ? { ...q, options: q.options.map((o, j) => (j === optIndex ? value : o)) } : q));
   };
 
   const addKeyPoint = () => setKeyPoints([...keyPoints, ""]);
   const removeKeyPoint = (i: number) => setKeyPoints(keyPoints.filter((_, j) => j !== i));
-  const updateKeyPoint = (i: number, val: string) =>
-    setKeyPoints(keyPoints.map((kp, j) => (j === i ? val : kp)));
+  const updateKeyPoint = (i: number, val: string) => setKeyPoints(keyPoints.map((kp, j) => (j === i ? val : kp)));
 
   if (loading) {
     return (
@@ -302,110 +187,25 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={onClose}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-bold text-foreground">
-          {moduleId ? "Edit Module" : "Create Module"}
-        </h1>
+        <h1 className="text-2xl font-bold text-foreground">Modifica Modulo</h1>
       </div>
 
-      {/* AI Generation Section */}
-      {!moduleId && (
-        <Card className="p-4 border-border bg-card space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <h3 className="font-medium text-foreground">AI Generation</h3>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Paste your source material (playbook, notes, PDF text) and AI will generate the module content and assessment questions.
-          </p>
-          <Textarea
-            value={sourceText}
-            onChange={(e) => setSourceText(e.target.value)}
-            placeholder="Paste your source material here (at least 50 characters)..."
-            className="min-h-[120px]"
-          />
-
-          {/* KB Context Selector */}
-          {((kbDocs && kbDocs.length > 0) || (kbFaqs && kbFaqs.length > 0)) && (
-            <div className="border border-border rounded-md p-3 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                Include Knowledge Base Context
-              </p>
-
-              {kbDocs && kbDocs.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <FileText className="h-3 w-3" /> Documents
-                  </p>
-                  {kbDocs.map((doc) => (
-                    <label key={doc.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={selectedDocIds.includes(doc.id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedDocIds((prev) =>
-                            checked ? [...prev, doc.id] : prev.filter((id) => id !== doc.id)
-                          );
-                        }}
-                      />
-                      <span className="truncate text-foreground">{doc.title}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              {kbFaqs && kbFaqs.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="text-xs text-muted-foreground flex items-center gap-1">
-                    <HelpCircle className="h-3 w-3" /> FAQs
-                  </p>
-                  {kbFaqs.map((faq) => (
-                    <label key={faq.id} className="flex items-center gap-2 text-sm cursor-pointer">
-                      <Checkbox
-                        checked={selectedFaqIds.includes(faq.id)}
-                        onCheckedChange={(checked) => {
-                          setSelectedFaqIds((prev) =>
-                            checked ? [...prev, faq.id] : prev.filter((id) => id !== faq.id)
-                          );
-                        }}
-                      />
-                      <span className="truncate text-foreground">{faq.question}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          <Button onClick={handleGenerate} disabled={generating}>
-            {generating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
-            )}
-            {generating ? "Generating..." : "Generate with AI"}
-          </Button>
-        </Card>
-      )}
-
-      {/* Module Details */}
       <Card className="p-4 border-border bg-card space-y-4">
-        <h3 className="font-medium text-foreground">Module Details</h3>
+        <h3 className="font-medium text-foreground">Dettagli Modulo</h3>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2 space-y-2">
-            <Label>Title</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Module title" />
+            <Label>Titolo</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo del modulo" />
           </div>
           <div className="space-y-2">
             <Label>Track</Label>
             <Select value={track} onValueChange={setTrack}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Sales">Sales</SelectItem>
                 <SelectItem value="CS">CS</SelectItem>
@@ -414,76 +214,42 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as "draft" | "published")}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
         <div className="space-y-2">
-          <Label>Summary</Label>
-          <Textarea
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            placeholder="Brief module overview"
-            className="min-h-[60px]"
-          />
+          <Label>Sommario</Label>
+          <Textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Panoramica breve" className="min-h-[60px]" />
         </div>
 
-        {/* Key Points */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Key Points</Label>
+            <Label>Punti chiave</Label>
             <Button variant="ghost" size="sm" onClick={addKeyPoint}>
-              <Plus className="h-3 w-3 mr-1" />
-              Add
+              <Plus className="h-3 w-3 mr-1" />Aggiungi
             </Button>
           </div>
           {keyPoints.map((kp, i) => (
             <div key={i} className="flex items-center gap-2">
-              <Input
-                value={kp}
-                onChange={(e) => updateKeyPoint(i, e.target.value)}
-                placeholder={`Key point ${i + 1}`}
-              />
-              <Button variant="ghost" size="icon" onClick={() => removeKeyPoint(i)}>
-                <Trash2 className="h-3 w-3" />
-              </Button>
+              <Input value={kp} onChange={(e) => updateKeyPoint(i, e.target.value)} placeholder={`Punto chiave ${i + 1}`} />
+              <Button variant="ghost" size="icon" onClick={() => removeKeyPoint(i)}><Trash2 className="h-3 w-3" /></Button>
             </div>
           ))}
         </div>
 
         <div className="space-y-2">
-          <Label>Content (Markdown)</Label>
-          <Textarea
-            value={contentBody}
-            onChange={(e) => setContentBody(e.target.value)}
-            placeholder="Full module content in markdown..."
-            className="min-h-[200px] font-mono text-sm"
-          />
+          <Label>Contenuto (Markdown)</Label>
+          <Textarea value={contentBody} onChange={(e) => setContentBody(e.target.value)} placeholder="Contenuto completo del modulo..." className="min-h-[200px] font-mono text-sm" />
         </div>
       </Card>
 
-      {/* Assessment Questions */}
       <Card className="p-4 border-border bg-card space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="font-medium text-foreground">
-            Assessment Questions
-            <Badge variant="secondary" className="ml-2 text-[10px]">
-              {questions.length}
-            </Badge>
+            Domande di Valutazione
+            <Badge variant="secondary" className="ml-2 text-[10px]">{questions.length}</Badge>
           </h3>
           <Button variant="ghost" size="sm" onClick={addQuestion}>
-            <Plus className="h-3 w-3 mr-1" />
-            Add question
+            <Plus className="h-3 w-3 mr-1" />Aggiungi
           </Button>
         </div>
 
@@ -492,81 +258,48 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <GripVertical className="h-3 w-3" />
-                <span>Q{qi + 1}</span>
+                <span>D{qi + 1}</span>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => removeQuestion(qi)}
-                className="h-6 w-6 text-destructive hover:text-destructive"
-              >
+              <Button variant="ghost" size="icon" onClick={() => removeQuestion(qi)} className="h-6 w-6 text-destructive hover:text-destructive">
                 <Trash2 className="h-3 w-3" />
               </Button>
             </div>
 
-            <Textarea
-              value={q.question}
-              onChange={(e) => updateQuestion(qi, "question", e.target.value)}
-              placeholder="Question text"
-              className="min-h-[50px]"
-            />
+            <Textarea value={q.question} onChange={(e) => updateQuestion(qi, "question", e.target.value)} placeholder="Testo domanda" className="min-h-[50px]" />
 
             <div className="space-y-2">
-              <Label className="text-xs">Options (select the correct one)</Label>
+              <Label className="text-xs">Opzioni (seleziona la corretta)</Label>
               {q.options.map((opt, oi) => (
                 <div key={oi} className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name={`correct-${qi}`}
-                    checked={q.correct_index === oi}
-                    onChange={() => updateQuestion(qi, "correct_index", oi)}
-                    className="accent-primary"
-                  />
-                  <Input
-                    value={opt}
-                    onChange={(e) => updateOption(qi, oi, e.target.value)}
-                    placeholder={`Option ${oi + 1}`}
-                    className="flex-1"
-                  />
+                  <input type="radio" name={`correct-${qi}`} checked={q.correct_index === oi} onChange={() => updateQuestion(qi, "correct_index", oi)} className="accent-primary" />
+                  <Input value={opt} onChange={(e) => updateOption(qi, oi, e.target.value)} placeholder={`Opzione ${oi + 1}`} className="flex-1" />
                 </div>
               ))}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <Label className="text-xs">Correct feedback</Label>
-                <Input
-                  value={q.feedback_correct}
-                  onChange={(e) => updateQuestion(qi, "feedback_correct", e.target.value)}
-                  placeholder="Why this is correct"
-                />
+                <Label className="text-xs">Feedback corretto</Label>
+                <Input value={q.feedback_correct} onChange={(e) => updateQuestion(qi, "feedback_correct", e.target.value)} placeholder="Perché è corretto" />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Wrong feedback</Label>
-                <Input
-                  value={q.feedback_wrong}
-                  onChange={(e) => updateQuestion(qi, "feedback_wrong", e.target.value)}
-                  placeholder="Hint toward correct answer"
-                />
+                <Label className="text-xs">Feedback errato</Label>
+                <Input value={q.feedback_wrong} onChange={(e) => updateQuestion(qi, "feedback_wrong", e.target.value)} placeholder="Suggerimento verso la risposta" />
               </div>
             </div>
           </div>
         ))}
       </Card>
 
-      {/* Actions */}
       <div className="flex items-center justify-end gap-3 pb-8">
-        <Button variant="outline" onClick={onClose}>
-          Cancel
-        </Button>
+        <Button variant="outline" onClick={onClose}>Annulla</Button>
         <Button variant="secondary" onClick={() => handleSave("draft")} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          <Save className="h-4 w-4 mr-2" />
-          Save draft
+          <Save className="h-4 w-4 mr-2" />Salva bozza
         </Button>
         <Button onClick={() => handleSave("published")} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Publish
+          Pubblica
         </Button>
       </div>
     </div>

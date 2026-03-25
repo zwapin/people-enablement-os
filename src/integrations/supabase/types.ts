@@ -143,11 +143,14 @@ export type Database = {
       }
       modules: {
         Row: {
+          ai_rationale: string | null
           content_body: string | null
           created_at: string
           id: string
           key_points: Json | null
           order_index: number
+          source_document_ids: Json | null
+          source_faq_ids: Json | null
           status: Database["public"]["Enums"]["module_status"]
           summary: string | null
           title: string
@@ -155,11 +158,14 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_rationale?: string | null
           content_body?: string | null
           created_at?: string
           id?: string
           key_points?: Json | null
           order_index?: number
+          source_document_ids?: Json | null
+          source_faq_ids?: Json | null
           status?: Database["public"]["Enums"]["module_status"]
           summary?: string | null
           title: string
@@ -167,11 +173,14 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_rationale?: string | null
           content_body?: string | null
           created_at?: string
           id?: string
           key_points?: Json | null
           order_index?: number
+          source_document_ids?: Json | null
+          source_faq_ids?: Json | null
           status?: Database["public"]["Enums"]["module_status"]
           summary?: string | null
           title?: string
@@ -354,7 +363,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "rep"
       milestone_label: "30d" | "60d" | "90d"
-      module_status: "draft" | "published"
+      module_status: "draft" | "published" | "proposed" | "archived"
       plan_status: "active" | "archived"
       task_type: "module_link" | "activity" | "meeting"
     }
@@ -486,7 +495,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "rep"],
       milestone_label: ["30d", "60d", "90d"],
-      module_status: ["draft", "published"],
+      module_status: ["draft", "published", "proposed", "archived"],
       plan_status: ["active", "archived"],
       task_type: ["module_link", "activity", "meeting"],
     },
