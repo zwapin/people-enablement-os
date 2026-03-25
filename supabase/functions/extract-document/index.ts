@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -13,6 +13,7 @@ serve(async (req) => {
   }
 
   try {
+    console.log("[extract-document] Starting...");
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -27,7 +28,7 @@ serve(async (req) => {
       );
     }
 
-    // Download file from storage
+    console.log("[extract-document] Downloading:", file_path);
     const { data: fileData, error: downloadError } = await supabaseAdmin.storage
       .from("knowledge-files")
       .download(file_path);
@@ -35,6 +36,7 @@ serve(async (req) => {
     if (downloadError || !fileData) {
       throw new Error(`Failed to download file: ${downloadError?.message}`);
     }
+    console.log("[extract-document] Downloaded, size:", fileData.size);
 
     let extractedText = "";
     const lowerName = (file_name || file_path).toLowerCase();
@@ -42,11 +44,12 @@ serve(async (req) => {
     if (lowerName.endsWith(".txt")) {
       extractedText = await fileData.text();
     } else if (lowerName.endsWith(".pdf") || lowerName.endsWith(".docx")) {
-      // Use Lovable AI (Gemini) to extract text from PDF/DOCX
       extractedText = await extractTextWithAI(fileData, lowerName);
     } else {
       extractedText = "[Unsupported file type]";
     }
+
+    console.log("[extract-document] Extracted text length:", extractedText.length);
 
     return new Response(
       JSON.stringify({ content: extractedText }),
@@ -68,58 +71,77 @@ async function extractTextWithAI(fileData: Blob, fileName: string): Promise<stri
   }
 
   const buffer = await fileData.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  
+  // Check size limit (~10MB base64)
+  if (bytes.length > 7_500_000) {
+    throw new Error("File too large for AI extraction (max ~7.5MB)");
+  }
+
   const base64 = btoa(
-    new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+    bytes.reduce((data, byte) => data + String.fromCharCode(byte), "")
   );
 
   const mimeType = fileName.endsWith(".pdf")
     ? "application/pdf"
     : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "system",
-          content: "You are a document text extractor. Extract ALL text content from the provided document. Preserve the structure (headings, paragraphs, bullet points, tables). Output only the extracted text, no commentary."
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: "Extract all text from this document. Preserve formatting and structure."
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: `data:${mimeType};base64,${base64}`
+  console.log("[extract-document] Calling AI gateway, base64 length:", base64.length);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 50000);
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        max_tokens: 8192,
+        messages: [
+          {
+            role: "system",
+            content: "You are a document text extractor. Extract ALL text content from the provided document. Preserve the structure (headings, paragraphs, bullet points, tables). Output only the extracted text, no commentary."
+          },
+          {
+            role: "user",
+            content: [
+              {
+                type: "text",
+                text: "Extract all text from this document. Preserve formatting and structure."
+              },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:${mimeType};base64,${base64}`
+                }
               }
-            }
-          ]
-        }
-      ],
-    }),
-  });
+            ]
+          }
+        ],
+      }),
+    });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("AI gateway error:", response.status, errorText);
-    throw new Error(`AI extraction failed (${response.status})`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      throw new Error(`AI extraction failed (${response.status})`);
+    }
+
+    console.log("[extract-document] AI response received");
+    const result = await response.json();
+    const content = result.choices?.[0]?.message?.content;
+
+    if (!content || !content.trim()) {
+      return "[AI text extraction returned empty. The document may be blank or corrupted.]";
+    }
+
+    return content.trim();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const result = await response.json();
-  const content = result.choices?.[0]?.message?.content;
-
-  if (!content || !content.trim()) {
-    return "[AI text extraction returned empty. The document may be blank or corrupted.]";
-  }
-
-  return content.trim();
 }
