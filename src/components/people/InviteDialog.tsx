@@ -8,7 +8,7 @@ import { Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const DEPARTMENTS = ["Sales", "CS", "Ops", "Management"];
+const DEPARTMENTS = ["Vendite", "CS", "Operations", "Management"];
 
 interface InviteDialogProps {
   onInvited: () => void;
@@ -40,12 +40,12 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast.success(`Invite sent to ${email}`);
+      toast.success(`Invito inviato a ${email}`);
       setOpen(false);
       resetForm();
       onInvited();
     } catch (err: any) {
-      toast.error(err.message || "Failed to invite user");
+      toast.error(err.message || "Errore nell'invio dell'invito");
     } finally {
       setLoading(false);
     }
@@ -63,16 +63,16 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Invite a rep
+          Invita un rep
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Invite a new team member</DialogTitle>
+          <DialogTitle>Invita un nuovo membro del team</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full name</Label>
+            <Label htmlFor="fullName">Nome completo</Label>
             <Input
               id="fullName"
               value={fullName}
@@ -93,10 +93,10 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="department">Department</Label>
+            <Label htmlFor="department">Reparto</Label>
             <Select value={department} onValueChange={setDepartment}>
               <SelectTrigger>
-                <SelectValue placeholder="Select department" />
+                <SelectValue placeholder="Seleziona reparto" />
               </SelectTrigger>
               <SelectContent>
                 {DEPARTMENTS.map((d) => (
@@ -106,7 +106,7 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="jobRole">Job role</Label>
+            <Label htmlFor="jobRole">Ruolo</Label>
             <Input
               id="jobRole"
               value={jobRole}
@@ -116,7 +116,7 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Send invite
+            Invia invito
           </Button>
         </form>
       </DialogContent>

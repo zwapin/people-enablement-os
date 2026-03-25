@@ -38,7 +38,7 @@ export default function FaqList() {
 
   const handleSave = async () => {
     if (!form.question.trim() || !form.answer.trim()) {
-      toast.error("Question and answer are required");
+      toast.error("Domanda e risposta sono obbligatorie");
       return;
     }
 
@@ -56,13 +56,13 @@ export default function FaqList() {
           .update(payload)
           .eq("id", editingId);
         if (error) throw error;
-        toast.success("FAQ updated");
+        toast.success("FAQ aggiornata");
       } else {
         const { error } = await supabase
           .from("knowledge_faqs")
           .insert(payload);
         if (error) throw error;
-        toast.success("FAQ created");
+        toast.success("FAQ creata");
       }
 
       setShowForm(false);
@@ -70,7 +70,7 @@ export default function FaqList() {
       setForm(emptyForm);
       refetch();
     } catch (err: any) {
-      toast.error(err.message || "Failed to save FAQ");
+      toast.error(err.message || "Errore nel salvataggio della FAQ");
     } finally {
       setSaving(false);
     }
@@ -83,12 +83,12 @@ export default function FaqList() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this FAQ?")) return;
+    if (!confirm("Eliminare questa FAQ?")) return;
     const { error } = await supabase.from("knowledge_faqs").delete().eq("id", id);
     if (error) {
-      toast.error("Failed to delete");
+      toast.error("Errore nell'eliminazione");
     } else {
-      toast.success("FAQ deleted");
+      toast.success("FAQ eliminata");
       refetch();
     }
   };
@@ -116,7 +116,7 @@ export default function FaqList() {
         {!showForm && (
           <Button onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
-            Add FAQ
+            Aggiungi FAQ
           </Button>
         )}
       </div>
@@ -124,41 +124,41 @@ export default function FaqList() {
       {showForm && (
         <Card className="p-4 bg-card border-border space-y-3">
           <h3 className="font-medium text-foreground">
-            {editingId ? "Edit FAQ" : "New FAQ"}
+            {editingId ? "Modifica FAQ" : "Nuova FAQ"}
           </h3>
           <div className="space-y-2">
-            <Label>Question</Label>
+            <Label>Domanda</Label>
             <Input
               value={form.question}
               onChange={(e) => setForm({ ...form, question: e.target.value })}
-              placeholder="e.g. What is our return policy?"
+              placeholder="Es. Qual è la nostra politica di reso?"
             />
           </div>
           <div className="space-y-2">
-            <Label>Answer</Label>
+            <Label>Risposta</Label>
             <Textarea
               value={form.answer}
               onChange={(e) => setForm({ ...form, answer: e.target.value })}
-              placeholder="The detailed answer..."
+              placeholder="La risposta dettagliata..."
               className="min-h-[100px]"
             />
           </div>
           <div className="space-y-2">
-            <Label>Category (optional)</Label>
+            <Label>Categoria (opzionale)</Label>
             <Input
               value={form.category}
               onChange={(e) => setForm({ ...form, category: e.target.value })}
-              placeholder="e.g. Pricing, Product, Process"
+              placeholder="Es. Pricing, Prodotto, Processo"
             />
           </div>
           <div className="flex gap-2 justify-end">
             <Button variant="outline" onClick={handleCancel} size="sm">
               <X className="h-3 w-3 mr-1" />
-              Cancel
+              Annulla
             </Button>
             <Button onClick={handleSave} disabled={saving} size="sm">
               {saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Check className="h-3 w-3 mr-1" />}
-              {editingId ? "Update" : "Save"}
+              {editingId ? "Aggiorna" : "Salva"}
             </Button>
           </div>
         </Card>
@@ -168,7 +168,7 @@ export default function FaqList() {
         <Card className="p-8 text-center bg-card border-border">
           <HelpCircle className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">
-            No FAQs yet. Create question/answer pairs to enrich AI-generated modules.
+            Nessuna FAQ presente. Crea coppie domanda/risposta per arricchire i moduli generati dall'AI.
           </p>
         </Card>
       ) : (
