@@ -166,7 +166,8 @@ export default function Learn() {
 
   const handleUpdateCurriculum = async (regenerateAll = false) => {
     setGenerating(true);
-    startProgressSimulation();
+    setProgress(2);
+    setProgressLabel("Invio richiesta...");
     try {
       const { data, error } = await supabase.functions.invoke("generate-curriculum", {
         body: regenerateAll ? { regenerate_all: true } : {},
@@ -178,7 +179,7 @@ export default function Learn() {
         subscribeToJob(data.jobId);
       }
     } catch (err: any) {
-      stopProgressSimulation(false);
+      stopGeneration(false);
       toast.error(err.message || "Generazione curriculum fallita");
     }
   };
