@@ -84,9 +84,9 @@ async function handleChildJob(
         for (const doc of docs) {
           sourceContext += `### ${doc.title}\n`;
           if (doc.context) sourceContext += `Contesto: ${doc.context}\n`;
-          // Limit each doc to 8000 chars for single-module generation
-          const content = doc.content?.length > 8000
-            ? doc.content.substring(0, 8000) + "\n[... troncato ...]"
+          // Pass up to 25000 chars per doc for detailed module generation
+          const content = doc.content?.length > 25000
+            ? doc.content.substring(0, 25000) + "\n[... troncato ...]"
             : doc.content;
           sourceContext += `${content}\n\n`;
         }

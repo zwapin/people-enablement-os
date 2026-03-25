@@ -103,8 +103,9 @@ ${existingContext}
 
 ISTRUZIONI:
 - Proponi al massimo 5 moduli
-- Per ogni modulo fornisci SOLO: titolo, summary breve, track, rationale, fonti usate
+- Per ogni modulo fornisci SOLO: titolo, summary breve, track, rationale, fonti usate, e le sezioni rilevanti del documento sorgente
 - NON generare content_body, key_points o domande (verranno generati separatamente)
+- Per "relevant_sections" indica i capitoli/sezioni/paragrafi specifici del documento sorgente da cui estrarre il contenuto (es. "Sezione 9: Processo AE", "Capitolo Discovery Call", "Pipeline stages")
 - I moduli devono avere un flusso logico
 - Tutto in italiano`;
 
@@ -142,6 +143,7 @@ ISTRUZIONI:
                       ai_rationale: { type: "string" },
                       source_document_ids: { type: "array", items: { type: "string" } },
                       source_faq_ids: { type: "array", items: { type: "string" } },
+                      relevant_sections: { type: "string", description: "Sezioni/capitoli specifici del documento sorgente rilevanti per questo modulo" },
                     },
                     required: ["title", "summary", "track", "ai_rationale", "source_document_ids", "source_faq_ids"],
                   },
