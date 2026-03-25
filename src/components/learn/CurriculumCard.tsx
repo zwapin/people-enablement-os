@@ -21,6 +21,8 @@ import {
   Check,
   X,
   BookOpen,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import CurriculumList from "./CurriculumList";
 import type { Tables } from "@/integrations/supabase/types";
@@ -44,6 +46,8 @@ interface CurriculumCardProps {
   isAdmin: boolean;
   onEdit: (moduleId: string) => void;
   onRefresh: () => void;
+  onBulkGenerate?: (curriculumId: string) => void;
+  isBulkGenerating?: boolean;
 }
 
 export default function CurriculumCard({
@@ -52,6 +56,8 @@ export default function CurriculumCard({
   isAdmin,
   onEdit,
   onRefresh,
+  onBulkGenerate,
+  isBulkGenerating,
 }: CurriculumCardProps) {
   const [open, setOpen] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -187,6 +193,22 @@ export default function CurriculumCard({
 
           {isAdmin && !editing && (
             <div className="flex items-center gap-1 shrink-0">
+              {onBulkGenerate && modules.some(m => !m.content_body) && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onBulkGenerate(curriculum.id)}
+                  disabled={isBulkGenerating}
+                  title="Genera contenuti moduli"
+                >
+                  {isBulkGenerating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="h-4 w-4 text-primary" />
+                  )}
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"

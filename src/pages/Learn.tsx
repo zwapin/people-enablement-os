@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus } from "lucide-react";
+import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -290,6 +290,88 @@ export default function Learn() {
 
   // Auto-migration removed — curricula structure is now pre-populated
 
+  const [bulkGenerating, setBulkGenerating] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, label: "" });
+
+  const handleBulkGenerate = async (curriculumId?: string) => {
+    const targetModules = modules?.filter(m => {
+      const matchesCurriculum = curriculumId ? m.curriculum_id === curriculumId : true;
+      return matchesCurriculum && !m.content_body;
+    }) ?? [];
+
+    if (targetModules.length === 0) {
+      toast.info("Tutti i moduli hanno già contenuto.");
+      return;
+    }
+
+    setBulkGenerating(true);
+    setBulkProgress({ current: 0, total: targetModules.length, label: "Avvio generazione bulk..." });
+
+    let completed = 0;
+    let failed = 0;
+
+    for (const mod of targetModules) {
+      setBulkProgress({
+        current: completed + 1,
+        total: targetModules.length,
+        label: `Generazione: ${mod.title.substring(0, 50)}...`,
+      });
+
+      try {
+        // Create job
+        const { data: job, error: jobErr } = await supabase
+          .from("generation_jobs")
+          .insert({ job_type: "generate-module", status: "pending", input: { module_id: mod.id } })
+          .select("id")
+          .single();
+
+        if (jobErr || !job) throw new Error("Job creation failed");
+
+        // Invoke edge function
+        const { error: fnErr } = await supabase.functions.invoke("generate-module", {
+          body: { jobId: job.id },
+        });
+
+        if (fnErr) throw fnErr;
+
+        // Poll for completion
+        let attempts = 0;
+        while (attempts < 60) {
+          await new Promise(r => setTimeout(r, 3000));
+          const { data: jobStatus } = await supabase
+            .from("generation_jobs")
+            .select("status, error")
+            .eq("id", job.id)
+            .single();
+
+          if (jobStatus?.status === "completed") break;
+          if (jobStatus?.status === "failed") throw new Error(jobStatus.error || "Generation failed");
+          attempts++;
+        }
+
+        completed++;
+      } catch (err: any) {
+        console.error(`Failed to generate module ${mod.title}:`, err);
+        failed++;
+      }
+
+      // Small delay between modules
+      if (completed + failed < targetModules.length) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    setBulkGenerating(false);
+    setBulkProgress({ current: 0, total: 0, label: "" });
+    refreshAll();
+
+    if (failed === 0) {
+      toast.success(`${completed} moduli generati con successo!`);
+    } else {
+      toast.warning(`${completed} generati, ${failed} falliti.`);
+    }
+  };
+
   const handleEdit = (moduleId: string) => {
     setEditingModuleId(moduleId);
     setEditorOpen(true);
@@ -367,6 +449,19 @@ export default function Learn() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handleBulkGenerate()}
+            disabled={bulkGenerating || generating}
+          >
+            {bulkGenerating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4 mr-2" />
+            )}
+            {bulkGenerating ? `Generazione ${bulkProgress.current}/${bulkProgress.total}...` : "Genera tutti i contenuti"}
+          </Button>
           <Button variant="outline" size="sm" onClick={handleCreateCurriculum}>
             <Plus className="h-4 w-4 mr-2" />
             Nuovo Curriculum
@@ -403,6 +498,19 @@ export default function Learn() {
           </Button>
         </div>
       </div>
+
+      {/* Bulk generation progress */}
+      {bulkGenerating && (
+        <div className="space-y-2 rounded-lg border border-border bg-card p-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{bulkProgress.label}</span>
+            <span className="text-muted-foreground font-mono">
+              {bulkProgress.current}/{bulkProgress.total}
+            </span>
+          </div>
+          <Progress value={(bulkProgress.current / Math.max(bulkProgress.total, 1)) * 100} className="h-2" />
+        </div>
+      )}
 
       {/* Progress indicator */}
       {generating && (
@@ -455,6 +563,8 @@ export default function Learn() {
                 isAdmin={true}
                 onEdit={handleEdit}
                 onRefresh={refreshAll}
+                onBulkGenerate={handleBulkGenerate}
+                isBulkGenerating={bulkGenerating}
               />
             ))}
         </div>
