@@ -1,50 +1,56 @@
 
 
-# Contenuti moduli più ricchi + UX migliorata
+# Integrazione Claude (Anthropic) per generazione curriculum
 
-## Problemi attuali
-1. **Contenuto troppo corto**: il prompt del curriculum dice "200-400 parole" e tronca i documenti a 5000 caratteri — il playbook viene tagliato
-2. **UX del modulo**: tutto il markdown è renderizzato come blocco unico con `prose-sm`, poco leggibile
-3. **Tabelle non renderizzate**: manca il plugin `remark-gfm` per il supporto tabelle in ReactMarkdown
-4. **Immagini perse**: l'extraction dei documenti estrae solo testo, le immagini del playbook vengono ignorate
+## Cosa faremo
+Sostituire il modello AI attuale (Gemini via Lovable AI Gateway) con Claude di Anthropic, usando la tua API key personale. L'API di Anthropic supporta tool calling come l'attuale setup, quindi la struttura resta identica — cambia solo l'endpoint e il formato della request.
 
-## Piano
+## Modifiche
 
-### 1. Contenuti più lunghi — `generate-curriculum/index.ts`
-- **Rimuovere il troncamento a 5000 caratteri** (riga 66-68): passare il contenuto completo dei documenti (o alzare a 30000+)
-- **Alzare il limite parole** nel prompt: da "200-400 parole" a "800-1500 parole per modulo" (riga 111)
-- **Alzare max_tokens** da 8192 a 16384 per permettere output più lunghi
-- **Istruire l'AI a preservare tabelle**: aggiungere nel prompt "Preserva le tabelle originali in formato markdown e includi riferimenti a immagini quando presenti nel materiale sorgente"
-- **Ridurre il max moduli** da 6 a 4-5 per dare più spazio a ogni modulo
+### 1. Aggiungere il secret `ANTHROPIC_API_KEY`
+- Usare il tool `add_secret` per chiederti di inserire la tua API key di Anthropic
+- Sarà disponibile nelle edge functions come variabile d'ambiente
 
-### 2. Immagini dal playbook — `extract-document/index.ts`
-- Modificare il prompt di estrazione per chiedere all'AI di **descrivere le immagini trovate** con placeholder markdown (es. `![Descrizione immagine](image-placeholder)`) e preservare le tabelle in formato markdown
-- Quando il curriculum generator genera contenuto, includerà queste descrizioni/tabelle nel testo
-- **Nota**: le immagini originali non possono essere estratte programmaticamente dal PDF in un edge function Deno. In futuro si potrà aggiungere un'estrazione immagini vera. Per ora l'AI descriverà il contenuto visivo nel testo.
+### 2. `supabase/functions/generate-curriculum/index.ts`
+- **Endpoint**: da `https://ai.gateway.lovable.dev/v1/chat/completions` → `https://api.anthropic.com/v1/messages`
+- **Headers**: `x-api-key` + `anthropic-version: 2023-06-01` invece di Bearer token
+- **Body format**: adattare al formato Anthropic Messages API:
+  - `system` come campo top-level (non nel messages array)
+  - `model: "claude-sonnet-4-20250514"` (o claude-3.5-sonnet)
+  - `max_tokens: 16384`
+  - `tools` nel formato Anthropic (molto simile, solo `input_schema` invece di `parameters`)
+  - `tool_choice: { type: "tool", name: "propose_curriculum" }`
+- **Parsing risposta**: estrarre il tool use da `content[].type === "tool_use"` invece di `choices[0].message.tool_calls[0]`
+- **Errori**: mantenere gestione 429/402 adattata ai codici Anthropic
 
-### 3. UX del modulo — `src/pages/ModuleView.tsx`
-- Installare **`remark-gfm`** per supporto tabelle e strikethrough
-- Ridisegnare il layout del contenuto:
-  - Sostituire `prose-sm` con `prose-base` per testo più leggibile
-  - Aggiungere stili custom per tabelle markdown (bordi, padding, zebra striping)
-  - Aggiungere **spaziatura tra sezioni** (heading con margin-top maggiore)
-  - Componenti custom per ReactMarkdown: `h2` con bordo sotto, `blockquote` stilizzato come callout, `table/th/td` con stili dedicati
-  - Contenuto in card con padding generoso invece di testo "nudo"
-  - Immagini markdown stilizzate con bordo arrotondato e ombra
+### 3. `supabase/functions/generate-module/index.ts`
+- Stesse modifiche di formato: endpoint Anthropic, headers, body format, parsing risposta
+- `model: "claude-sonnet-4-20250514"`
 
-### 4. Tabelle markdown — stili
-- Aggiungere CSS per tabelle nel markdown:
-  ```css
-  .prose table { border-collapse: collapse; width: 100%; }
-  .prose th { background: hsl(var(--muted)); padding: 8px 12px; border: 1px solid hsl(var(--border)); }
-  .prose td { padding: 8px 12px; border: 1px solid hsl(var(--border)); }
-  .prose tr:nth-child(even) { background: hsl(var(--muted)/0.3); }
-  ```
+### 4. `supabase/functions/extract-document/index.ts`
+- Verificare se anche questa usa Lovable AI Gateway e adattare allo stesso modo
+
+### Dettaglio formato Anthropic vs attuale
+
+```text
+ATTUALE (OpenAI-compatible):
+  POST ai.gateway.lovable.dev/v1/chat/completions
+  Authorization: Bearer $KEY
+  { model, messages: [{role:"system",...},{role:"user",...}], tools: [{type:"function", function:{name, parameters}}], tool_choice }
+
+ANTHROPIC:
+  POST api.anthropic.com/v1/messages
+  x-api-key: $KEY
+  anthropic-version: 2023-06-01
+  { model, system: "...", messages: [{role:"user",...}], tools: [{name, description, input_schema}], tool_choice: {type:"tool", name:"..."} }
+
+PARSING RISPOSTA:
+  Attuale: data.choices[0].message.tool_calls[0].function.arguments
+  Anthropic: data.content.find(c => c.type === "tool_use").input
+```
 
 ## File da modificare
-1. `supabase/functions/generate-curriculum/index.ts` — prompt più lungo, no troncamento, istruzioni tabelle
-2. `supabase/functions/extract-document/index.ts` — prompt che preserva tabelle e descrive immagini
-3. `src/pages/ModuleView.tsx` — UX migliorata, componenti custom ReactMarkdown, remark-gfm
-4. `src/index.css` — stili tabelle markdown
-5. `package.json` — aggiungere `remark-gfm`
+1. `supabase/functions/generate-curriculum/index.ts` — endpoint + formato Anthropic
+2. `supabase/functions/generate-module/index.ts` — idem
+3. `supabase/functions/extract-document/index.ts` — idem (se usa AI)
 
