@@ -46,8 +46,8 @@ serve(async (req) => {
     for (const doc of docs) {
       kbContext += `### Document: ${doc.title} (ID: ${doc.id})\n`;
       if (doc.context) kbContext += `Context: ${doc.context}\n`;
-      const truncatedContent = doc.content && doc.content.length > 8000
-        ? doc.content.substring(0, 8000) + "\n[... truncated for brevity ...]"
+      const truncatedContent = doc.content && doc.content.length > 5000
+        ? doc.content.substring(0, 5000) + "\n[... truncated ...]"
         : doc.content;
       kbContext += `${truncatedContent}\n\n`;
     }
@@ -83,29 +83,25 @@ INSTRUCTIONS:
 5. Provide a rationale for each module explaining why it exists and what gap it fills
 6. Modules should flow logically — foundational concepts first, advanced topics later
 7. Each module should be self-contained but build on previous ones
-8. Generate 3-5 assessment questions per module (keep them concise)
-9. Keep content_body between 400-800 words per module to stay within output limits
-10. Propose at most 8 modules total
+8. Generate 3 assessment questions per module (keep them very concise)
+9. Keep content_body between 200-400 words per module
+10. Propose at most 6 modules total
+11. Keep key_points to exactly 4 items per module
+12. Keep all text concise to minimize output size
 
 Return the curriculum using the propose_curriculum tool.`;
 
     console.log("[generate-curriculum] Calling AI gateway, prompt length:", systemPrompt.length);
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 55000);
-
-    let response;
-    try {
-      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        signal: controller.signal,
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
         body: JSON.stringify({
-          model: "google/gemini-2.5-flash",
-          max_tokens: 16384,
+        model: "google/gemini-3-flash-preview",
+        max_tokens: 8192,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Analyze the knowledge base and propose a complete training curriculum. Design the optimal module structure, sequence, and content." },
