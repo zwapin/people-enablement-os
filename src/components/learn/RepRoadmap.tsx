@@ -55,7 +55,7 @@ export default function RepRoadmap({ modules, completions }: RepRoadmapProps) {
       {/* Roadmap */}
       <div className="relative">
         {modules.map((mod, idx) => {
-          const state = getState(mod, idx);
+          const state = getState(mod);
           const completion = completionMap.get(mod.id);
           const readingTime = mod.content_body
             ? Math.max(1, Math.ceil(mod.content_body.length / 1000))
