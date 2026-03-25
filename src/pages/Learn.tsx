@@ -31,7 +31,7 @@ export default function Learn() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
-  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeJobId = useRef<string | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [viewAsRep, setViewAsRep] = useState(false);
