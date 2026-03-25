@@ -563,6 +563,8 @@ export default function Learn() {
                 isAdmin={true}
                 onEdit={handleEdit}
                 onRefresh={refreshAll}
+                onBulkGenerate={handleBulkGenerate}
+                isBulkGenerating={bulkGenerating}
               />
             ))}
         </div>
