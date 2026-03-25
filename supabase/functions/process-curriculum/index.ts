@@ -71,8 +71,8 @@ serve(async (req) => {
     for (const doc of docs) {
       kbContext += `### Documento: ${doc.title} (ID: ${doc.id})\n`;
       if (doc.context) kbContext += `Contesto: ${doc.context}\n`;
-      const content = doc.content && doc.content.length > 6000
-        ? doc.content.substring(0, 6000) + "\n[... troncato ...]"
+      const content = doc.content && doc.content.length > 25000
+        ? doc.content.substring(0, 25000) + "\n[... troncato ...]"
         : doc.content;
       kbContext += `${content}\n\n`;
     }
@@ -224,7 +224,7 @@ ISTRUZIONI:
           job_type: "module_content",
           parent_job_id: jobId,
           status: "pending",
-          input: { module_id: mod.id, module_title: mod.title, source_document_ids: mod.source_document_ids, source_faq_ids: mod.source_faq_ids },
+          input: { module_id: mod.id, module_title: mod.title, source_document_ids: mod.source_document_ids, source_faq_ids: mod.source_faq_ids, relevant_sections: mod.relevant_sections },
         })
         .select("id")
         .single();
