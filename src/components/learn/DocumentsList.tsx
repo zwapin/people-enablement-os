@@ -191,7 +191,9 @@ export default function DocumentsList() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {documents.map((doc) => (
+          {documents.map((doc) => {
+            const hasFailedContent = !doc.content || doc.content.startsWith("[");
+            return (
             <Card key={doc.id} className="flex items-center gap-4 p-4 bg-card border-border">
               <FileText className="h-5 w-5 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
@@ -201,9 +203,26 @@ export default function DocumentsList() {
                 )}
                 <p className="text-xs text-muted-foreground mt-1">
                   {format(new Date(doc.created_at), "MMM d, yyyy")}
-                  {doc.content && ` · ${doc.content.length.toLocaleString()} chars extracted`}
+                  {doc.content && !hasFailedContent && ` · ${doc.content.length.toLocaleString()} chars extracted`}
+                  {hasFailedContent && <span className="text-destructive"> · extraction failed</span>}
                 </p>
               </div>
+              {hasFailedContent && doc.file_path && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleReExtract(doc.id, doc.file_path, doc.title)}
+                  disabled={reExtracting === doc.id}
+                  className="shrink-0"
+                >
+                  {reExtracting === doc.id ? (
+                    <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                  )}
+                  Re-extract
+                </Button>
+              )}
               <Button
                 variant="ghost"
                 size="icon"
@@ -213,6 +232,8 @@ export default function DocumentsList() {
                 <Trash2 className="h-4 w-4" />
               </Button>
             </Card>
+            );
+          }
           ))}
         </div>
       )}
