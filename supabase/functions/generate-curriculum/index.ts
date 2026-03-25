@@ -13,7 +13,16 @@ serve(async (req) => {
   }
 
   try {
-    console.log("[generate-curriculum] Starting...");
+    // Parse optional body for regenerate_all flag
+    let regenerateAll = false;
+    try {
+      const body = await req.json();
+      regenerateAll = body?.regenerate_all === true;
+    } catch {
+      // no body = normal incremental flow
+    }
+
+    console.log("[generate-curriculum] Starting... regenerateAll:", regenerateAll);
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -41,33 +50,46 @@ serve(async (req) => {
       );
     }
 
+    // If regenerate_all, delete ALL existing modules and their questions
+    if (regenerateAll && existingModules.length > 0) {
+      const moduleIds = existingModules.map(m => m.id);
+      console.log("[generate-curriculum] Regenerate all: deleting", moduleIds.length, "modules and their questions");
+      await supabase.from("assessment_questions").delete().in("module_id", moduleIds);
+      await supabase.from("modules").delete().in("id", moduleIds);
+    }
+
     // Build KB context for the AI — truncate doc content to avoid massive prompts
-    let kbContext = "## KNOWLEDGE BASE DOCUMENTS\n\n";
+    let kbContext = "## DOCUMENTI DELLA KNOWLEDGE BASE\n\n";
     for (const doc of docs) {
-      kbContext += `### Document: ${doc.title} (ID: ${doc.id})\n`;
-      if (doc.context) kbContext += `Context: ${doc.context}\n`;
+      kbContext += `### Documento: ${doc.title} (ID: ${doc.id})\n`;
+      if (doc.context) kbContext += `Contesto: ${doc.context}\n`;
       const truncatedContent = doc.content && doc.content.length > 5000
-        ? doc.content.substring(0, 5000) + "\n[... truncated ...]"
+        ? doc.content.substring(0, 5000) + "\n[... troncato ...]"
         : doc.content;
       kbContext += `${truncatedContent}\n\n`;
     }
 
-    kbContext += "\n## KNOWLEDGE BASE FAQ\n\n";
+    kbContext += "\n## FAQ DELLA KNOWLEDGE BASE\n\n";
     for (const faq of faqs) {
       kbContext += `### FAQ (ID: ${faq.id})${faq.category ? ` [${faq.category}]` : ""}\n`;
-      kbContext += `Q: ${faq.question}\nA: ${faq.answer}\n\n`;
+      kbContext += `D: ${faq.question}\nR: ${faq.answer}\n\n`;
     }
 
-    // Build existing modules context
+    // Build existing modules context (skip if regenerating all)
     let existingContext = "";
-    const publishedOrDraft = existingModules.filter(m => m.status === "published" || m.status === "draft");
-    if (publishedOrDraft.length > 0) {
-      existingContext = "\n\n## EXISTING PUBLISHED/DRAFT MODULES (already approved by manager)\n\n";
-      for (const mod of publishedOrDraft) {
-        existingContext += `- Module "${mod.title}" (${mod.status}, track: ${mod.track}): ${mod.summary || "no summary"}\n`;
-        if (mod.source_document_ids) existingContext += `  Sources: doc IDs ${JSON.stringify(mod.source_document_ids)}\n`;
+    if (!regenerateAll) {
+      const publishedOrDraft = existingModules.filter(m => m.status === "published" || m.status === "draft");
+      if (publishedOrDraft.length > 0) {
+        existingContext = "\n\n## MODULI ESISTENTI PUBBLICATI/BOZZA (già approvati dal manager)\n\n";
+        for (const mod of publishedOrDraft) {
+          existingContext += `- Modulo "${mod.title}" (${mod.status}, track: ${mod.track}): ${mod.summary || "nessun sommario"}\n`;
+          if (mod.source_document_ids) existingContext += `  Fonti: doc IDs ${JSON.stringify(mod.source_document_ids)}\n`;
+        }
+        existingContext += "\nQuando proponi aggiornamenti, identifica quali moduli esistenti sono impattati dal contenuto della KB e proponi revisioni solo per quelli. NON riproporre moduli che sono già accurati.\n";
       }
-      existingContext += "\nWhen proposing updates, identify which existing modules are impacted by the KB content and propose revisions only for those. Do NOT re-propose modules that are already accurate.\n";
+
+      // Delete only proposed modules (incremental flow)
+      await supabase.from("modules").delete().eq("status", "proposed");
     }
 
     const systemPrompt = `Sei un architetto di curriculum per la formazione commerciale. Il tuo compito è analizzare una Knowledge Base e progettare un curriculum completo per nuovi commerciali.
@@ -113,7 +135,7 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
               type: "function",
               function: {
                 name: "propose_curriculum",
-                description: "Propose a structured training curriculum based on the knowledge base",
+                description: "Proponi un curriculum formativo strutturato basato sulla knowledge base. Tutto in italiano.",
                 parameters: {
                   type: "object",
                   properties: {
@@ -128,8 +150,8 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
                           key_points: { type: "array", items: { type: "string" }, description: "4-6 punti chiave in italiano" },
                           content_body: { type: "string", description: "Contenuto formativo in markdown in italiano (400-800 parole)" },
                           ai_rationale: { type: "string", description: "Motivazione dell'esistenza di questo modulo, in italiano" },
-                          source_document_ids: { type: "array", items: { type: "string" }, description: "IDs of KB documents used" },
-                          source_faq_ids: { type: "array", items: { type: "string" }, description: "IDs of KB FAQs used" },
+                          source_document_ids: { type: "array", items: { type: "string" }, description: "ID dei documenti KB utilizzati" },
+                          source_faq_ids: { type: "array", items: { type: "string" }, description: "ID delle FAQ KB utilizzate" },
                           questions: {
                             type: "array",
                             items: {
@@ -166,17 +188,17 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
       console.error("[generate-curriculum] AI gateway error:", response.status, errText);
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+          JSON.stringify({ error: "Limite di richieste superato. Riprova tra qualche istante." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add funds." }),
+          JSON.stringify({ error: "Crediti AI esauriti. Aggiungi fondi per continuare." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      throw new Error(`AI generation failed (${response.status})`);
+      throw new Error(`Generazione AI fallita (${response.status})`);
     }
 
     const responseText = await response.text();
@@ -187,14 +209,14 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
       data = JSON.parse(responseText);
     } catch (parseErr) {
       console.error("[generate-curriculum] Failed to parse AI response, length:", responseText.length, "last 100 chars:", responseText.slice(-100));
-      throw new Error("AI response was truncated or malformed. Try again.");
+      throw new Error("La risposta AI è stata troncata o malformata. Riprova.");
     }
 
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
     if (!toolCall) {
       console.error("[generate-curriculum] No tool call in response:", JSON.stringify(data.choices?.[0]?.message).substring(0, 500));
-      throw new Error("AI did not return structured output");
+      throw new Error("L'AI non ha restituito un output strutturato");
     }
 
     let curriculum;
@@ -202,14 +224,11 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
       curriculum = JSON.parse(toolCall.function.arguments);
     } catch (parseErr) {
       console.error("[generate-curriculum] Failed to parse tool call arguments, length:", toolCall.function.arguments?.length);
-      throw new Error("AI tool call arguments were truncated. Try again.");
+      throw new Error("Gli argomenti del tool call sono stati troncati. Riprova.");
     }
 
     const proposedModules = curriculum.modules || [];
     console.log("[generate-curriculum] Proposed modules:", proposedModules.length);
-
-    // Delete existing proposed modules (they'll be replaced)
-    await supabase.from("modules").delete().eq("status", "proposed");
 
     // Get next order_index
     const { data: lastModule } = await supabase
@@ -272,7 +291,7 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
   } catch (e) {
     console.error("[generate-curriculum] Error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ error: e instanceof Error ? e.message : "Errore sconosciuto" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

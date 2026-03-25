@@ -31,15 +31,15 @@ serve(async (req) => {
     if (knowledge_context) {
       const { documents, faqs } = knowledge_context;
       if (documents && documents.length > 0) {
-        kbSection += "\n\n## REFERENCE DOCUMENTS (use as authoritative source material)\n";
+        kbSection += "\n\n## DOCUMENTI DI RIFERIMENTO (usa come materiale autorevole)\n";
         for (const doc of documents) {
           kbSection += `\n### ${doc.title}${doc.context ? ` — ${doc.context}` : ""}\n${doc.content}\n`;
         }
       }
       if (faqs && faqs.length > 0) {
-        kbSection += "\n\n## REFERENCE FAQ (use these Q&A pairs as authoritative facts)\n";
+        kbSection += "\n\n## FAQ DI RIFERIMENTO (usa queste coppie D&R come fatti autorevoli)\n";
         for (const faq of faqs) {
-          kbSection += `\nQ: ${faq.question}\nA: ${faq.answer}\n`;
+          kbSection += `\nD: ${faq.question}\nR: ${faq.answer}\n`;
         }
       }
     }
@@ -81,7 +81,7 @@ Restituisci un oggetto JSON usando il tool generate_module con questi campi:
             type: "function",
             function: {
               name: "generate_module",
-              description: "Generate a structured training module from source material",
+              description: "Genera un modulo formativo strutturato dal materiale sorgente. Tutto in italiano.",
               parameters: {
                 type: "object",
                 properties: {
@@ -118,26 +118,26 @@ Restituisci un oggetto JSON usando il tool generate_module con questi campi:
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
+          JSON.stringify({ error: "Limite di richieste superato. Riprova tra qualche istante." }),
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add funds." }),
+          JSON.stringify({ error: "Crediti AI esauriti. Aggiungi fondi per continuare." }),
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
       const errText = await response.text();
       console.error("AI gateway error:", response.status, errText);
-      throw new Error("AI generation failed");
+      throw new Error("Generazione AI fallita");
     }
 
     const data = await response.json();
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
     if (!toolCall) {
-      throw new Error("AI did not return structured output");
+      throw new Error("L'AI non ha restituito un output strutturato");
     }
 
     const moduleData = JSON.parse(toolCall.function.arguments);
@@ -149,7 +149,7 @@ Restituisci un oggetto JSON usando il tool generate_module con questi campi:
   } catch (e) {
     console.error("Error:", e);
     return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      JSON.stringify({ error: e instanceof Error ? e.message : "Errore sconosciuto" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
