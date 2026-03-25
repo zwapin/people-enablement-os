@@ -38,7 +38,8 @@ export default function DocumentsList() {
 
     setUploading(true);
     try {
-      const fileName = `${Date.now()}-${file.name}`;
+      const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const fileName = `${Date.now()}-${sanitized}`;
       const { error: uploadError } = await supabase.storage
         .from("knowledge-files")
         .upload(fileName, file);
