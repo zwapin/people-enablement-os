@@ -59,14 +59,14 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
                 variant={mod.status === "published" ? "default" : "secondary"}
                 className="text-[10px] uppercase shrink-0"
               >
-                {mod.status}
+                {mod.status === "published" ? "Pubblicato" : mod.status === "draft" ? "Bozza" : mod.status === "archived" ? "Archiviato" : mod.status}
               </Badge>
             </div>
             {mod.summary && (
               <p className="text-sm text-muted-foreground mt-1 truncate">{mod.summary}</p>
             )}
             <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-              <span>Track: {mod.track}</span>
+              <span>Area: {mod.track}</span>
             </div>
           </div>
 

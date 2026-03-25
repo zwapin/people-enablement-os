@@ -122,7 +122,7 @@ export default function ProposalsList({ modules, onEdit, onRefresh }: ProposalsL
                 {sourceDocIds.length > 0 && (
                   <span className="flex items-center gap-1">
                     <FileText className="h-3 w-3" />
-                    {sourceDocIds.length} doc{sourceDocIds.length > 1 ? "s" : ""}
+                    {sourceDocIds.length} doc
                   </span>
                 )}
                 {sourceFaqIds.length > 0 && (

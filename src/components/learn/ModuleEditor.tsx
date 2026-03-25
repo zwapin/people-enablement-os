@@ -203,14 +203,14 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo del modulo" />
           </div>
           <div className="space-y-2">
-            <Label>Track</Label>
+            <Label>Area</Label>
             <Select value={track} onValueChange={setTrack}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="Sales">Sales</SelectItem>
+                <SelectItem value="Sales">Vendite</SelectItem>
                 <SelectItem value="CS">CS</SelectItem>
                 <SelectItem value="Ops">Ops</SelectItem>
-                <SelectItem value="General">General</SelectItem>
+                <SelectItem value="General">Generale</SelectItem>
               </SelectContent>
             </Select>
           </div>
