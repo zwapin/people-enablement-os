@@ -25,21 +25,6 @@ type AuthContextType = {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const DEV_BYPASS = true;
-
-const DEV_PROFILE: Profile = {
-  id: "dev",
-  user_id: "66141c1d-4ef2-4cc1-af68-f183d7865152",
-  full_name: "Federico",
-  email: "federico@klaaryo.com",
-  role: "admin",
-  department: null,
-  job_role: null,
-  is_active: true,
-  last_activity_at: null,
-  created_at: new Date().toISOString(),
-};
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -56,12 +41,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (DEV_BYPASS) {
-      setProfile(DEV_PROFILE);
-      setLoading(false);
-      return;
-    }
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         setSession(session);
@@ -88,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = async () => {
-    if (DEV_BYPASS) return;
     await supabase.auth.signOut();
     setProfile(null);
   };
