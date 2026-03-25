@@ -3,7 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { BookOpen, RefreshCw, Loader2, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { Progress } from "@/components/ui/progress";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 import CurriculumList from "@/components/learn/CurriculumList";
@@ -14,8 +15,17 @@ export default function Learn() {
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [progressLabel, setProgressLabel] = useState("");
+  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (progressInterval.current) clearInterval(progressInterval.current);
+    };
+  }, []);
 
   const { data: modules, isLoading, refetch } = useQuery({
     queryKey: ["modules"],
@@ -33,16 +43,55 @@ export default function Learn() {
   const draftModules = modules?.filter((m) => m.status === "draft") ?? [];
   const proposedModules = modules?.filter((m) => m.status === "proposed") ?? [];
 
+  const startProgressSimulation = () => {
+    setProgress(0);
+    setProgressLabel("Analisi Knowledge Base...");
+    const steps = [
+      { at: 10, label: "Analisi Knowledge Base..." },
+      { at: 30, label: "Progettazione curriculum..." },
+      { at: 50, label: "Generazione contenuti moduli..." },
+      { at: 70, label: "Creazione domande di valutazione..." },
+      { at: 85, label: "Salvataggio moduli..." },
+    ];
+    let current = 0;
+    progressInterval.current = setInterval(() => {
+      current += 1;
+      if (current >= 95) {
+        if (progressInterval.current) clearInterval(progressInterval.current);
+        return;
+      }
+      setProgress(current);
+      const step = [...steps].reverse().find(s => current >= s.at);
+      if (step) setProgressLabel(step.label);
+    }, 500);
+  };
+
+  const stopProgressSimulation = () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+      progressInterval.current = null;
+    }
+    setProgress(100);
+    setProgressLabel("Completato!");
+    setTimeout(() => {
+      setProgress(0);
+      setProgressLabel("");
+    }, 1500);
+  };
+
   const handleUpdateCurriculum = async () => {
     setGenerating(true);
+    startProgressSimulation();
     try {
       const { data, error } = await supabase.functions.invoke("generate-curriculum");
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
+      stopProgressSimulation();
       toast.success(`AI ha proposto ${data.count} moduli. Revisiona e approva.`);
       refetch();
     } catch (err: any) {
+      stopProgressSimulation();
       toast.error(err.message || "Generazione curriculum fallita");
     } finally {
       setGenerating(false);
@@ -128,6 +177,20 @@ export default function Learn() {
           {generating ? "Analisi in corso..." : "Aggiorna Curriculum"}
         </Button>
       </div>
+
+      {/* Progress indicator */}
+      {generating && (
+        <div className="space-y-2 rounded-lg border border-border bg-card p-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">{progressLabel}</span>
+            <span className="text-muted-foreground font-mono">{progress}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <p className="text-xs text-muted-foreground">
+            L'AI sta analizzando la Knowledge Base e generando il curriculum. Può richiedere fino a 60 secondi.
+          </p>
+        </div>
+      )}
 
       {/* Proposals Section */}
       {proposedModules.length > 0 && (
