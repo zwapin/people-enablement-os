@@ -1,88 +1,105 @@
 
 
-# Knowledge Base — Plan
+# Paradigm Shift: Manager as Curator, AI as Content Creator
 
-## What We're Building
+## The Change
 
-A new "Knowledge Base" section in the Learn admin view where the manager can:
-1. **Upload documents** (PDF, DOCX, TXT) with an optional context/description per document
-2. **Create FAQ entries** (question/answer pairs) manually
-3. Both feed into the AI module generation as RAG context
+Currently the manager manually creates modules. The new flow:
 
-The idea is that when generating a module, the AI pulls relevant knowledge from uploaded docs + FAQs to produce better, more accurate content. The Q&A format is particularly interesting for RAG because it's already structured as retrieval-ready chunks with clear semantic intent.
-
-## Architecture
-
-```text
-┌─────────────────────────────────────────┐
-│  Learn Page (Admin)                     │
-│  ┌─────────┐  ┌──────────────────────┐  │
-│  │ Modules  │  │ Knowledge Base (tab) │  │
-│  └─────────┘  └──────────────────────┘  │
-│                  ├─ Documents list       │
-│                  │   upload + context    │
-│                  └─ FAQ list             │
-│                     Q&A pairs           │
-└─────────────────────────────────────────┘
-
-Module Generation:
-  source text + relevant KB docs + relevant FAQs → AI → module
-```
+1. Manager feeds the Knowledge Base (documents + FAQs) — this is their only active input
+2. Manager clicks "Update Curriculum" on the Learn page — AI analyzes the entire KB and proposes a full curriculum
+3. Manager reviews proposals: approve, edit, or regenerate individual modules
+4. Only approved modules become visible to reps
+5. When KB changes, manager clicks "Update" again — AI identifies impacted modules and proposes revisions (delta only)
 
 ## Database Changes
 
-**New table: `knowledge_documents`**
-- `id` (uuid, PK)
-- `title` (text) — file name or custom title
-- `context` (text, nullable) — admin's description of what this doc covers
-- `content` (text) — extracted text content from the file
-- `file_path` (text, nullable) — storage path if uploaded as file
-- `created_at` (timestamptz)
-- RLS: admin-only CRUD
+**Alter `modules` table:**
+- Add `proposed` and `archived` to the `module_status` enum (currently only `draft` and `published`)
+- Add `source_document_ids` (jsonb, nullable) — tracks which KB documents were used to generate the module
+- Add `source_faq_ids` (jsonb, nullable) — tracks which FAQs were used
+- Add `ai_rationale` (text, nullable) — AI's explanation for why this module exists and what it covers
 
-**New table: `knowledge_faqs`**
-- `id` (uuid, PK)
-- `question` (text)
-- `answer` (text)
-- `category` (text, nullable) — optional grouping (e.g. "Pricing", "Product", "Process")
-- `created_at` (timestamptz)
-- RLS: admin-only CRUD, reps can SELECT
+**State machine:**
+```text
+proposed → draft → published → archived
+   ↑                               │
+   └───────── (AI re-proposes) ────┘
+```
 
-**New storage bucket: `knowledge-files`** — for uploaded PDFs/DOCX
+- `proposed` — AI generated, manager hasn't interacted yet
+- `draft` — manager edited but not published
+- `published` — visible to reps
+- `archived` — obsolete, hidden
+
+## New Edge Function: `generate-curriculum`
+
+Replaces the current single-module generation approach. This function:
+
+1. Receives the full KB (all documents + all FAQs) plus existing published/draft modules
+2. AI analyzes the knowledge and produces a curriculum proposal: how many modules, in what order, what each covers, which KB sources it draws from
+3. Returns an array of proposed modules, each with: title, summary, key_points, content_body, questions, source references, rationale
+4. For updates (when KB changed): also receives current modules, AI identifies which are impacted and only proposes changes to those
+
+Uses Lovable AI (Gemini 2.5 Flash) with tool calling to return structured JSON.
 
 ## UI Changes
 
-**Learn page** — Add a tab switcher at the top for admins: "Modules" | "Knowledge Base"
+### Learn Page (Admin View) — Complete Redesign
 
-**Knowledge Base tab** has two sections:
-1. **Documents** — table with title, context preview, upload date. "Upload document" button opens a dialog where admin uploads a file + adds context. Text extraction happens server-side via edge function.
-2. **FAQs** — table with question, answer preview, category. "Add FAQ" button opens inline form. Supports edit/delete.
+The admin no longer sees a module editor. They see:
 
-**Module Editor** — When generating with AI, the edge function now also queries `knowledge_documents` and `knowledge_faqs` to inject relevant context into the prompt. The admin can optionally select which KB items to include.
+**Top section:** "Update Curriculum" button + last update timestamp. When clicked, calls `generate-curriculum` with the full KB. Shows a loading state during generation.
 
-## Edge Functions
+**Main section — two views:**
 
-**New: `extract-document`** — receives uploaded file, extracts text (PDF via basic parsing, DOCX via XML extraction, TXT direct), stores extracted text in `knowledge_documents.content`.
+1. **Published Curriculum** — the current live modules (published status), shown as an ordered list. Each has: title, summary, track, status badge. Actions: edit, archive, unpublish.
 
-**Updated: `generate-module`** — accepts optional `knowledge_context` parameter (array of doc contents + FAQ pairs). Injects them into the system prompt as reference material for more accurate generation.
+2. **Proposals** — modules in `proposed` status, shown as cards with a distinct visual treatment (e.g. dashed border, "AI Proposed" badge). Each shows:
+   - Title, summary, rationale (why AI created this)
+   - Sources used (linked to KB documents/FAQs)
+   - Actions: Approve (→ published), Edit (opens editor → draft), Reject (deletes), Regenerate (re-runs AI for just this module)
 
-## Why Q&A Format Works Well for RAG
+**"Approve All" button** to bulk-publish all proposals at once.
 
-FAQ entries are self-contained semantic units — each question defines the retrieval intent and the answer provides the exact knowledge. When the AI generates a module, matching source questions to module topics is more precise than searching unstructured document text. Both formats complement each other: docs provide depth, FAQs provide precision.
+### Module Editor (Simplified)
+
+Still exists but only for editing — no more "paste source text and generate" flow. The AI does that automatically. The editor opens when the manager clicks "Edit" on a proposed or draft module.
+
+### Learn Page (Rep View) — No Change
+
+Reps still see published modules in sequence. No change needed.
+
+## Flow Detail
+
+### First-time curriculum generation
+1. Manager has populated the KB with documents and FAQs
+2. Goes to Learn, clicks "Update Curriculum"
+3. Edge function fetches all KB content, sends to AI
+4. AI returns N proposed modules with full content + assessments
+5. All modules saved with status `proposed`
+6. Manager reviews each proposal, approves/edits/rejects
+
+### KB update → delta refresh
+1. Manager uploads a new document or edits FAQs
+2. Goes to Learn, clicks "Update Curriculum"
+3. Edge function sends full KB + existing modules to AI
+4. AI compares and returns only new/changed modules as proposals
+5. Existing published modules that need updating get new `proposed` versions (the old ones stay published until the manager swaps them)
 
 ## Build Steps
 
-1. Create `knowledge_documents` and `knowledge_faqs` tables with RLS
-2. Create `knowledge-files` storage bucket
-3. Build Knowledge Base UI (tab on Learn page, document upload, FAQ CRUD)
-4. Build `extract-document` edge function for text extraction
-5. Update `generate-module` to pull KB context into AI prompt
-6. Add KB item selector to ModuleEditor's AI generation section
+1. **DB migration** — add `proposed` and `archived` to module_status enum, add `source_document_ids`, `source_faq_ids`, `ai_rationale` columns
+2. **Create `generate-curriculum` edge function** — full KB analysis, structured curriculum output
+3. **Rebuild Learn page (admin)** — proposals view, approve/reject/edit actions, "Update Curriculum" button
+4. **Update ModuleList** — handle new statuses, visual distinction for proposed modules
+5. **Simplify ModuleEditor** — remove AI generation UI, keep as edit-only form
+6. **Keep `generate-module`** — repurpose for single-module regeneration when manager clicks "Regenerate" on a proposal
 
 ## Technical Details
 
-- File upload: max 10MB, PDF/DOCX/TXT only
-- Text extraction: edge function using basic parsing (no heavy OCR in v1)
-- RAG approach: for now, pass full relevant KB text to the AI prompt (no vector embeddings in v1 — the context window of Gemini 2.5 Flash is large enough). Can add embeddings later if KB grows beyond prompt limits.
-- FAQ categories are optional but help with organization and filtering
+- The `generate-curriculum` function will need to handle large KB content. Gemini 2.5 Flash has a large context window so this works without embeddings for now.
+- Source tracking (`source_document_ids`, `source_faq_ids`) enables the delta detection: when a document changes, AI knows which modules used it.
+- The old `generate-module` function stays for single-module regen. `generate-curriculum` is the new primary flow.
+- No changes needed to assessment_questions table — questions are still created per module, just now they come from the curriculum generation.
 
