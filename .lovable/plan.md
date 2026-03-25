@@ -1,28 +1,35 @@
 
 
-# Fix: Invalid Key Error on KB Document Upload
+# Fix: Rimuovere DEV_BYPASS e reimpostare password admin
 
-## Problem
-The file name is used directly as the storage object key. Characters like `→`, spaces, and parentheses are invalid in storage keys, causing a 400 "InvalidKey" error.
+## Problema
+`DEV_BYPASS = true` fa sì che l'app non crei mai una sessione reale. Tutte le chiamate al backend (storage upload, insert in tabelle) partono con il token anonimo, e le policy RLS le bloccano con "new row violates row-level security policy".
 
-## Solution
-Sanitize the file name before uploading by replacing all non-alphanumeric characters (except dots and hyphens) with underscores.
+## Piano
 
-## Change
-**`src/components/learn/DocumentsList.tsx`** — line 41:
+### 1. Creare edge function `reset-admin-password`
+Una funzione temporanea che usa la service role key per reimpostare la password dell'utente admin `federico@klaaryo.com` (già esistente nel database con ruolo admin).
 
-Replace:
-```typescript
-const fileName = `${Date.now()}-${file.name}`;
-```
+- Riceve `{ new_password: string }` nel body
+- Usa `supabase.auth.admin.updateUserById()` per aggiornare la password
+- Dopo l'uso, la elimineremo
 
-With:
-```typescript
-const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-const fileName = `${Date.now()}-${sanitized}`;
-```
+### 2. Rimuovere DEV_BYPASS da AuthContext
+**File: `src/contexts/AuthContext.tsx`**
+- Eliminare `DEV_BYPASS`, `DEV_PROFILE` e tutti i blocchi `if (DEV_BYPASS)`
+- Mantenere solo il flusso reale: `onAuthStateChange` → `getSession` → `fetchProfile`
 
-This converts `SALES PLAYBOOK - SDR → AE (4).pdf` into `SALES_PLAYBOOK_-_SDR___AE__4_.pdf`, which is a valid storage key. The original file name is still preserved and passed to the edge function via `file_name`.
+### 3. Rimuovere bypass da ProtectedRoute
+**File: `src/components/ProtectedRoute.tsx`**
+- Eliminare la riga `if (!session && profile) return <>{children}</>;`
 
-One file, one line change.
+### 4. Abilitare auto-confirm email
+Per evitare che il login richieda conferma email (siamo in dev), abilitare auto-confirm tramite il tool di configurazione auth.
+
+### Risultato
+Dopo queste modifiche:
+1. L'app redirige a `/login`
+2. Imposti la password admin con la edge function temporanea
+3. Fai login con `federico@klaaryo.com` + la nuova password
+4. Il JWT reale soddisfa le policy RLS → upload documenti funziona
 
