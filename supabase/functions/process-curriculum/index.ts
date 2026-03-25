@@ -90,28 +90,62 @@ serve(async (req) => {
       kbContext += `D: ${faq.question}\nR: ${faq.answer}\n\n`;
     }
 
-    // Existing modules context
+    // Existing modules context and curricula enrichment mode
     let existingContext = "";
+    let enrichMode = false;
+    const curriculaToEnrich: any[] = [];
+
     if (!regenerateAll) {
       const existing = existingModules.filter(m => m.status === "published" || m.status === "draft");
       if (existing.length > 0) {
         existingContext = "\n## MODULI ESISTENTI\n";
         for (const mod of existing) {
-          existingContext += `- "${mod.title}" (${mod.status}, track: ${mod.track})\n`;
+          existingContext += `- "${mod.title}" (${mod.status}, track: ${mod.track}, curriculum_id: ${mod.curriculum_id || "nessuno"})\n`;
         }
         existingContext += "NON riproporre moduli già esistenti.\n";
       }
+
+      // Check if there are curricula that need sub-modules
       if (existingCurricula.length > 0) {
         existingContext += "\n## CURRICULA ESISTENTI\n";
         for (const c of existingCurricula) {
-          existingContext += `- "${c.title}" (${c.status})\n`;
+          const currModules = existing.filter(m => m.curriculum_id === c.id);
+          existingContext += `- "${c.title}" (${c.status}) — ${currModules.length} moduli: ${currModules.map(m => `"${m.title}"`).join(", ") || "nessuno"}\n`;
+          if (currModules.length < 4) {
+            curriculaToEnrich.push({ ...c, existingModuleCount: currModules.length, existingModuleTitles: currModules.map(m => m.title) });
+          }
         }
-        existingContext += "Puoi aggiungere moduli a curricula esistenti o proporne di nuovi.\n";
+
+        if (curriculaToEnrich.length > 0) {
+          enrichMode = true;
+          existingContext += "\n⚠️ MODALITÀ ARRICCHIMENTO: I curricula sopra con meno di 4 moduli devono essere ARRICCHITI con sotto-moduli aggiuntivi.\n";
+          existingContext += "Per ogni curriculum esistente, genera 4-8 sotto-moduli che coprono aspetti specifici e dettagliati del tema.\n";
+          existingContext += "Ogni sotto-modulo deve essere granulare (es. per un curriculum AE: 'Discovery Call', 'Qualificazione BANT', 'Demo Structure', 'Gestione Obiezioni', etc.)\n";
+          existingContext += "NON creare nuovi curricula, usa quelli esistenti.\n";
+        } else {
+          existingContext += "Puoi aggiungere moduli a curricula esistenti o proporne di nuovi.\n";
+        }
       }
     }
 
     // STEP 1: Generate OUTLINE with curricula groupings
-    const outlinePrompt = `Sei un architetto di curriculum per la formazione commerciale.
+    const outlinePrompt = enrichMode
+      ? `Sei un architetto di curriculum per la formazione commerciale.
+Analizza la Knowledge Base e ARRICCHISCI i curricula esistenti con sotto-moduli dettagliati.
+
+${kbContext}
+${existingContext}
+
+ISTRUZIONI:
+- Devi generare sotto-moduli per i curricula esistenti che hanno pochi moduli
+- Per OGNI curriculum esistente, proponi 4-8 sotto-moduli specifici e granulari che coprono tutti gli aspetti del tema
+- Esempio: per un curriculum "AE Excellence", genera sotto-moduli come "Discovery Call", "Qualificazione BANT/MEDDIC", "Demo e Presentazione", "Gestione Obiezioni", "Proposta e Pricing", "Negoziazione", "Closing", "Handoff al CS"
+- Usa ESATTAMENTE i titoli dei curricula esistenti (non crearne di nuovi)
+- Non riproporre moduli già esistenti dentro quei curricula
+- Per ogni modulo fornisci: titolo, summary, track, rationale, fonti usate, sezioni rilevanti
+- I moduli devono avere un flusso logico progressivo dentro il curriculum
+- Tutto in italiano`
+      : `Sei un architetto di curriculum per la formazione commerciale.
 Analizza la Knowledge Base e proponi la STRUTTURA del curriculum organizzata in CURRICULA (percorsi tematici).
 
 ${kbContext}
