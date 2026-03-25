@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import Login from "./pages/Login";
 import Learn from "./pages/Learn";
+import ModuleView from "./pages/ModuleView";
 import Grow from "./pages/Grow";
 import Perform from "./pages/Perform";
 import People from "./pages/People";
@@ -40,6 +41,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AppLayout><Learn /></AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/learn/:moduleId"
+              element={
+                <ProtectedRoute>
+                  <AppLayout><ModuleView /></AppLayout>
                 </ProtectedRoute>
               }
             />

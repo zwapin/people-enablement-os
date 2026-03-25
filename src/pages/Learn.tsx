@@ -9,9 +9,10 @@ import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 import CurriculumList from "@/components/learn/CurriculumList";
 import ProposalsList from "@/components/learn/ProposalsList";
+import RepRoadmap from "@/components/learn/RepRoadmap";
 
 export default function Learn() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
   const [generating, setGenerating] = useState(false);
@@ -37,6 +38,19 @@ export default function Learn() {
       if (error) throw error;
       return data;
     },
+  });
+
+  const { data: completions } = useQuery({
+    queryKey: ["module_completions", user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("module_completions")
+        .select("*")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !isAdmin,
   });
 
   const publishedModules = modules?.filter((m) => m.status === "published") ?? [];
@@ -130,7 +144,7 @@ export default function Learn() {
     return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} />;
   }
 
-  // Rep view — only published modules
+  // Rep view — roadmap
   if (!isAdmin) {
     if (publishedModules.length === 0 && !isLoading) {
       return (
@@ -147,13 +161,7 @@ export default function Learn() {
     }
 
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Learn</h1>
-          <p className="text-sm text-muted-foreground mt-1">Il tuo curriculum di formazione.</p>
-        </div>
-        <CurriculumList modules={publishedModules} isAdmin={false} onEdit={() => {}} onRefresh={() => refetch()} />
-      </div>
+      <RepRoadmap modules={publishedModules} completions={completions ?? []} />
     );
   }
 
@@ -163,7 +171,7 @@ export default function Learn() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Learn</h1>
+          <h1 className="text-2xl font-bold text-foreground">Formazione</h1>
           <p className="text-sm text-muted-foreground mt-1">
             L'AI analizza la Knowledge Base e propone il curriculum. Tu approvi.
           </p>
