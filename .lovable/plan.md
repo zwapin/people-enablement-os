@@ -1,26 +1,33 @@
 
 
-# Aggiungere "Recupera password" alla pagina Login
+# Migliorare la formattazione dei contenuti dei moduli
 
-## Cosa viene creato
+## Problema
+Il contenuto generato dall'AI esce come "muro di testo" — paragrafi densi con bold ma senza bullet point, tabelle, separatori o struttura visiva chiara. Il prompt attuale dice solo "in markdown (800-1500 parole)" senza indicazioni di formattazione.
 
-1. **Link "Password dimenticata?" sulla pagina Login** — sotto il form, apre un dialog/modale inline per inserire l'email e richiedere il reset.
+## Soluzione in due parti
 
-2. **Pagina `/reset-password`** — dove l'utente atterra dopo aver cliccato il link nell'email. Mostra un form per impostare la nuova password. Verifica la presenza di `type=recovery` nell'URL hash prima di mostrare il form.
+### 1. Prompt di generazione — `supabase/functions/generate-module/index.ts`
+Aggiornare le istruzioni nel system prompt (riga ~110-121) per richiedere esplicitamente:
+- Usare **elenchi puntati** per liste di concetti, stakeholder, step
+- Usare **tabelle markdown** per confronti e categorizzazioni
+- Usare **blockquote** (`>`) per evidenziare concetti chiave o citazioni
+- Usare **separatori** (`---`) tra sezioni tematiche diverse
+- Usare **sottotitoli h3** per spezzare il contenuto in blocchi leggibili
+- Mai scrivere paragrafi più lunghi di 4-5 righe consecutive
 
-3. **Rotta pubblica in `App.tsx`** — aggiungere `/reset-password` come rotta non protetta.
+### 2. Rendering frontend — `src/pages/ModuleView.tsx`
+Migliorare i componenti ReactMarkdown (riga ~257-312) per dare più respiro visivo:
+- Aggiungere stile per `ul`/`ol` con spacing, icone/pallini colorati e indentazione
+- Migliorare lo stile delle liste con padding e gap tra item
+- Aggiungere un componente custom per `li` con marker visivo in colore primario
+- Aggiungere stile per `strong` inline con un leggero highlight di sfondo
 
-## File da creare/modificare
+### File da modificare
+| File | Modifica |
+|------|----------|
+| `supabase/functions/generate-module/index.ts` | Arricchire il system prompt con regole di formattazione |
+| `src/pages/ModuleView.tsx` | Migliorare i componenti custom di ReactMarkdown per liste e testo |
 
-| File | Azione |
-|------|--------|
-| `src/pages/Login.tsx` | Aggiungere stato per "forgot password mode", input email, chiamata a `supabase.auth.resetPasswordForEmail()` con `redirectTo` verso `/reset-password` |
-| `src/pages/ResetPassword.tsx` | Nuova pagina: form per nuova password, chiama `supabase.auth.updateUser({ password })` |
-| `src/App.tsx` | Aggiungere `<Route path="/reset-password" element={<ResetPassword />} />` come rotta pubblica |
-
-## Dettagli tecnici
-
-- **Login.tsx**: aggiunge un link "Password dimenticata?" che mostra un campo email + bottone "Invia link di reset". Usa `supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' })`. Mostra messaggio di conferma dopo l'invio.
-- **ResetPassword.tsx**: al mount controlla `window.location.hash` per `type=recovery`. Se presente, mostra form con due campi password (nuova + conferma). Chiama `supabase.auth.updateUser({ password })`. Dopo il successo, redirect a `/learn`.
-- Tutta la UI in italiano, coerente con lo stile esistente (Tailwind, shadcn components).
+I moduli già generati manterranno la formattazione attuale. Per rigenerarli con la nuova formattazione sarà necessario cliccare "Rigenera tutto" o rigenerare i singoli moduli.
 
