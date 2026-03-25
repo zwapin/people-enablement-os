@@ -58,15 +58,15 @@ serve(async (req) => {
       await supabase.from("modules").delete().in("id", moduleIds);
     }
 
-    // Build KB context for the AI — truncate doc content to avoid massive prompts
+    // Build KB context for the AI — pass full document content for richer modules
     let kbContext = "## DOCUMENTI DELLA KNOWLEDGE BASE\n\n";
     for (const doc of docs) {
       kbContext += `### Documento: ${doc.title} (ID: ${doc.id})\n`;
       if (doc.context) kbContext += `Contesto: ${doc.context}\n`;
-      const truncatedContent = doc.content && doc.content.length > 5000
-        ? doc.content.substring(0, 5000) + "\n[... troncato ...]"
+      const content = doc.content && doc.content.length > 30000
+        ? doc.content.substring(0, 30000) + "\n[... contenuto troncato per limiti di contesto ...]"
         : doc.content;
-      kbContext += `${truncatedContent}\n\n`;
+      kbContext += `${content}\n\n`;
     }
 
     kbContext += "\n## FAQ DELLA KNOWLEDGE BASE\n\n";
@@ -108,10 +108,11 @@ ISTRUZIONI:
 6. I moduli devono avere un flusso logico — concetti fondamentali prima, argomenti avanzati dopo
 7. Ogni modulo deve essere autonomo ma costruire sui precedenti
 8. Genera 3 domande di valutazione per modulo (mantienile concise)
-9. Mantieni il content_body tra 200-400 parole per modulo
-10. Proponi al massimo 6 moduli in totale
+9. Il content_body deve essere RICCO e DETTAGLIATO: 800-1500 parole per modulo. Includi esempi concreti, tabelle markdown quando utili, e riferimenti specifici dal materiale sorgente.
+10. Proponi al massimo 5 moduli in totale per dare spazio adeguato a ciascuno
 11. Mantieni esattamente 4 key_points per modulo
-12. Mantieni tutto il testo conciso per minimizzare la dimensione dell'output
+12. PRESERVA le tabelle originali trovate nei documenti sorgente in formato markdown
+13. Se nel materiale sorgente ci sono riferimenti a immagini o diagrammi, descrivili nel testo con placeholder markdown (es. ![Descrizione](image-placeholder))
 
 Restituisci il curriculum usando il tool propose_curriculum.`;
 
@@ -125,7 +126,7 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
       },
         body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        max_tokens: 8192,
+        max_tokens: 16384,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: "Analizza la knowledge base e proponi un curriculum formativo completo. Progetta la struttura ottimale dei moduli, la sequenza e i contenuti. Tutto in italiano." },
@@ -148,7 +149,7 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
                           summary: { type: "string", description: "Panoramica di 1-2 frasi in italiano" },
                           track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
                           key_points: { type: "array", items: { type: "string" }, description: "4-6 punti chiave in italiano" },
-                          content_body: { type: "string", description: "Contenuto formativo in markdown in italiano (400-800 parole)" },
+                          content_body: { type: "string", description: "Contenuto formativo RICCO in markdown in italiano (800-1500 parole). Includi tabelle, esempi concreti e struttura con sezioni." },
                           ai_rationale: { type: "string", description: "Motivazione dell'esistenza di questo modulo, in italiano" },
                           source_document_ids: { type: "array", items: { type: "string" }, description: "ID dei documenti KB utilizzati" },
                           source_faq_ids: { type: "array", items: { type: "string" }, description: "ID delle FAQ KB utilizzate" },

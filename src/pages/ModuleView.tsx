@@ -17,6 +17,7 @@ import {
   Lightbulb,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AssessmentQuestion = Tables<"assessment_questions">;
@@ -253,8 +254,61 @@ export default function ModuleView() {
 
       {/* Markdown content */}
       {module.content_body && (
-        <article className="prose prose-invert prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground/80 prose-strong:text-foreground prose-li:text-foreground/80">
-          <ReactMarkdown>{module.content_body}</ReactMarkdown>
+        <article className="module-content prose prose-invert prose-base max-w-none prose-headings:text-foreground prose-p:text-foreground/80 prose-strong:text-foreground prose-li:text-foreground/80 prose-headings:mt-8 prose-headings:mb-4 prose-p:mb-4 prose-p:leading-relaxed prose-ul:my-4 prose-ol:my-4 prose-li:my-1">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              h2: ({ children }) => (
+                <h2 className="text-xl font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border">
+                  {children}
+                </h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-lg font-semibold text-foreground mt-8 mb-3">
+                  {children}
+                </h3>
+              ),
+              blockquote: ({ children }) => (
+                <blockquote className="my-6 border-l-4 border-primary/50 bg-secondary/30 rounded-r-lg px-5 py-4 text-foreground/80 not-italic">
+                  {children}
+                </blockquote>
+              ),
+              table: ({ children }) => (
+                <div className="my-6 overflow-x-auto rounded-lg border border-border">
+                  <table className="w-full text-sm">{children}</table>
+                </div>
+              ),
+              thead: ({ children }) => (
+                <thead className="bg-muted/60">{children}</thead>
+              ),
+              th: ({ children }) => (
+                <th className="px-4 py-3 text-left font-semibold text-foreground border-b border-border">
+                  {children}
+                </th>
+              ),
+              td: ({ children }) => (
+                <td className="px-4 py-3 text-foreground/80 border-b border-border/50">
+                  {children}
+                </td>
+              ),
+              tr: ({ children, ...props }) => (
+                <tr className="even:bg-muted/20" {...props}>{children}</tr>
+              ),
+              img: ({ src, alt }) => (
+                <figure className="my-6">
+                  <div className="rounded-lg border border-border bg-secondary/30 p-4 flex items-center justify-center min-h-[120px]">
+                    <span className="text-sm text-muted-foreground italic">📊 {alt || "Immagine dal playbook"}</span>
+                  </div>
+                  {alt && (
+                    <figcaption className="text-xs text-muted-foreground text-center mt-2">{alt}</figcaption>
+                  )}
+                </figure>
+              ),
+              hr: () => <hr className="my-8 border-border/50" />,
+            }}
+          >
+            {module.content_body}
+          </ReactMarkdown>
         </article>
       )}
 

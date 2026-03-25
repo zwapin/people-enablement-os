@@ -101,18 +101,18 @@ async function extractTextWithAI(fileData: Blob, fileName: string): Promise<stri
       signal: controller.signal,
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
-        max_tokens: 8192,
+        max_tokens: 16384,
         messages: [
           {
             role: "system",
-            content: "You are a document text extractor. Extract ALL text content from the provided document. Preserve the structure (headings, paragraphs, bullet points, tables). Output only the extracted text, no commentary."
+            content: "Sei un estrattore di testo da documenti. Estrai TUTTO il contenuto testuale dal documento fornito. Preserva la struttura (titoli, paragrafi, elenchi puntati). IMPORTANTE: preserva TUTTE le tabelle in formato markdown (con | e ---). Per immagini, grafici o diagrammi presenti nel documento, inserisci un placeholder descrittivo in formato markdown: ![Descrizione dettagliata del contenuto visivo](image-placeholder). Non aggiungere commenti tuoi, restituisci solo il contenuto estratto."
           },
           {
             role: "user",
             content: [
               {
                 type: "text",
-                text: "Extract all text from this document. Preserve formatting and structure."
+                text: "Estrai tutto il testo da questo documento. Preserva la formattazione, la struttura, le tabelle in formato markdown e descrivi le immagini con placeholder markdown."
               },
               {
                 type: "image_url",
