@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 import CurriculumList from "@/components/learn/CurriculumList";
@@ -35,6 +35,7 @@ export default function Learn() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [viewAsRep, setViewAsRep] = useState(false);
+  const activeJobId = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -73,39 +74,97 @@ export default function Learn() {
 
   const startProgressSimulation = () => {
     setProgress(0);
-    setProgressLabel("Analisi Knowledge Base...");
+    setProgressLabel("Avvio generazione...");
     const steps = [
+      { at: 5, label: "Avvio generazione..." },
       { at: 10, label: "Analisi Knowledge Base..." },
-      { at: 30, label: "Progettazione curriculum..." },
-      { at: 50, label: "Generazione contenuti moduli..." },
-      { at: 70, label: "Creazione domande di valutazione..." },
-      { at: 85, label: "Salvataggio moduli..." },
+      { at: 25, label: "Progettazione curriculum..." },
+      { at: 40, label: "Generazione contenuti moduli..." },
+      { at: 60, label: "Creazione domande di valutazione..." },
+      { at: 80, label: "Salvataggio moduli..." },
     ];
     let current = 0;
     progressInterval.current = setInterval(() => {
-      current += 1;
-      if (current >= 95) {
-        if (progressInterval.current) clearInterval(progressInterval.current);
+      current += 0.5;
+      if (current >= 90) {
+        // Hold at 90 until realtime callback
         return;
       }
-      setProgress(current);
+      setProgress(Math.round(current));
       const step = [...steps].reverse().find(s => current >= s.at);
       if (step) setProgressLabel(step.label);
-    }, 500);
+    }, 1000);
   };
 
-  const stopProgressSimulation = () => {
+  const stopProgressSimulation = (success: boolean) => {
     if (progressInterval.current) {
       clearInterval(progressInterval.current);
       progressInterval.current = null;
     }
-    setProgress(100);
-    setProgressLabel("Completato!");
+    if (success) {
+      setProgress(100);
+      setProgressLabel("Completato!");
+    }
     setTimeout(() => {
       setProgress(0);
       setProgressLabel("");
+      setGenerating(false);
     }, 1500);
   };
+
+  // Subscribe to job status via Realtime
+  const subscribeToJob = useCallback((jobId: string) => {
+    activeJobId.current = jobId;
+
+    // Safety timeout at 4 minutes
+    const timeout = setTimeout(() => {
+      if (activeJobId.current === jobId) {
+        stopProgressSimulation(false);
+        toast.error("La generazione sta impiegando troppo tempo. Riprova più tardi.");
+        supabase.removeChannel(channel);
+        activeJobId.current = null;
+      }
+    }, 240000);
+
+    const channel = supabase
+      .channel(`job-${jobId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "generation_jobs",
+          filter: `id=eq.${jobId}`,
+        },
+        (payload) => {
+          const newStatus = (payload.new as any).status;
+          console.log("[Learn] Job update:", jobId, "→", newStatus);
+
+          if (newStatus === "completed") {
+            clearTimeout(timeout);
+            const count = (payload.new as any).result?.count ?? 0;
+            stopProgressSimulation(true);
+            toast.success(`Curriculum generato: ${count} moduli proposti. Revisiona e approva.`);
+            refetch();
+            supabase.removeChannel(channel);
+            activeJobId.current = null;
+          } else if (newStatus === "failed") {
+            clearTimeout(timeout);
+            const error = (payload.new as any).error || "Errore sconosciuto";
+            stopProgressSimulation(false);
+            toast.error(`Generazione fallita: ${error}`);
+            supabase.removeChannel(channel);
+            activeJobId.current = null;
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearTimeout(timeout);
+      supabase.removeChannel(channel);
+    };
+  }, [refetch]);
 
   const handleUpdateCurriculum = async (regenerateAll = false) => {
     setGenerating(true);
@@ -117,18 +176,12 @@ export default function Learn() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      stopProgressSimulation();
-      toast.success(
-        regenerateAll
-          ? `Curriculum rigenerato: ${data.count} moduli proposti. Revisiona e approva.`
-          : `AI ha proposto ${data.count} moduli. Revisiona e approva.`
-      );
-      refetch();
+      if (data?.jobId) {
+        subscribeToJob(data.jobId);
+      }
     } catch (err: any) {
-      stopProgressSimulation();
+      stopProgressSimulation(false);
       toast.error(err.message || "Generazione curriculum fallita");
-    } finally {
-      setGenerating(false);
     }
   };
 
@@ -164,7 +217,7 @@ export default function Learn() {
     return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} />;
   }
 
-  // Rep view — roadmap (real rep OR admin previewing)
+  // Rep view
   if (!isAdmin || viewAsRep) {
     if (publishedModules.length === 0 && !isLoading) {
       return (
@@ -230,7 +283,7 @@ export default function Learn() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Rigenerare tutto il curriculum?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Questo cancellerà tutti i moduli esistenti (pubblicati, bozze e proposte) e li rigenererà da zero in italiano dalla Knowledge Base. L'operazione non è reversibile.
+                  Questo cancellerà tutti i moduli esistenti e li rigenererà da zero dalla Knowledge Base. L'operazione non è reversibile.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -247,7 +300,7 @@ export default function Learn() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            {generating ? "Analisi in corso..." : "Aggiorna Curriculum"}
+            {generating ? "Generazione in corso..." : "Aggiorna Curriculum"}
           </Button>
         </div>
       </div>
@@ -261,7 +314,7 @@ export default function Learn() {
           </div>
           <Progress value={progress} className="h-2" />
           <p className="text-xs text-muted-foreground">
-            L'AI sta analizzando la Knowledge Base e generando il curriculum. Può richiedere fino a 60 secondi.
+            L'AI sta analizzando la Knowledge Base e generando il curriculum con Claude. Può richiedere fino a 3 minuti.
           </p>
         </div>
       )}

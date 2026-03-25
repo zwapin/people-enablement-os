@@ -55,6 +55,39 @@ export type Database = {
           },
         ]
       }
+      generation_jobs: {
+        Row: {
+          created_at: string | null
+          error: string | null
+          id: string
+          input: Json | null
+          job_type: string
+          result: Json | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          input?: Json | null
+          job_type: string
+          result?: Json | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error?: string | null
+          id?: string
+          input?: Json | null
+          job_type?: string
+          result?: Json | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       knowledge_documents: {
         Row: {
           content: string
