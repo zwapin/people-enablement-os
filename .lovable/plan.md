@@ -1,26 +1,77 @@
 
-# Aggiungere toggle Admin ↔ Rep view nella pagina Learn
 
-## Cosa cambia
-Aggiungere un toggle switch nell'header della vista admin che permette di passare alla vista rep (roadmap) per anteprima. Solo visibile agli admin.
+# Traduzione completa in italiano
 
-## Modifiche
+Tutti i file con testo in inglese da tradurre. Ecco le modifiche file per file:
 
-### File: `src/pages/Learn.tsx`
-- Aggiungere stato `const [viewAsRep, setViewAsRep] = useState(false)`
-- Nell'header admin, aggiungere un toggle con label "Vista Rep" accanto al titolo
-- Quando `viewAsRep` è true, anche se `isAdmin`, fetch le completions e renderizzare `<RepRoadmap>` al posto della vista admin
-- Il toggle resta visibile in cima anche nella vista rep (per poter tornare indietro)
-- Aggiornare la query `module_completions` per fetchare anche quando admin ha `viewAsRep = true`
+## File da modificare
 
-### UI del toggle
-- Usare il componente `Switch` + label "Vista Rep" posizionato nell'header accanto al titolo
-- Import `Switch` da `@/components/ui/switch`
-- Import `Label` da `@/components/ui/label`
+### 1. `src/components/AppLayout.tsx`
+- Nav items: "Learn" → "Formazione", "Grow" → "Crescita", "Perform" → "Performance", "People" → "Team", "Knowledge Base" → "Knowledge Base" (resta, è termine tecnico)
+- "Sign out" → "Esci"
 
-### Dettaglio logica
-```text
-if (viewAsRep && isAdmin) → mostra header minimale con toggle + RepRoadmap
-if (!isAdmin)             → mostra RepRoadmap (come ora)  
-if (isAdmin && !viewAsRep)→ mostra vista admin completa con toggle nell'header
-```
+### 2. `src/pages/Login.tsx`
+- "Sign in to continue" → "Accedi per continuare"
+- "Email" resta (standard)
+- "Password" resta
+- "Signing in..." → "Accesso in corso...", "Sign in" → "Accedi"
+
+### 3. `src/pages/Home.tsx`
+- "Welcome," → "Bentornato,"
+- "Role:" → "Ruolo:"
+- "Loading profile..." → "Caricamento profilo..."
+- "Sign out" → "Esci"
+
+### 4. `src/pages/Grow.tsx`
+- "No onboarding plan yet" → "Nessun piano di onboarding"
+- Testi admin/rep tradotti in italiano
+
+### 5. `src/pages/Perform.tsx`
+- "Coming soon" → "Prossimamente"
+- Descrizione tradotta in italiano
+
+### 6. `src/pages/People.tsx`
+- "People" → "Team"
+- "Manage your team members and invite new reps." → "Gestisci i membri del team e invita nuovi rep."
+
+### 7. `src/components/people/PeopleTable.tsx`
+- Headers tabella: "Name" → "Nome", "Department" → "Reparto", "Job Role" → "Ruolo", "Last Activity" → "Ultima attivita", "Active" → "Attivo"
+- "No team members yet..." → "Nessun membro del team. Invita il tuo primo rep."
+- "Failed to update status/role" → tradotti
+- "Never" → "Mai"
+
+### 8. `src/components/people/InviteDialog.tsx`
+- "Invite a rep" → "Invita un rep"
+- "Invite a new team member" → "Invita un nuovo membro del team"
+- "Full name" → "Nome completo"
+- "Select department" → "Seleziona reparto"
+- "Job role" → "Ruolo"
+- "Send invite" → "Invia invito"
+- Toast/error messages tradotti
+
+### 9. `src/components/learn/KnowledgeBase.tsx`
+- Titolo e descrizione tradotti
+- Tab labels: "Documents" → "Documenti", "FAQs" → "FAQ"
+
+### 10. `src/components/learn/DocumentsList.tsx`
+- "Upload document" → "Carica documento"
+- "Upload Document" (dialog title) → "Carica Documento"
+- Labels, placeholders, toasts, empty state tutti tradotti
+- "chars extracted" → "caratteri estratti"
+- "extraction failed" → "estrazione fallita"
+- "Re-extract" → "Ri-estrai"
+- "Delete this document?" → "Eliminare questo documento?"
+
+### 11. `src/components/learn/FaqList.tsx`
+- "Add FAQ" → "Aggiungi FAQ"
+- "New FAQ" / "Edit FAQ" → "Nuova FAQ" / "Modifica FAQ"
+- Labels, placeholders, toasts tutti tradotti
+- "Cancel" → "Annulla", "Save" → "Salva", "Update" → "Aggiorna"
+- "Delete this FAQ?" → "Eliminare questa FAQ?"
+
+### 12. `src/components/learn/ProposalsList.tsx`
+- "docs" → "doc" (gia ok)
+- Gia quasi tutto in italiano, nessuna modifica significativa
+
+Nessuna modifica di logica, solo stringhe UI.
+
