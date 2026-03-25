@@ -72,35 +72,7 @@ export default function Learn() {
   const draftModules = modules?.filter((m) => m.status === "draft") ?? [];
   const proposedModules = modules?.filter((m) => m.status === "proposed") ?? [];
 
-  const startProgressSimulation = () => {
-    setProgress(0);
-    setProgressLabel("Avvio generazione...");
-    const steps = [
-      { at: 5, label: "Avvio generazione..." },
-      { at: 10, label: "Analisi Knowledge Base..." },
-      { at: 25, label: "Progettazione curriculum..." },
-      { at: 40, label: "Generazione contenuti moduli..." },
-      { at: 60, label: "Creazione domande di valutazione..." },
-      { at: 80, label: "Salvataggio moduli..." },
-    ];
-    let current = 0;
-    progressInterval.current = setInterval(() => {
-      current += 0.5;
-      if (current >= 90) {
-        // Hold at 90 until realtime callback
-        return;
-      }
-      setProgress(Math.round(current));
-      const step = [...steps].reverse().find(s => current >= s.at);
-      if (step) setProgressLabel(step.label);
-    }, 1000);
-  };
-
-  const stopProgressSimulation = (success: boolean) => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
-    }
+  const stopGeneration = (success: boolean) => {
     if (success) {
       setProgress(100);
       setProgressLabel("Completato!");
