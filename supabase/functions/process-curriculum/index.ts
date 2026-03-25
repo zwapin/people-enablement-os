@@ -284,10 +284,6 @@ ISTRUZIONI:
         }
         curriculumId = savedCurr.id;
       }
-        continue;
-      }
-
-      const curriculumId = savedCurr.id;
 
       // Create modules for this curriculum
       for (const mod of curr.modules || []) {
