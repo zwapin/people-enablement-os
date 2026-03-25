@@ -10,11 +10,11 @@ export default function Grow() {
       <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
         <TrendingUp className="h-6 w-6 text-muted-foreground" />
       </div>
-      <h2 className="text-lg font-semibold text-foreground">No onboarding plan yet</h2>
+      <h2 className="text-lg font-semibold text-foreground">Nessun piano di onboarding</h2>
       <p className="text-sm text-muted-foreground max-w-sm">
         {isAdmin
-          ? "Create a 30-60-90 day onboarding plan for your team members."
-          : "Your onboarding plan will appear here once your admin sets it up."}
+          ? "Crea un piano di onboarding 30-60-90 giorni per i membri del tuo team."
+          : "Il tuo piano di onboarding apparirà qui quando il tuo admin lo configurerà."}
       </p>
     </div>
   );

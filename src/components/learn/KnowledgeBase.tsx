@@ -9,14 +9,14 @@ export default function KnowledgeBase() {
       <div>
         <h1 className="text-2xl font-bold text-foreground">Knowledge Base</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Upload documents and create FAQs to feed AI module generation.
+          Carica documenti e crea FAQ per alimentare la generazione dei moduli AI.
         </p>
       </div>
 
       <Tabs defaultValue="documents" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="faqs">FAQs</TabsTrigger>
+          <TabsTrigger value="documents">Documenti</TabsTrigger>
+          <TabsTrigger value="faqs">FAQ</TabsTrigger>
         </TabsList>
 
         <TabsContent value="documents">

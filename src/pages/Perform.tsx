@@ -7,9 +7,9 @@ export default function Perform() {
         <BarChart3 className="h-6 w-6 text-muted-foreground" />
         <Lock className="h-3 w-3 text-muted-foreground absolute -bottom-0.5 -right-0.5" />
       </div>
-      <h2 className="text-lg font-semibold text-foreground">Coming soon</h2>
+      <h2 className="text-lg font-semibold text-foreground">Prossimamente</h2>
       <p className="text-sm text-muted-foreground max-w-sm">
-        Performance tracking and call coaching will be available in a future update.
+        Il monitoraggio delle performance e il coaching sulle chiamate saranno disponibili in un prossimo aggiornamento.
       </p>
     </div>
   );

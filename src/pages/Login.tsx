@@ -41,7 +41,7 @@ export default function Login() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">
             Klaaryo Academy
           </h1>
-          <p className="text-sm text-muted-foreground">Sign in to continue</p>
+          <p className="text-sm text-muted-foreground">Accedi per continuare</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -70,7 +70,7 @@ export default function Login() {
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "Signing in..." : "Sign in"}
+            {submitting ? "Accesso in corso..." : "Accedi"}
           </Button>
         </form>
       </div>
