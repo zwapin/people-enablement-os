@@ -118,7 +118,17 @@ ISTRUZIONI:
 - Genera esattamente 4 key_points
 - Genera 3 domande di valutazione
 - PRESERVA le tabelle originali trovate nei documenti sorgente in formato markdown
-- Tutto in italiano`;
+- Tutto in italiano
+
+REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
+- Usa sottotitoli ### (h3) per spezzare il contenuto in sezioni tematiche chiare
+- Usa **elenchi puntati** per liste di concetti, stakeholder, step, vantaggi, caratteristiche
+- Usa **tabelle markdown** per confronti, categorizzazioni, metriche
+- Usa **blockquote** (> ) per evidenziare concetti chiave, best practice o citazioni importanti
+- Usa separatori (---) tra macro-sezioni tematiche diverse
+- MAI scrivere paragrafi più lunghi di 4-5 righe consecutive — spezza con bullet point o sottotitoli
+- Alterna paragrafi brevi, elenchi e tabelle per creare varietà visiva
+- Ogni sezione h3 deve contenere almeno un elemento visivo (lista, tabella o blockquote)`;
 
     console.log("[generate-module] Calling Anthropic, prompt length:", systemPrompt.length);
 
