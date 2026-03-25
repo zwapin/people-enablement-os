@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FileText, Trash2, Loader2, Upload } from "lucide-react";
+import { Plus, FileText, Trash2, Loader2, Upload, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
 export default function DocumentsList() {
@@ -17,6 +17,7 @@ export default function DocumentsList() {
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [reExtracting, setReExtracting] = useState<string | null>(null);
 
   const { data: documents, isLoading, refetch } = useQuery({
     queryKey: ["knowledge-documents"],
@@ -75,6 +76,33 @@ export default function DocumentsList() {
       toast.error(err.message || "Failed to upload document");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleReExtract = async (id: string, filePath: string | null, fileName: string) => {
+    if (!filePath) {
+      toast.error("No file associated with this document");
+      return;
+    }
+    setReExtracting(id);
+    try {
+      const { data, error } = await supabase.functions.invoke("extract-document", {
+        body: { file_path: filePath, file_name: fileName },
+      });
+      if (error) throw error;
+
+      const { error: updateError } = await supabase
+        .from("knowledge_documents")
+        .update({ content: data?.content || "" })
+        .eq("id", id);
+      if (updateError) throw updateError;
+
+      toast.success("Document re-extracted successfully");
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to re-extract");
+    } finally {
+      setReExtracting(null);
     }
   };
 

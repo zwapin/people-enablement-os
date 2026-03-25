@@ -40,22 +40,10 @@ serve(async (req) => {
     const lowerName = (file_name || file_path).toLowerCase();
 
     if (lowerName.endsWith(".txt")) {
-      // Plain text — read directly
       extractedText = await fileData.text();
-    } else if (lowerName.endsWith(".pdf")) {
-      // PDF — extract text using basic approach
-      // Read raw bytes and extract text between stream markers
-      const bytes = new Uint8Array(await fileData.arrayBuffer());
-      extractedText = extractTextFromPdfBytes(bytes);
-      if (!extractedText.trim()) {
-        extractedText = "[PDF text extraction returned empty — the file may contain scanned images. Please paste the text manually.]";
-      }
-    } else if (lowerName.endsWith(".docx")) {
-      // DOCX — it's a ZIP of XML files, extract from word/document.xml
-      extractedText = await extractTextFromDocx(fileData);
-      if (!extractedText.trim()) {
-        extractedText = "[DOCX text extraction returned empty.]";
-      }
+    } else if (lowerName.endsWith(".pdf") || lowerName.endsWith(".docx")) {
+      // Use Lovable AI (Gemini) to extract text from PDF/DOCX
+      extractedText = await extractTextWithAI(fileData, lowerName);
     } else {
       extractedText = "[Unsupported file type]";
     }
@@ -73,145 +61,65 @@ serve(async (req) => {
   }
 });
 
-function extractTextFromPdfBytes(bytes: Uint8Array): string {
-  // Simple PDF text extraction: find text between BT/ET operators and parentheses
-  const text = new TextDecoder("latin1").decode(bytes);
-  const textParts: string[] = [];
-
-  // Match text in Tj and TJ operators
-  const tjRegex = /\(([^)]*)\)\s*Tj/g;
-  let match;
-  while ((match = tjRegex.exec(text)) !== null) {
-    textParts.push(decodePdfString(match[1]));
+async function extractTextWithAI(fileData: Blob, fileName: string): Promise<string> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    throw new Error("LOVABLE_API_KEY is not configured");
   }
 
-  // Match TJ arrays
-  const tjArrayRegex = /\[([^\]]*)\]\s*TJ/g;
-  while ((match = tjArrayRegex.exec(text)) !== null) {
-    const content = match[1];
-    const stringRegex = /\(([^)]*)\)/g;
-    let strMatch;
-    while ((strMatch = stringRegex.exec(content)) !== null) {
-      textParts.push(decodePdfString(strMatch[1]));
-    }
-  }
+  const buffer = await fileData.arrayBuffer();
+  const base64 = btoa(
+    new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), "")
+  );
 
-  return textParts.join(" ").replace(/\s+/g, " ").trim();
-}
+  const mimeType = fileName.endsWith(".pdf")
+    ? "application/pdf"
+    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-function decodePdfString(s: string): string {
-  return s
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
-    .replace(/\\\(/g, "(")
-    .replace(/\\\)/g, ")")
-    .replace(/\\\\/g, "\\");
-}
-
-async function extractTextFromDocx(blob: Blob): Promise<string> {
-  // DOCX is a ZIP file. We need to find word/document.xml and extract text from <w:t> tags.
-  // Using basic ZIP parsing since we can't import heavy libraries in edge functions.
-  try {
-    const buffer = await blob.arrayBuffer();
-    const bytes = new Uint8Array(buffer);
-
-    // Find the document.xml entry in the ZIP
-    const documentXml = findFileInZip(bytes, "word/document.xml");
-    if (!documentXml) return "";
-
-    const xmlText = new TextDecoder().decode(documentXml);
-
-    // Extract text from <w:t> tags
-    const textParts: string[] = [];
-    const tagRegex = /<w:t[^>]*>([^<]*)<\/w:t>/g;
-    let match;
-    while ((match = tagRegex.exec(xmlText)) !== null) {
-      textParts.push(match[1]);
-    }
-
-    // Also detect paragraph boundaries for better formatting
-    return xmlText
-      .replace(/<w:p[^/]*?\/>/g, "\n")
-      .replace(/<w:p[^>]*>/g, "\n")
-      .replace(/<w:t[^>]*>([^<]*)<\/w:t>/g, "$1")
-      .replace(/<[^>]+>/g, "")
-      .replace(/\n{3,}/g, "\n\n")
-      .trim();
-  } catch {
-    return "";
-  }
-}
-
-function findFileInZip(data: Uint8Array, targetFile: string): Uint8Array | null {
-  // Basic ZIP local file header parser
-  let offset = 0;
-
-  while (offset < data.length - 4) {
-    // Check for local file header signature 0x04034b50
-    if (data[offset] === 0x50 && data[offset + 1] === 0x4b &&
-        data[offset + 2] === 0x03 && data[offset + 3] === 0x04) {
-
-      const compressionMethod = data[offset + 8] | (data[offset + 9] << 8);
-      const compressedSize = data[offset + 18] | (data[offset + 19] << 8) |
-                             (data[offset + 20] << 16) | (data[offset + 21] << 24);
-      const uncompressedSize = data[offset + 22] | (data[offset + 23] << 8) |
-                               (data[offset + 24] << 16) | (data[offset + 25] << 24);
-      const fileNameLength = data[offset + 26] | (data[offset + 27] << 8);
-      const extraFieldLength = data[offset + 28] | (data[offset + 29] << 8);
-
-      const fileName = new TextDecoder().decode(data.slice(offset + 30, offset + 30 + fileNameLength));
-      const dataStart = offset + 30 + fileNameLength + extraFieldLength;
-
-      if (fileName === targetFile) {
-        if (compressionMethod === 0) {
-          // Stored (not compressed)
-          return data.slice(dataStart, dataStart + uncompressedSize);
-        } else {
-          // Deflated — use DecompressionStream
-          try {
-            const compressed = data.slice(dataStart, dataStart + compressedSize);
-            // For edge functions, try raw inflate
-            const ds = new DecompressionStream("raw");
-            const writer = ds.writable.getWriter();
-            writer.write(compressed);
-            writer.close();
-
-            const reader = ds.readable.getReader();
-            const chunks: Uint8Array[] = [];
-            let totalLength = 0;
-
-            // Synchronous-ish read
-            const readAll = async () => {
-              while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-                chunks.push(value);
-                totalLength += value.length;
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        {
+          role: "system",
+          content: "You are a document text extractor. Extract ALL text content from the provided document. Preserve the structure (headings, paragraphs, bullet points, tables). Output only the extracted text, no commentary."
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Extract all text from this document. Preserve formatting and structure."
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: `data:${mimeType};base64,${base64}`
               }
-              const result = new Uint8Array(totalLength);
-              let pos = 0;
-              for (const chunk of chunks) {
-                result.set(chunk, pos);
-                pos += chunk.length;
-              }
-              return result;
-            };
-
-            // We can't await here in a sync function, so return null and handle at caller
-            // Actually, the caller is async, so let's restructure
-            return null; // Will be handled by async version
-          } catch {
-            return null;
-          }
+            }
+          ]
         }
-      }
+      ],
+    }),
+  });
 
-      offset = dataStart + compressedSize;
-    } else {
-      offset++;
-    }
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("AI gateway error:", response.status, errorText);
+    throw new Error(`AI extraction failed (${response.status})`);
   }
 
-  return null;
+  const result = await response.json();
+  const content = result.choices?.[0]?.message?.content;
+
+  if (!content || !content.trim()) {
+    return "[AI text extraction returned empty. The document may be blank or corrupted.]";
+  }
+
+  return content.trim();
 }
