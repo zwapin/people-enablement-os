@@ -23,12 +23,19 @@ interface QuestionForm {
   feedback_wrong: string;
 }
 
+interface Curriculum {
+  id: string;
+  title: string;
+  status: string;
+}
+
 interface ModuleEditorProps {
   moduleId: string | null;
   onClose: () => void;
+  curricula?: Curriculum[];
 }
 
-export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
+export default function ModuleEditor({ moduleId, onClose, curricula = [] }: ModuleEditorProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -41,6 +48,7 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
   const [contentBody, setContentBody] = useState("");
   const [keyPoints, setKeyPoints] = useState<string[]>([]);
   const [status, setStatus] = useState<string>("draft");
+  const [curriculumId, setCurriculumId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
 
   useEffect(() => {
@@ -64,6 +72,7 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
       setContentBody(m.content_body || "");
       setKeyPoints(Array.isArray(m.key_points) ? (m.key_points as string[]) : []);
       setStatus(m.status);
+      setCurriculumId(m.curriculum_id || null);
       setSourceDocIds(Array.isArray(m.source_document_ids) ? (m.source_document_ids as string[]) : null);
       setSourceFaqIds(Array.isArray(m.source_faq_ids) ? (m.source_faq_ids as string[]) : null);
     }
@@ -106,6 +115,7 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             content_body: contentBody.trim() || null,
             key_points: keyPoints as unknown as Json,
             status: finalStatus as any,
+            curriculum_id: curriculumId,
             updated_at: new Date().toISOString(),
           })
           .eq("id", moduleId);
@@ -128,6 +138,7 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
             content_body: contentBody.trim() || null,
             key_points: keyPoints as unknown as Json,
             status: finalStatus as any,
+            curriculum_id: curriculumId,
             order_index: nextOrder,
           })
           .select()
@@ -194,7 +205,6 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
 
     setGenerating(true);
     try {
-      // Resolve source IDs: use module's own or fallback to all KB docs/faqs
       let docIds = sourceDocIds;
       let faqIds = sourceFaqIds;
 
@@ -207,7 +217,6 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
         faqIds = allFaqs?.map(f => f.id) || [];
       }
 
-      // Create generation job
       const { data: job, error: jobError } = await supabase
         .from("generation_jobs")
         .insert({
@@ -225,14 +234,12 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
 
       if (jobError) throw jobError;
 
-      // Invoke edge function (synchronous — waits for completion)
       const { error: fnError } = await supabase.functions.invoke("generate-module", {
         body: { job_id: job.id },
       });
 
       if (fnError) throw fnError;
 
-      // Reload module to get new content
       await loadModule();
       toast.success("Contenuto generato con successo!");
     } catch (err: any) {
@@ -277,6 +284,18 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
                 <SelectItem value="CS">CS</SelectItem>
                 <SelectItem value="Ops">Ops</SelectItem>
                 <SelectItem value="General">Generale</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Curriculum</Label>
+            <Select value={curriculumId || "_none"} onValueChange={(v) => setCurriculumId(v === "_none" ? null : v)}>
+              <SelectTrigger><SelectValue placeholder="Nessuno" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">Nessun curriculum</SelectItem>
+                {curricula.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
