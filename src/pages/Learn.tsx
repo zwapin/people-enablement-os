@@ -23,6 +23,7 @@ export default function Learn() {
   const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const [viewAsRep, setViewAsRep] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -52,7 +53,7 @@ export default function Learn() {
       if (error) throw error;
       return data;
     },
-    enabled: !!user && !isAdmin,
+    enabled: !!user && (!isAdmin || viewAsRep),
   });
 
   const publishedModules = modules?.filter((m) => m.status === "published") ?? [];
@@ -146,24 +147,40 @@ export default function Learn() {
     return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} />;
   }
 
-  // Rep view — roadmap
-  if (!isAdmin) {
+  // Rep view — roadmap (real rep OR admin previewing)
+  if (!isAdmin || viewAsRep) {
     if (publishedModules.length === 0 && !isLoading) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
-          <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
-            <BookOpen className="h-6 w-6 text-muted-foreground" />
+        <div className="space-y-6">
+          {isAdmin && (
+            <div className="flex items-center gap-3">
+              <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={setViewAsRep} />
+              <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">Vista Rep</Label>
+            </div>
+          )}
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
+            <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
+              <BookOpen className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h2 className="text-lg font-semibold text-foreground">Nessun modulo disponibile</h2>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Il tuo curriculum apparirà qui quando l'admin pubblicherà i moduli.
+            </p>
           </div>
-          <h2 className="text-lg font-semibold text-foreground">Nessun modulo disponibile</h2>
-          <p className="text-sm text-muted-foreground max-w-sm">
-            Il tuo curriculum apparirà qui quando l'admin pubblicherà i moduli.
-          </p>
         </div>
       );
     }
 
     return (
-      <RepRoadmap modules={publishedModules} completions={completions ?? []} />
+      <div className="space-y-6">
+        {isAdmin && (
+          <div className="flex items-center gap-3">
+            <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={setViewAsRep} />
+            <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">Vista Rep</Label>
+          </div>
+        )}
+        <RepRoadmap modules={publishedModules} completions={completions ?? []} />
+      </div>
     );
   }
 
@@ -172,11 +189,17 @@ export default function Learn() {
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Formazione</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            L'AI analizza la Knowledge Base e propone il curriculum. Tu approvi.
-          </p>
+        <div className="flex items-center gap-6">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Formazione</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              L'AI analizza la Knowledge Base e propone il curriculum. Tu approvi.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <Switch id="view-toggle-admin" checked={viewAsRep} onCheckedChange={setViewAsRep} />
+            <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">Vista Rep</Label>
+          </div>
         </div>
         <Button onClick={handleUpdateCurriculum} disabled={generating}>
           {generating ? (
