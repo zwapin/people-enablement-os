@@ -1,26 +1,34 @@
 
 
-# Fix: Confermare l'email dell'utente admin esistente
+# Fix: Estrazione testo PDF con AI
 
 ## Problema
-L'auto-confirm è stato abilitato ma funziona solo per **nuovi** signup. L'utente `federico@klaaryo.com` era già registrato prima dell'attivazione, quindi la sua email risulta ancora non confermata. Il login restituisce "Email not confirmed".
+Il file PDF e stato caricato correttamente nello storage (Status 200) e un record esiste in `knowledge_documents`, ma il campo `content` contiene solo il messaggio di errore. Il parser PDF attuale usa semplici regex che non funzionano con la maggior parte dei PDF moderni (che usano stream compressi, font encoding, ecc.).
 
 ## Soluzione
+Sostituire il parser PDF basilare con l'AI di Lovable per estrarre il testo. Il modello `google/gemini-2.5-flash` supporta input multimodali (inclusi PDF) e puo estrarre il testo completo.
 
-### 1. Creare una edge function temporanea `confirm-admin-email`
-Usa la service role key per confermare l'email dell'utente esistente tramite `supabase.auth.admin.updateUserById()` impostando `email_confirm: true`.
+### Modifiche
 
-```typescript
-// PATCH: conferma email per user_id 66141c1d-4ef2-4cc1-af68-f183d7865152
-await supabaseAdmin.auth.admin.updateUserById(userId, {
-  email_confirm: true
-});
+#### 1. Aggiornare `supabase/functions/extract-document/index.ts`
+- Rimuovere le funzioni `extractTextFromPdfBytes` e `decodePdfString`
+- Per i PDF: convertire il file in base64 e inviarlo a Gemini via Lovable AI proxy
+- Il modello analizza il PDF (anche se scansionato/immagini) e restituisce il testo completo
+- Usare il secret `LOVABLE_API_KEY` gia configurato per chiamare l'endpoint AI
+
+```text
+Flusso:
+1. Download file da storage
+2. Converti in base64
+3. Invia a Gemini con prompt "Extract all text from this document"
+4. Salva il testo estratto nel campo content
 ```
 
-### 2. Invocare la funzione per confermare l'email
+#### 2. Aggiornare il record esistente
+- Dopo il deploy, il documento gia caricato ("SALES PLAYBOOK") potra essere ri-estratto
+- Aggiungere un pulsante "Re-extract" nella UI di DocumentsList per ri-processare documenti con contenuto vuoto
 
-### 3. Eliminare la edge function temporanea
-
-## Risultato
-Dopo la conferma, il login con `federico@klaaryo.com` / `Klaaryo2025!` funzionerà senza errori.
+### File coinvolti
+- `supabase/functions/extract-document/index.ts` — logica di estrazione AI
+- `src/components/learn/DocumentsList.tsx` — pulsante re-extract
 
