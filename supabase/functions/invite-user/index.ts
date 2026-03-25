@@ -27,9 +27,14 @@ serve(async (req) => {
     }
 
     // Create user via admin API with invite
+    const siteUrl =
+      Deno.env.get("SITE_URL") ||
+      `https://${Deno.env.get("SUPABASE_URL")!.match(/\/\/([^.]+)/)?.[1]}.lovableproject.com`;
+
     const { data: inviteData, error: inviteError } =
       await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
         data: { full_name, department, job_role },
+        redirectTo: `${siteUrl}/reset-password`,
       });
 
     if (inviteError) {

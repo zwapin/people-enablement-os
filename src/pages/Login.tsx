@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+
+const getBaseUrl = () =>
+  import.meta.env.VITE_SITE_URL ||
+  `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.lovableproject.com`;
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,7 +48,7 @@ export default function Login() {
     setSubmitting(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + "/reset-password",
+        redirectTo: getBaseUrl() + "/reset-password",
       });
       if (error) throw error;
       setResetSent(true);
