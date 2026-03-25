@@ -42,6 +42,12 @@ serve(async (req) => {
       );
     }
 
+    // If regenerating all, also clean curricula
+    if (regenerateAll) {
+      console.log("[generate-curriculum] Cleaning existing curricula for full regen");
+      await supabase.from("curricula").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    }
+
     // Insert job record
     const { data: job, error: insertError } = await supabase
       .from("generation_jobs")
