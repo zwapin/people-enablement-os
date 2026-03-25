@@ -212,7 +212,8 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
       })
       .eq("id", module_id);
 
-    // Insert questions
+    // Delete old questions then insert new ones
+    await supabase.from("assessment_questions").delete().eq("module_id", module_id);
     if (moduleContent.questions?.length > 0) {
       const qRows = moduleContent.questions.map((q: any, i: number) => ({
         module_id,
