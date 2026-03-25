@@ -182,7 +182,66 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
   const removeKeyPoint = (i: number) => setKeyPoints(keyPoints.filter((_, j) => j !== i));
   const updateKeyPoint = (i: number, val: string) => setKeyPoints(keyPoints.map((kp, j) => (j === i ? val : kp)));
 
-  if (loading) {
+  const handleGenerate = async () => {
+    if (!moduleId) {
+      toast.error("Salva prima il modulo come bozza");
+      return;
+    }
+    if (!title.trim()) {
+      toast.error("Il titolo è obbligatorio per la generazione");
+      return;
+    }
+
+    setGenerating(true);
+    try {
+      // Resolve source IDs: use module's own or fallback to all KB docs/faqs
+      let docIds = sourceDocIds;
+      let faqIds = sourceFaqIds;
+
+      if (!docIds || docIds.length === 0) {
+        const { data: allDocs } = await supabase.from("knowledge_documents").select("id");
+        docIds = allDocs?.map(d => d.id) || [];
+      }
+      if (!faqIds || faqIds.length === 0) {
+        const { data: allFaqs } = await supabase.from("knowledge_faqs").select("id");
+        faqIds = allFaqs?.map(f => f.id) || [];
+      }
+
+      // Create generation job
+      const { data: job, error: jobError } = await supabase
+        .from("generation_jobs")
+        .insert({
+          job_type: "generate-module",
+          status: "pending",
+          input: {
+            module_id: moduleId,
+            module_title: title.trim(),
+            source_document_ids: docIds,
+            source_faq_ids: faqIds,
+          },
+        })
+        .select()
+        .single();
+
+      if (jobError) throw jobError;
+
+      // Invoke edge function (synchronous — waits for completion)
+      const { error: fnError } = await supabase.functions.invoke("generate-module", {
+        body: { job_id: job.id },
+      });
+
+      if (fnError) throw fnError;
+
+      // Reload module to get new content
+      await loadModule();
+      toast.success("Contenuto generato con successo!");
+    } catch (err: any) {
+      console.error("Generation error:", err);
+      toast.error(err.message || "Generazione fallita");
+    } finally {
+      setGenerating(false);
+    }
+  };
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
