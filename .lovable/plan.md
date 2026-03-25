@@ -1,16 +1,36 @@
-# ✅ Completato: Contenuti moduli più profondi e fedeli
 
-## Modifiche applicate
+
+# Aggiungere Genera/Rigenera AI nel ModuleEditor (vista admin)
+
+## Cosa viene aggiunto
+
+Un pulsante **"Genera con AI"** / **"Rigenera con AI"** nel `ModuleEditor` che permette all'admin di lanciare la generazione del contenuto per un singolo modulo, senza dover rigenerare tutto il curriculum.
+
+## Come funziona
+
+Il pulsante crea un `generation_job` di tipo `generate-module` nel database con l'input necessario (module_id, titolo, source_document_ids), poi chiama la edge function `generate-module` passando il job_id. Un polling sul job mostra il progresso. Al completamento, il contenuto del modulo viene ricaricato nell'editor.
+
+## File da modificare
+
+### `src/components/learn/ModuleEditor.tsx`
+- Aggiungere pulsante **"Genera con AI"** nella sezione "Contenuto (Markdown)", visibile solo se il modulo ha un `moduleId` salvato
+- Al click:
+  1. Cancella le vecchie `assessment_questions` del modulo
+  2. Crea un job in `generation_jobs` con `job_type: "generate-module"` e input `{ module_id, module_title: title, source_document_ids, source_faq_ids }` (presi dal modulo corrente)
+  3. Chiama `supabase.functions.invoke("generate-module", { body: { job_id } })`
+  4. Mostra un loading spinner sul pulsante
+  5. Al termine, ricarica il modulo con `loadModule()` per aggiornare contenuto, key_points e domande nell'editor
+- Per i `source_document_ids` e `source_faq_ids`: se il modulo li ha già salvati, usarli; altrimenti caricare tutti i documenti della knowledge base come fallback
+- Aggiungere stato `generating` per disabilitare il pulsante durante la generazione
+- Il pulsante mostra "Genera con AI" se `content_body` è vuoto, "Rigenera con AI" se esiste già
 
 ### `supabase/functions/generate-module/index.ts`
-- Limite contesto alzato da 8.000 a **25.000 caratteri** per documento
-- Aggiunte **regole di fedeltà** al materiale sorgente (preservare termini, fasi, KPI originali)
-- Supporto per `relevant_sections` dall'outline per focalizzare il contenuto
+- Nessuna modifica necessaria — la funzione supporta già il pattern `job_id` che è esattamente quello che serve
 
-### `supabase/functions/process-curriculum/index.ts`
-- Limite contesto outline alzato da 6.000 a **25.000 caratteri**
-- Outline ora genera `relevant_sections` per ogni modulo
-- Le sezioni rilevanti vengono passate al child job di generazione
+## Dettagli tecnici
 
-## Nota
-I moduli esistenti non cambieranno. Per rigenerarli con la nuova profondità, usare "Rigenera tutto".
+- Il job viene creato con service role dal client (l'admin ha già accesso via RLS `service_role` per i jobs)
+- La edge function legge il job, fetcha i documenti sorgente, genera contenuto e aggiorna il modulo nel DB
+- Il polling non serve: la chiamata `invoke` è sincrona — ritorna quando la generazione è completata (o fallita)
+- Dopo il completamento, `loadModule()` ricarica tutto nell'editor
+
