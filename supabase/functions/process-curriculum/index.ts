@@ -253,21 +253,37 @@ ISTRUZIONI:
     const savedModules = [];
 
     for (const curr of outlineCurricula) {
-      // Create curriculum
-      const { data: savedCurr, error: currError } = await supabase
-        .from("curricula")
-        .insert({
-          title: curr.title,
-          description: curr.description || null,
-          track: curr.track,
-          status: "proposed",
-          order_index: nextCurriculumOrder++,
-        })
-        .select("id")
-        .single();
+      let curriculumId: string;
 
-      if (currError) {
-        console.error("[process-curriculum] Failed to save curriculum:", currError);
+      if (enrichMode) {
+        // In enrich mode, find the existing curriculum by title
+        const match = existingCurricula.find(c => c.title === curr.title);
+        if (match) {
+          curriculumId = match.id;
+        } else {
+          console.warn("[process-curriculum] Enrich mode but curriculum not found:", curr.title);
+          continue;
+        }
+      } else {
+        // Create new curriculum
+        const { data: savedCurr, error: currError } = await supabase
+          .from("curricula")
+          .insert({
+            title: curr.title,
+            description: curr.description || null,
+            track: curr.track,
+            status: "proposed",
+            order_index: nextCurriculumOrder++,
+          })
+          .select("id")
+          .single();
+
+        if (currError) {
+          console.error("[process-curriculum] Failed to save curriculum:", currError);
+          continue;
+        }
+        curriculumId = savedCurr.id;
+      }
         continue;
       }
 
