@@ -12,9 +12,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     );
   }
 
-  // Dev bypass — skip auth check when profile is set without session
-  if (!session && profile) return <>{children}</>;
-
   if (!session) return <Navigate to="/login" replace />;
 
   if (profile && !profile.is_active) {
