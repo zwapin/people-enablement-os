@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -13,6 +13,7 @@ serve(async (req) => {
   }
 
   try {
+    console.log("[generate-curriculum] Starting...");
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -31,6 +32,8 @@ serve(async (req) => {
     const faqs = faqsResult.data || [];
     const existingModules = modulesResult.data || [];
 
+    console.log("[generate-curriculum] Docs:", docs.length, "FAQs:", faqs.length, "Existing modules:", existingModules.length);
+
     if (docs.length === 0 && faqs.length === 0) {
       return new Response(
         JSON.stringify({ error: "Knowledge Base is empty. Upload documents or add FAQs first." }),
@@ -38,12 +41,15 @@ serve(async (req) => {
       );
     }
 
-    // Build KB context for the AI
+    // Build KB context for the AI — truncate doc content to avoid massive prompts
     let kbContext = "## KNOWLEDGE BASE DOCUMENTS\n\n";
     for (const doc of docs) {
       kbContext += `### Document: ${doc.title} (ID: ${doc.id})\n`;
       if (doc.context) kbContext += `Context: ${doc.context}\n`;
-      kbContext += `${doc.content}\n\n`;
+      const truncatedContent = doc.content && doc.content.length > 8000
+        ? doc.content.substring(0, 8000) + "\n[... truncated for brevity ...]"
+        : doc.content;
+      kbContext += `${truncatedContent}\n\n`;
     }
 
     kbContext += "\n## KNOWLEDGE BASE FAQ\n\n";
@@ -77,76 +83,92 @@ INSTRUCTIONS:
 5. Provide a rationale for each module explaining why it exists and what gap it fills
 6. Modules should flow logically — foundational concepts first, advanced topics later
 7. Each module should be self-contained but build on previous ones
-8. Generate 3-7 assessment questions per module
+8. Generate 3-5 assessment questions per module (keep them concise)
+9. Keep content_body between 400-800 words per module to stay within output limits
+10. Propose at most 8 modules total
 
 Return the curriculum using the propose_curriculum tool.`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: "Analyze the knowledge base and propose a complete training curriculum. Design the optimal module structure, sequence, and content." },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "propose_curriculum",
-              description: "Propose a structured training curriculum based on the knowledge base",
-              parameters: {
-                type: "object",
-                properties: {
-                  modules: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string", description: "Module title (max 60 chars)" },
-                        summary: { type: "string", description: "1-2 sentence overview" },
-                        track: { type: "string", enum: ["Sales", "CS", "Ops", "General"] },
-                        key_points: { type: "array", items: { type: "string" }, description: "4-6 key takeaways" },
-                        content_body: { type: "string", description: "Full training content in markdown (800-1500 words)" },
-                        ai_rationale: { type: "string", description: "Why this module exists, what knowledge gap it fills" },
-                        source_document_ids: { type: "array", items: { type: "string" }, description: "IDs of KB documents used" },
-                        source_faq_ids: { type: "array", items: { type: "string" }, description: "IDs of KB FAQs used" },
-                        questions: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              question: { type: "string" },
-                              options: { type: "array", items: { type: "string" } },
-                              correct_index: { type: "integer" },
-                              feedback_correct: { type: "string" },
-                              feedback_wrong: { type: "string" },
+    console.log("[generate-curriculum] Calling AI gateway, prompt length:", systemPrompt.length);
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000);
+
+    let response;
+    try {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          max_tokens: 16384,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: "Analyze the knowledge base and propose a complete training curriculum. Design the optimal module structure, sequence, and content." },
+          ],
+          tools: [
+            {
+              type: "function",
+              function: {
+                name: "propose_curriculum",
+                description: "Propose a structured training curriculum based on the knowledge base",
+                parameters: {
+                  type: "object",
+                  properties: {
+                    modules: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          title: { type: "string", description: "Module title (max 60 chars)" },
+                          summary: { type: "string", description: "1-2 sentence overview" },
+                          track: { type: "string", enum: ["Sales", "CS", "Ops", "General"] },
+                          key_points: { type: "array", items: { type: "string" }, description: "4-6 key takeaways" },
+                          content_body: { type: "string", description: "Training content in markdown (400-800 words)" },
+                          ai_rationale: { type: "string", description: "Why this module exists" },
+                          source_document_ids: { type: "array", items: { type: "string" }, description: "IDs of KB documents used" },
+                          source_faq_ids: { type: "array", items: { type: "string" }, description: "IDs of KB FAQs used" },
+                          questions: {
+                            type: "array",
+                            items: {
+                              type: "object",
+                              properties: {
+                                question: { type: "string" },
+                                options: { type: "array", items: { type: "string" } },
+                                correct_index: { type: "integer" },
+                                feedback_correct: { type: "string" },
+                                feedback_wrong: { type: "string" },
+                              },
+                              required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
+                              additionalProperties: false,
                             },
-                            required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
-                            additionalProperties: false,
                           },
                         },
+                        required: ["title", "summary", "track", "key_points", "content_body", "ai_rationale", "source_document_ids", "source_faq_ids", "questions"],
+                        additionalProperties: false,
                       },
-                      required: ["title", "summary", "track", "key_points", "content_body", "ai_rationale", "source_document_ids", "source_faq_ids", "questions"],
-                      additionalProperties: false,
                     },
                   },
+                  required: ["modules"],
+                  additionalProperties: false,
                 },
-                required: ["modules"],
-                additionalProperties: false,
               },
             },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "propose_curriculum" } },
-      }),
-    });
+          ],
+          tool_choice: { type: "function", function: { name: "propose_curriculum" } },
+        }),
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
 
     if (!response.ok) {
+      const errText = await response.text();
+      console.error("[generate-curriculum] AI gateway error:", response.status, errText);
       if (response.status === 429) {
         return new Response(
           JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }),
@@ -159,20 +181,37 @@ Return the curriculum using the propose_curriculum tool.`;
           { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
-      throw new Error("AI generation failed");
+      throw new Error(`AI generation failed (${response.status})`);
     }
 
-    const data = await response.json();
+    const responseText = await response.text();
+    console.log("[generate-curriculum] AI response length:", responseText.length);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseErr) {
+      console.error("[generate-curriculum] Failed to parse AI response, length:", responseText.length, "last 100 chars:", responseText.slice(-100));
+      throw new Error("AI response was truncated or malformed. Try again.");
+    }
+
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
 
     if (!toolCall) {
+      console.error("[generate-curriculum] No tool call in response:", JSON.stringify(data.choices?.[0]?.message).substring(0, 500));
       throw new Error("AI did not return structured output");
     }
 
-    const curriculum = JSON.parse(toolCall.function.arguments);
+    let curriculum;
+    try {
+      curriculum = JSON.parse(toolCall.function.arguments);
+    } catch (parseErr) {
+      console.error("[generate-curriculum] Failed to parse tool call arguments, length:", toolCall.function.arguments?.length);
+      throw new Error("AI tool call arguments were truncated. Try again.");
+    }
+
     const proposedModules = curriculum.modules || [];
+    console.log("[generate-curriculum] Proposed modules:", proposedModules.length);
 
     // Delete existing proposed modules (they'll be replaced)
     await supabase.from("modules").delete().eq("status", "proposed");
@@ -229,12 +268,14 @@ Return the curriculum using the propose_curriculum tool.`;
       savedModules.push(savedMod);
     }
 
+    console.log("[generate-curriculum] Saved modules:", savedModules.length);
+
     return new Response(
       JSON.stringify({ modules: savedModules, count: savedModules.length }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
-    console.error("Error:", e);
+    console.error("[generate-curriculum] Error:", e);
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
