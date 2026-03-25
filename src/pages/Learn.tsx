@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { BookOpen, RefreshCw, Loader2, CheckCheck } from "lucide-react";
+import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -12,6 +12,17 @@ import ModuleEditor from "@/components/learn/ModuleEditor";
 import CurriculumList from "@/components/learn/CurriculumList";
 import ProposalsList from "@/components/learn/ProposalsList";
 import RepRoadmap from "@/components/learn/RepRoadmap";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 export default function Learn() {
   const { profile, user } = useAuth();
@@ -96,16 +107,22 @@ export default function Learn() {
     }, 1500);
   };
 
-  const handleUpdateCurriculum = async () => {
+  const handleUpdateCurriculum = async (regenerateAll = false) => {
     setGenerating(true);
     startProgressSimulation();
     try {
-      const { data, error } = await supabase.functions.invoke("generate-curriculum");
+      const { data, error } = await supabase.functions.invoke("generate-curriculum", {
+        body: regenerateAll ? { regenerate_all: true } : {},
+      });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
       stopProgressSimulation();
-      toast.success(`AI ha proposto ${data.count} moduli. Revisiona e approva.`);
+      toast.success(
+        regenerateAll
+          ? `Curriculum rigenerato: ${data.count} moduli proposti. Revisiona e approva.`
+          : `AI ha proposto ${data.count} moduli. Revisiona e approva.`
+      );
       refetch();
     } catch (err: any) {
       stopProgressSimulation();
@@ -201,14 +218,38 @@ export default function Learn() {
             <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">Vista Rep</Label>
           </div>
         </div>
-        <Button onClick={handleUpdateCurriculum} disabled={generating}>
-          {generating ? (
-            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-          ) : (
-            <RefreshCw className="h-4 w-4 mr-2" />
-          )}
-          {generating ? "Analisi in corso..." : "Aggiorna Curriculum"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="outline" disabled={generating}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Rigenera tutto
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Rigenerare tutto il curriculum?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Questo cancellerà tutti i moduli esistenti (pubblicati, bozze e proposte) e li rigenererà da zero in italiano dalla Knowledge Base. L'operazione non è reversibile.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction onClick={() => handleUpdateCurriculum(true)}>
+                  Rigenera tutto
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          <Button onClick={() => handleUpdateCurriculum(false)} disabled={generating}>
+            {generating ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-2" />
+            )}
+            {generating ? "Analisi in corso..." : "Aggiorna Curriculum"}
+          </Button>
+        </div>
       </div>
 
       {/* Progress indicator */}
