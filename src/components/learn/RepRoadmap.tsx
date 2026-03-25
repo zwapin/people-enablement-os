@@ -20,12 +20,9 @@ export default function RepRoadmap({ modules, completions }: RepRoadmapProps) {
 
   const completionMap = new Map(completions.map((c) => [c.module_id, c]));
 
-  const getState = (mod: Module, idx: number): ModuleState => {
+  const getState = (mod: Module): ModuleState => {
     if (completionMap.has(mod.id)) return "completed";
-    if (idx === 0) return "available";
-    const prevModule = modules[idx - 1];
-    if (completionMap.has(prevModule.id)) return "available";
-    return "locked";
+    return "available";
   };
 
   const completedCount = modules.filter((m) => completionMap.has(m.id)).length;
@@ -58,7 +55,7 @@ export default function RepRoadmap({ modules, completions }: RepRoadmapProps) {
       {/* Roadmap */}
       <div className="relative">
         {modules.map((mod, idx) => {
-          const state = getState(mod, idx);
+          const state = getState(mod);
           const completion = completionMap.get(mod.id);
           const readingTime = mod.content_body
             ? Math.max(1, Math.ceil(mod.content_body.length / 1000))
