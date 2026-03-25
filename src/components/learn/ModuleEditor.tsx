@@ -64,6 +64,8 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
       setContentBody(m.content_body || "");
       setKeyPoints(Array.isArray(m.key_points) ? (m.key_points as string[]) : []);
       setStatus(m.status);
+      setSourceDocIds(Array.isArray(m.source_document_ids) ? (m.source_document_ids as string[]) : null);
+      setSourceFaqIds(Array.isArray(m.source_faq_ids) ? (m.source_faq_ids as string[]) : null);
     }
 
     if (qResult.data) {
