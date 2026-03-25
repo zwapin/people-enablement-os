@@ -17,7 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 const navItems = [
-  { title: "Learn", url: "/learn", icon: BookOpen },
+  { title: "placeholder", url: "/learn", icon: BookOpen },
   { title: "Grow", url: "/grow", icon: TrendingUp },
   { title: "Perform", url: "/perform", icon: BarChart3 },
 ];
