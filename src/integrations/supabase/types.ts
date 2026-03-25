@@ -55,6 +55,39 @@ export type Database = {
           },
         ]
       }
+      curricula: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          order_index: number
+          status: Database["public"]["Enums"]["module_status"]
+          title: string
+          track: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          status?: Database["public"]["Enums"]["module_status"]
+          title: string
+          track?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          order_index?: number
+          status?: Database["public"]["Enums"]["module_status"]
+          title?: string
+          track?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       generation_jobs: {
         Row: {
           completed_steps: number | null
@@ -199,6 +232,7 @@ export type Database = {
           ai_rationale: string | null
           content_body: string | null
           created_at: string
+          curriculum_id: string | null
           id: string
           key_points: Json | null
           order_index: number
@@ -214,6 +248,7 @@ export type Database = {
           ai_rationale?: string | null
           content_body?: string | null
           created_at?: string
+          curriculum_id?: string | null
           id?: string
           key_points?: Json | null
           order_index?: number
@@ -229,6 +264,7 @@ export type Database = {
           ai_rationale?: string | null
           content_body?: string | null
           created_at?: string
+          curriculum_id?: string | null
           id?: string
           key_points?: Json | null
           order_index?: number
@@ -240,7 +276,15 @@ export type Database = {
           track?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "modules_curriculum_id_fkey"
+            columns: ["curriculum_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       onboarding_milestones: {
         Row: {
