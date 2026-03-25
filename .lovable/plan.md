@@ -1,56 +1,64 @@
 
 
-# Integrazione Claude (Anthropic) per generazione curriculum
+# Fix: Edge function timeout durante la generazione curriculum
 
-## Cosa faremo
-Sostituire il modello AI attuale (Gemini via Lovable AI Gateway) con Claude di Anthropic, usando la tua API key personale. L'API di Anthropic supporta tool calling come l'attuale setup, quindi la struttura resta identica — cambia solo l'endpoint e il formato della request.
+## Problema
+La edge function `generate-curriculum` va in timeout (~150 secondi) prima che Claude risponda. I log mostrano che la chiamata Anthropic parte ("Calling Anthropic API, prompt length: 31872") ma poi la funzione fa "shutdown" senza mai ricevere la risposta. Il prompt è lungo (31k caratteri) + max_tokens 16384 = Claude impiega troppo tempo.
 
-## Modifiche
+## Soluzione
+Implementare un'architettura a due fasi: la edge function salva il job nel database e ritorna subito, poi una seconda edge function (`process-curriculum`) fa la chiamata lenta ad Anthropic senza vincoli di timeout del client.
 
-### 1. Aggiungere il secret `ANTHROPIC_API_KEY`
-- Usare il tool `add_secret` per chiederti di inserire la tua API key di Anthropic
-- Sarà disponibile nelle edge functions come variabile d'ambiente
-
-### 2. `supabase/functions/generate-curriculum/index.ts`
-- **Endpoint**: da `https://ai.gateway.lovable.dev/v1/chat/completions` → `https://api.anthropic.com/v1/messages`
-- **Headers**: `x-api-key` + `anthropic-version: 2023-06-01` invece di Bearer token
-- **Body format**: adattare al formato Anthropic Messages API:
-  - `system` come campo top-level (non nel messages array)
-  - `model: "claude-sonnet-4-20250514"` (o claude-3.5-sonnet)
-  - `max_tokens: 16384`
-  - `tools` nel formato Anthropic (molto simile, solo `input_schema` invece di `parameters`)
-  - `tool_choice: { type: "tool", name: "propose_curriculum" }`
-- **Parsing risposta**: estrarre il tool use da `content[].type === "tool_use"` invece di `choices[0].message.tool_calls[0]`
-- **Errori**: mantenere gestione 429/402 adattata ai codici Anthropic
-
-### 3. `supabase/functions/generate-module/index.ts`
-- Stesse modifiche di formato: endpoint Anthropic, headers, body format, parsing risposta
-- `model: "claude-sonnet-4-20250514"`
-
-### 4. `supabase/functions/extract-document/index.ts`
-- Verificare se anche questa usa Lovable AI Gateway e adattare allo stesso modo
-
-### Dettaglio formato Anthropic vs attuale
-
-```text
-ATTUALE (OpenAI-compatible):
-  POST ai.gateway.lovable.dev/v1/chat/completions
-  Authorization: Bearer $KEY
-  { model, messages: [{role:"system",...},{role:"user",...}], tools: [{type:"function", function:{name, parameters}}], tool_choice }
-
-ANTHROPIC:
-  POST api.anthropic.com/v1/messages
-  x-api-key: $KEY
-  anthropic-version: 2023-06-01
-  { model, system: "...", messages: [{role:"user",...}], tools: [{name, description, input_schema}], tool_choice: {type:"tool", name:"..."} }
-
-PARSING RISPOSTA:
-  Attuale: data.choices[0].message.tool_calls[0].function.arguments
-  Anthropic: data.content.find(c => c.type === "tool_use").input
+### 1. Database — nuova tabella `generation_jobs`
+```sql
+CREATE TABLE generation_jobs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  status text NOT NULL DEFAULT 'pending', -- pending, processing, completed, failed
+  job_type text NOT NULL, -- 'curriculum'
+  input jsonb,
+  result jsonb,
+  error text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE generation_jobs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Authenticated users can read jobs" ON generation_jobs FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Service role can manage jobs" ON generation_jobs FOR ALL USING (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE generation_jobs;
 ```
 
-## File da modificare
-1. `supabase/functions/generate-curriculum/index.ts` — endpoint + formato Anthropic
-2. `supabase/functions/generate-module/index.ts` — idem
-3. `supabase/functions/extract-document/index.ts` — idem (se usa AI)
+### 2. `generate-curriculum/index.ts` — diventa "enqueue"
+- Crea un record in `generation_jobs` con status `pending` e i parametri (regenerate_all)
+- Chiama `process-curriculum` in background con `fetch()` senza `await` (fire-and-forget via `EdgeRuntime.waitUntil`)
+- Ritorna subito con `{ jobId, status: "pending" }`
+
+### 3. Nuova edge function `process-curriculum/index.ts`
+- Riceve il `jobId`, aggiorna status a `processing`
+- Esegue tutta la logica attuale (fetch KB, chiama Anthropic, salva moduli)
+- Aggiorna il job a `completed` o `failed`
+- Ha un timeout più lungo perché non è vincolata alla connessione del browser
+
+### 4. Frontend `Learn.tsx` — polling con realtime
+- Dopo aver ricevuto il `jobId`, sottoscrive a `generation_jobs` via Supabase Realtime
+- Quando il job diventa `completed`, fa refetch dei moduli e mostra il toast di successo
+- Se `failed`, mostra l'errore
+- Timeout di sicurezza a 3 minuti con messaggio utile
+
+## Dettaglio tecnico
+
+```text
+PRIMA (timeout):
+  Browser → generate-curriculum → Anthropic API (120s+) → timeout → "Failed to fetch"
+
+DOPO:
+  Browser → generate-curriculum → INSERT job → return { jobId } (< 1s)
+  generate-curriculum → fire-and-forget → process-curriculum
+  process-curriculum → Anthropic API (120s) → UPDATE job → INSERT modules
+  Browser ← Realtime subscription ← job status = "completed" → refetch modules
+```
+
+## File da creare/modificare
+1. **Migration SQL** — tabella `generation_jobs` + RLS + realtime
+2. **`supabase/functions/generate-curriculum/index.ts`** — semplificato: crea job + fire-and-forget
+3. **`supabase/functions/process-curriculum/index.ts`** — nuova: logica completa di generazione
+4. **`src/pages/Learn.tsx`** — polling via Realtime invece di await sincrono
 
