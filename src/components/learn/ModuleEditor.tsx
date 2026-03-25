@@ -303,8 +303,25 @@ export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
         </div>
 
         <div className="space-y-2">
-          <Label>Contenuto (Markdown)</Label>
-          <Textarea value={contentBody} onChange={(e) => setContentBody(e.target.value)} placeholder="Contenuto completo del modulo..." className="min-h-[200px] font-mono text-sm" />
+          <div className="flex items-center justify-between">
+            <Label>Contenuto (Markdown)</Label>
+            {moduleId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleGenerate}
+                disabled={generating || saving}
+              >
+                {generating ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3 w-3 mr-1" />
+                )}
+                {generating ? "Generazione..." : contentBody ? "Rigenera con AI" : "Genera con AI"}
+              </Button>
+            )}
+          </div>
+          <Textarea value={contentBody} onChange={(e) => setContentBody(e.target.value)} placeholder="Contenuto completo del modulo..." className="min-h-[200px] font-mono text-sm" disabled={generating} />
         </div>
       </Card>
 
