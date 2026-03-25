@@ -1,35 +1,26 @@
 
 
-# Fix: Rimuovere DEV_BYPASS e reimpostare password admin
+# Fix: Confermare l'email dell'utente admin esistente
 
 ## Problema
-`DEV_BYPASS = true` fa sì che l'app non crei mai una sessione reale. Tutte le chiamate al backend (storage upload, insert in tabelle) partono con il token anonimo, e le policy RLS le bloccano con "new row violates row-level security policy".
+L'auto-confirm è stato abilitato ma funziona solo per **nuovi** signup. L'utente `federico@klaaryo.com` era già registrato prima dell'attivazione, quindi la sua email risulta ancora non confermata. Il login restituisce "Email not confirmed".
 
-## Piano
+## Soluzione
 
-### 1. Creare edge function `reset-admin-password`
-Una funzione temporanea che usa la service role key per reimpostare la password dell'utente admin `federico@klaaryo.com` (già esistente nel database con ruolo admin).
+### 1. Creare una edge function temporanea `confirm-admin-email`
+Usa la service role key per confermare l'email dell'utente esistente tramite `supabase.auth.admin.updateUserById()` impostando `email_confirm: true`.
 
-- Riceve `{ new_password: string }` nel body
-- Usa `supabase.auth.admin.updateUserById()` per aggiornare la password
-- Dopo l'uso, la elimineremo
+```typescript
+// PATCH: conferma email per user_id 66141c1d-4ef2-4cc1-af68-f183d7865152
+await supabaseAdmin.auth.admin.updateUserById(userId, {
+  email_confirm: true
+});
+```
 
-### 2. Rimuovere DEV_BYPASS da AuthContext
-**File: `src/contexts/AuthContext.tsx`**
-- Eliminare `DEV_BYPASS`, `DEV_PROFILE` e tutti i blocchi `if (DEV_BYPASS)`
-- Mantenere solo il flusso reale: `onAuthStateChange` → `getSession` → `fetchProfile`
+### 2. Invocare la funzione per confermare l'email
 
-### 3. Rimuovere bypass da ProtectedRoute
-**File: `src/components/ProtectedRoute.tsx`**
-- Eliminare la riga `if (!session && profile) return <>{children}</>;`
+### 3. Eliminare la edge function temporanea
 
-### 4. Abilitare auto-confirm email
-Per evitare che il login richieda conferma email (siamo in dev), abilitare auto-confirm tramite il tool di configurazione auth.
-
-### Risultato
-Dopo queste modifiche:
-1. L'app redirige a `/login`
-2. Imposti la password admin con la edge function temporanea
-3. Fai login con `federico@klaaryo.com` + la nuova password
-4. Il JWT reale soddisfa le policy RLS → upload documenti funziona
+## Risultato
+Dopo la conferma, il login con `federico@klaaryo.com` / `Klaaryo2025!` funzionerà senza errori.
 
