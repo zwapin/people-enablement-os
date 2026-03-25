@@ -248,6 +248,46 @@ export default function Learn() {
     }
   };
 
+  const handleMigrateToCurricula = async () => {
+    const orphans = modules?.filter(m => !m.curriculum_id && (m.status === "published" || m.status === "draft")) ?? [];
+    if (orphans.length === 0) {
+      toast.info("Nessun modulo orfano da convertire");
+      return;
+    }
+
+    let converted = 0;
+    for (const mod of orphans) {
+      // Create a curriculum from this module
+      const { data: newCurr, error: currErr } = await supabase
+        .from("curricula")
+        .insert({
+          title: mod.title,
+          description: mod.summary || null,
+          track: mod.track || "Generale",
+          status: mod.status as any,
+          order_index: mod.order_index,
+        })
+        .select("id")
+        .single();
+
+      if (currErr || !newCurr) {
+        console.error("Failed to create curriculum from module:", currErr);
+        continue;
+      }
+
+      // Assign the original module to this curriculum as intro module
+      await supabase
+        .from("modules")
+        .update({ curriculum_id: newCurr.id, updated_at: new Date().toISOString() })
+        .eq("id", mod.id);
+
+      converted++;
+    }
+
+    toast.success(`${converted} moduli convertiti in curricula. Ora clicca "Aggiorna Curriculum" per generare i sotto-moduli.`);
+    refreshAll();
+  };
+
   const handleEdit = (moduleId: string) => {
     setEditingModuleId(moduleId);
     setEditorOpen(true);
@@ -325,6 +365,12 @@ export default function Learn() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {orphanModules(["published", "draft"]).length > 0 && (
+            <Button variant="outline" size="sm" onClick={handleMigrateToCurricula}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Converti in Curricula
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={handleCreateCurriculum}>
             <Plus className="h-4 w-4 mr-2" />
             Nuovo Curriculum
