@@ -288,16 +288,7 @@ export default function Learn() {
     refreshAll();
   };
 
-  // Auto-migrate orphan modules to curricula on first load
-  const migrationDone = useRef(false);
-  useEffect(() => {
-    if (migrationDone.current || !isAdmin || !modules || !curricula) return;
-    const orphans = modules.filter(m => !m.curriculum_id && (m.status === "published" || m.status === "draft"));
-    if (orphans.length > 0 && curricula.length === 0) {
-      migrationDone.current = true;
-      handleMigrateToCurricula();
-    }
-  }, [modules, curricula, isAdmin]);
+  // Auto-migration removed — curricula structure is now pre-populated
 
   const handleEdit = (moduleId: string) => {
     setEditingModuleId(moduleId);
