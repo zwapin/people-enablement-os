@@ -129,6 +129,49 @@ serve(async (req) => {
     }
 
     // STEP 1: Generate OUTLINE with curricula groupings
+    // Hardcoded outline structure based on Sales Playbook Klaaryo analysis
+    const CURRICULUM_OUTLINE = `
+STRUTTURA TARGET DEI CURRICULA (usa questa come guida obbligatoria):
+
+CURRICULUM 1: "Fondamenti del Sales Process Klaaryo" (track: Vendite)
+  - Modulo 1: Perché esiste questo processo — mindset e principi
+  - Modulo 2: Struttura del team SDR → AE → CS
+  - Modulo 3: Tool Stack e utilizzo operativo (HubSpot, Klaaryo)
+  - Modulo 4: Metodologie di vendita — SPICED & MEDDICC
+  - Modulo 5: Regole di ingaggio e standard di qualità
+
+CURRICULUM 2: "ICP Targeting e Account Tiering Strategy" (track: Vendite)
+  - Modulo 1: Cos'è l'ICP Klaaryo — settore, workforce, volume
+  - Modulo 2: Sistema di Tiering (Tier 1 / Tier 2 / Tier 3)
+  - Modulo 3: Cadenza e intensità outreach per tier
+  - Modulo 4: Identificazione trigger e prioritizzazione account
+
+CURRICULUM 3: "SDR Mastery — Da Cold Call a Qualified Opportunity" (track: Vendite)
+  - Modulo 1: Pre-Sales — Targeting e preparazione lista
+  - Modulo 2: Outbound — Cold Call script e tecniche di apertura
+  - Modulo 3: Qualification Call — Script, checklist e talk ratio 70/30
+  - Modulo 4: Gate Q-Call → Disco Call — criteri di passaggio
+  - Modulo 5: Handoff SDR → AE — processo e note HubSpot
+  - Modulo 6: Gestione obiezioni e re-engagement
+
+CURRICULUM 4: "AE Excellence — Dal Discovery al Closing" (track: Vendite)
+  - Modulo 1: Warm-up meeting e preparazione pre-Disco Call
+  - Modulo 2: Discovery Call SPICED — struttura e domande obbligatorie
+  - Modulo 3: Stakeholder Mapping e gestione del Decision Maker
+  - Modulo 4: Executive Call — coinvolgere CEO/DM e Mutual Close Plan
+  - Modulo 5: Demo mirata — struttura, regole e validazione fit
+  - Modulo 6: Proposta commerciale e ROI — preparazione e presentazione
+  - Modulo 7: Negoziazione e gestione obiezioni su pricing
+  - Modulo 8: Closing — dalla firma all'handoff CS
+  - Modulo 9: Follow-up strategico e gestione pipeline
+
+CURRICULUM 5: "Customer Success e Post-Sales Excellence" (track: CS)
+  - Modulo 1: Onboarding cliente — primi 30 giorni
+  - Modulo 2: Adoption e nurturing continuo
+  - Modulo 3: Renewal e gestione rinnovi
+  - Modulo 4: Escalation e supporto strategico
+`;
+
     const outlinePrompt = enrichMode
       ? `Sei un architetto di curriculum per la formazione commerciale.
 Analizza la Knowledge Base e ARRICCHISCI i curricula esistenti con sotto-moduli dettagliati.
@@ -136,13 +179,14 @@ Analizza la Knowledge Base e ARRICCHISCI i curricula esistenti con sotto-moduli 
 ${kbContext}
 ${existingContext}
 
+${CURRICULUM_OUTLINE}
+
 ISTRUZIONI:
 - Devi generare sotto-moduli per i curricula esistenti che hanno pochi moduli
-- Per OGNI curriculum esistente, proponi 4-8 sotto-moduli specifici e granulari che coprono tutti gli aspetti del tema
-- Esempio: per un curriculum "AE Excellence", genera sotto-moduli come "Discovery Call", "Qualificazione BANT/MEDDIC", "Demo e Presentazione", "Gestione Obiezioni", "Proposta e Pricing", "Negoziazione", "Closing", "Handoff al CS"
+- SEGUI LA STRUTTURA TARGET sopra: usa esattamente quei titoli di moduli per i curricula corrispondenti
+- Per ogni modulo fornisci: titolo (esattamente come nella struttura target), summary dettagliata basata sul contenuto del playbook, track, rationale che spiega cosa copre e perché, fonti usate, sezioni rilevanti del documento sorgente
 - Usa ESATTAMENTE i titoli dei curricula esistenti (non crearne di nuovi)
 - Non riproporre moduli già esistenti dentro quei curricula
-- Per ogni modulo fornisci: titolo, summary, track, rationale, fonti usate, sezioni rilevanti
 - I moduli devono avere un flusso logico progressivo dentro il curriculum
 - Tutto in italiano`
       : `Sei un architetto di curriculum per la formazione commerciale.
@@ -151,14 +195,13 @@ Analizza la Knowledge Base e proponi la STRUTTURA del curriculum organizzata in 
 ${kbContext}
 ${existingContext}
 
+${CURRICULUM_OUTLINE}
+
 ISTRUZIONI:
-- Organizza i moduli in CURRICULA (percorsi tematici). Esempio: "Essere Account Executive a Klaaryo", "Customer Success", etc.
-- Ogni curriculum è un percorso completo su un tema/ruolo
-- Ogni curriculum contiene più moduli che coprono le varie fasi/aspetti di quel percorso
-- Proponi al massimo 3 curricula, ognuno con 3-8 moduli
-- Per ogni modulo fornisci SOLO: titolo, summary breve, track, rationale, fonti usate, e le sezioni rilevanti del documento sorgente
+- SEGUI OBBLIGATORIAMENTE LA STRUTTURA TARGET sopra: usa esattamente quei curricula e quei titoli di moduli
+- Per ogni modulo fornisci SOLO: titolo (esattamente come nella struttura target), summary dettagliata basata sul contenuto reale del playbook, track, rationale, fonti usate, e le sezioni rilevanti del documento sorgente
 - NON generare content_body, key_points o domande (verranno generati separatamente)
-- I moduli dentro ogni curriculum devono avere un flusso logico progressivo
+- I moduli dentro ogni curriculum devono seguire l'ordine della struttura target
 - Tutto in italiano`;
 
     console.log("[process-curriculum] Calling Anthropic for outline with curricula, prompt length:", outlinePrompt.length);
