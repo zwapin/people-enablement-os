@@ -21,7 +21,7 @@ serve(async (req) => {
 
     if (!text || text.trim().length < 50) {
       return new Response(
-        JSON.stringify({ error: "Please provide at least 50 characters of source text." }),
+        JSON.stringify({ error: "Fornisci almeno 50 caratteri di testo sorgente." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -44,23 +44,25 @@ serve(async (req) => {
       }
     }
 
-    const systemPrompt = `You are a sales training content expert. Given source material, generate a structured training module for new sales reps.
-${kbSection ? "\nYou have access to the following knowledge base. Use it as authoritative reference to ensure accuracy and consistency:" + kbSection : ""}
-Return a JSON object using the generate_module tool with these fields:
-- title: concise module title (max 60 chars)
-- summary: 1-2 sentence overview of the module
-- key_points: array of 4-6 key takeaways (short strings)
-- content_body: full training content in markdown format, well-structured with headers, bullet points, and examples. Should be comprehensive (800-1500 words).
-- questions: array of 5-7 assessment questions, each with:
-  - question: the question text
-  - options: array of exactly 4 answer options (strings)
-  - correct_index: index (0-3) of the correct answer
-  - feedback_correct: brief explanation why the answer is correct
-  - feedback_wrong: brief hint pointing toward the correct answer`;
+    const systemPrompt = `Sei un esperto di contenuti formativi per la vendita. Dato del materiale sorgente, genera un modulo formativo strutturato per nuovi commerciali.
+
+IMPORTANTE: Genera TUTTO il contenuto in italiano (titolo, sommario, punti chiave, contenuto, domande, feedback).
+${kbSection ? "\nHai accesso alla seguente knowledge base. Usala come riferimento autorevole per garantire accuratezza e coerenza:" + kbSection : ""}
+Restituisci un oggetto JSON usando il tool generate_module con questi campi:
+- title: titolo conciso del modulo (max 60 caratteri)
+- summary: panoramica di 1-2 frasi del modulo
+- key_points: array di 4-6 punti chiave (stringhe brevi)
+- content_body: contenuto formativo completo in formato markdown, ben strutturato con titoli, elenchi puntati ed esempi. Deve essere esaustivo (800-1500 parole).
+- questions: array di 5-7 domande di valutazione, ciascuna con:
+  - question: il testo della domanda
+  - options: array di esattamente 4 opzioni di risposta (stringhe)
+  - correct_index: indice (0-3) della risposta corretta
+  - feedback_correct: breve spiegazione del perché la risposta è corretta
+  - feedback_wrong: breve suggerimento verso la risposta corretta`;
 
     const userPrompt = title_hint
-      ? `Source material (suggested title: "${title_hint}"):\n\n${text}`
-      : `Source material:\n\n${text}`;
+      ? `Materiale sorgente (titolo suggerito: "${title_hint}"):\n\n${text}`
+      : `Materiale sorgente:\n\n${text}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

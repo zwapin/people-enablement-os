@@ -36,7 +36,7 @@ serve(async (req) => {
 
     if (docs.length === 0 && faqs.length === 0) {
       return new Response(
-        JSON.stringify({ error: "Knowledge Base is empty. Upload documents or add FAQs first." }),
+        JSON.stringify({ error: "La Knowledge Base è vuota. Carica documenti o aggiungi FAQ prima di generare il curriculum." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -70,26 +70,28 @@ serve(async (req) => {
       existingContext += "\nWhen proposing updates, identify which existing modules are impacted by the KB content and propose revisions only for those. Do NOT re-propose modules that are already accurate.\n";
     }
 
-    const systemPrompt = `You are a sales training curriculum architect. Your job is to analyze a Knowledge Base and design a complete training curriculum for new sales reps.
+    const systemPrompt = `Sei un architetto di curriculum per la formazione commerciale. Il tuo compito è analizzare una Knowledge Base e progettare un curriculum completo per nuovi commerciali.
+
+IMPORTANTE: Genera TUTTO il contenuto in italiano (titoli, sommari, contenuti, punti chiave, domande di valutazione, feedback). Ogni stringa deve essere in lingua italiana.
 
 ${kbContext}
 ${existingContext}
 
-INSTRUCTIONS:
-1. Analyze ALL the knowledge base content holistically
-2. Design a logical curriculum structure: what topics to cover, in what sequence, how to group information
-3. For each proposed module, generate complete content including assessment questions
-4. Reference which KB documents and FAQs you used for each module (by their IDs)
-5. Provide a rationale for each module explaining why it exists and what gap it fills
-6. Modules should flow logically — foundational concepts first, advanced topics later
-7. Each module should be self-contained but build on previous ones
-8. Generate 3 assessment questions per module (keep them very concise)
-9. Keep content_body between 200-400 words per module
-10. Propose at most 6 modules total
-11. Keep key_points to exactly 4 items per module
-12. Keep all text concise to minimize output size
+ISTRUZIONI:
+1. Analizza TUTTO il contenuto della knowledge base in modo olistico
+2. Progetta una struttura logica del curriculum: quali argomenti coprire, in quale sequenza, come raggruppare le informazioni
+3. Per ogni modulo proposto, genera contenuto completo incluse domande di valutazione
+4. Indica quali documenti e FAQ della KB hai usato per ogni modulo (tramite i loro ID)
+5. Fornisci una motivazione per ogni modulo spiegando perché esiste e quale lacuna colma
+6. I moduli devono avere un flusso logico — concetti fondamentali prima, argomenti avanzati dopo
+7. Ogni modulo deve essere autonomo ma costruire sui precedenti
+8. Genera 3 domande di valutazione per modulo (mantienile concise)
+9. Mantieni il content_body tra 200-400 parole per modulo
+10. Proponi al massimo 6 moduli in totale
+11. Mantieni esattamente 4 key_points per modulo
+12. Mantieni tutto il testo conciso per minimizzare la dimensione dell'output
 
-Return the curriculum using the propose_curriculum tool.`;
+Restituisci il curriculum usando il tool propose_curriculum.`;
 
     console.log("[generate-curriculum] Calling AI gateway, prompt length:", systemPrompt.length);
 
@@ -104,7 +106,7 @@ Return the curriculum using the propose_curriculum tool.`;
         max_tokens: 8192,
           messages: [
             { role: "system", content: systemPrompt },
-            { role: "user", content: "Analyze the knowledge base and propose a complete training curriculum. Design the optimal module structure, sequence, and content." },
+            { role: "user", content: "Analizza la knowledge base e proponi un curriculum formativo completo. Progetta la struttura ottimale dei moduli, la sequenza e i contenuti. Tutto in italiano." },
           ],
           tools: [
             {
@@ -120,12 +122,12 @@ Return the curriculum using the propose_curriculum tool.`;
                       items: {
                         type: "object",
                         properties: {
-                          title: { type: "string", description: "Module title (max 60 chars)" },
-                          summary: { type: "string", description: "1-2 sentence overview" },
-                          track: { type: "string", enum: ["Sales", "CS", "Ops", "General"] },
-                          key_points: { type: "array", items: { type: "string" }, description: "4-6 key takeaways" },
-                          content_body: { type: "string", description: "Training content in markdown (400-800 words)" },
-                          ai_rationale: { type: "string", description: "Why this module exists" },
+                          title: { type: "string", description: "Titolo del modulo in italiano (max 60 caratteri)" },
+                          summary: { type: "string", description: "Panoramica di 1-2 frasi in italiano" },
+                          track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
+                          key_points: { type: "array", items: { type: "string" }, description: "4-6 punti chiave in italiano" },
+                          content_body: { type: "string", description: "Contenuto formativo in markdown in italiano (400-800 parole)" },
+                          ai_rationale: { type: "string", description: "Motivazione dell'esistenza di questo modulo, in italiano" },
                           source_document_ids: { type: "array", items: { type: "string" }, description: "IDs of KB documents used" },
                           source_faq_ids: { type: "array", items: { type: "string" }, description: "IDs of KB FAQs used" },
                           questions: {
