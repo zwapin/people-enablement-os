@@ -1,33 +1,34 @@
 
 
-# Migliorare la formattazione dei contenuti dei moduli
+# Contenuti moduli troppo generici: aumentare profondità e fedeltà al documento sorgente
 
 ## Problema
-Il contenuto generato dall'AI esce come "muro di testo" — paragrafi densi con bold ma senza bullet point, tabelle, separatori o struttura visiva chiara. Il prompt attuale dice solo "in markdown (800-1500 parole)" senza indicazioni di formattazione.
+Il documento sorgente (Sales Playbook) è lungo **70.000 caratteri**, ma ogni modulo riceve solo **8.000 caratteri** di contesto — circa l'11%. L'AI non vede le sezioni specifiche (disco call, executive call, MCP, pipeline stages) e produce contenuti generici.
 
-## Soluzione in due parti
+## Soluzione
 
-### 1. Prompt di generazione — `supabase/functions/generate-module/index.ts`
-Aggiornare le istruzioni nel system prompt (riga ~110-121) per richiedere esplicitamente:
-- Usare **elenchi puntati** per liste di concetti, stakeholder, step
-- Usare **tabelle markdown** per confronti e categorizzazioni
-- Usare **blockquote** (`>`) per evidenziare concetti chiave o citazioni
-- Usare **separatori** (`---`) tra sezioni tematiche diverse
-- Usare **sottotitoli h3** per spezzare il contenuto in blocchi leggibili
-- Mai scrivere paragrafi più lunghi di 4-5 righe consecutive
+### 1. Passare più contesto al singolo modulo — `generate-module/index.ts`
+- Alzare il limite da 8.000 a **25.000 caratteri** per documento sorgente
+- Possibile perché ogni modulo gira in una edge function separata, quindi non c'è rischio timeout
+- Con `max_tokens: 8192` e un prompt più lungo, la generazione resta entro i limiti
 
-### 2. Rendering frontend — `src/pages/ModuleView.tsx`
-Migliorare i componenti ReactMarkdown (riga ~257-312) per dare più respiro visivo:
-- Aggiungere stile per `ul`/`ol` con spacing, icone/pallini colorati e indentazione
-- Migliorare lo stile delle liste con padding e gap tra item
-- Aggiungere un componente custom per `li` con marker visivo in colore primario
-- Aggiungere stile per `strong` inline con un leggero highlight di sfondo
+### 2. Estrarre la porzione rilevante del documento — `process-curriculum/index.ts`
+- Nel prompt outline, chiedere all'AI di restituire anche i **capitoli/sezioni rilevanti** per ogni modulo (es. "Sezione 9: Processo AE")
+- Passare queste indicazioni nel `input` del child job
+- In `generate-module`, usare queste indicazioni per fare un "taglio intelligente" del documento lungo
+
+### 3. Rafforzare il prompt di generazione — `generate-module/index.ts`
+- Aggiungere istruzioni esplicite: "Includi TUTTI i termini specifici, nomi di fasi, framework e tool menzionati nel materiale sorgente"
+- Richiedere di non generalizzare ma di preservare la terminologia e i dettagli operativi del playbook
+- Esempio: "Se il documento menziona 'Disco Call', 'Executive Call', 'MCP', questi devono comparire nel modulo"
 
 ### File da modificare
+
 | File | Modifica |
 |------|----------|
-| `supabase/functions/generate-module/index.ts` | Arricchire il system prompt con regole di formattazione |
-| `src/pages/ModuleView.tsx` | Migliorare i componenti custom di ReactMarkdown per liste e testo |
+| `supabase/functions/process-curriculum/index.ts` | Aggiungere `relevant_sections` all'output outline; alzare truncation a 25k |
+| `supabase/functions/generate-module/index.ts` | Alzare limite da 8k a 25k; aggiungere istruzioni di fedeltà al materiale sorgente |
 
-I moduli già generati manterranno la formattazione attuale. Per rigenerarli con la nuova formattazione sarà necessario cliccare "Rigenera tutto" o rigenerare i singoli moduli.
+### Nota
+I moduli esistenti non cambieranno. Per vedere i miglioramenti bisogna rigenerarli.
 
