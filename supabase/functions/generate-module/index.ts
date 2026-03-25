@@ -12,9 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const { text, title_hint, knowledge_context } = await req.json();
@@ -64,54 +64,51 @@ Restituisci un oggetto JSON usando il tool generate_module con questi campi:
       ? `Materiale sorgente (titolo suggerito: "${title_hint}"):\n\n${text}`
       : `Materiale sorgente:\n\n${text}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_API_KEY,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 16384,
+        system: systemPrompt,
         messages: [
-          { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools: [
           {
-            type: "function",
-            function: {
-              name: "generate_module",
-              description: "Genera un modulo formativo strutturato dal materiale sorgente. Tutto in italiano.",
-              parameters: {
-                type: "object",
-                properties: {
-                  title: { type: "string" },
-                  summary: { type: "string" },
-                  key_points: { type: "array", items: { type: "string" } },
-                  content_body: { type: "string" },
-                  questions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        question: { type: "string" },
-                        options: { type: "array", items: { type: "string" } },
-                        correct_index: { type: "integer" },
-                        feedback_correct: { type: "string" },
-                        feedback_wrong: { type: "string" },
-                      },
-                      required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
-                      additionalProperties: false,
+            name: "generate_module",
+            description: "Genera un modulo formativo strutturato dal materiale sorgente. Tutto in italiano.",
+            input_schema: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                summary: { type: "string" },
+                key_points: { type: "array", items: { type: "string" } },
+                content_body: { type: "string" },
+                questions: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      question: { type: "string" },
+                      options: { type: "array", items: { type: "string" } },
+                      correct_index: { type: "integer" },
+                      feedback_correct: { type: "string" },
+                      feedback_wrong: { type: "string" },
                     },
+                    required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
                   },
                 },
-                required: ["title", "summary", "key_points", "content_body", "questions"],
-                additionalProperties: false,
               },
+              required: ["title", "summary", "key_points", "content_body", "questions"],
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "generate_module" } },
+        tool_choice: { type: "tool", name: "generate_module" },
       }),
     });
 
@@ -122,25 +119,19 @@ Restituisci un oggetto JSON usando il tool generate_module con questi campi:
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Crediti AI esauriti. Aggiungi fondi per continuare." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const errText = await response.text();
-      console.error("AI gateway error:", response.status, errText);
-      throw new Error("Generazione AI fallita");
+      console.error("Anthropic API error:", response.status, errText);
+      throw new Error(`Generazione AI fallita (${response.status})`);
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    const toolUseBlock = data.content?.find((c: any) => c.type === "tool_use");
 
-    if (!toolCall) {
+    if (!toolUseBlock) {
       throw new Error("L'AI non ha restituito un output strutturato");
     }
 
-    const moduleData = JSON.parse(toolCall.function.arguments);
+    const moduleData = toolUseBlock.input;
 
     return new Response(JSON.stringify(moduleData), {
       status: 200,
