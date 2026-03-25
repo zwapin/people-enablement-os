@@ -31,6 +31,9 @@ interface ModuleEditorProps {
 export default function ModuleEditor({ moduleId, onClose }: ModuleEditorProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [sourceDocIds, setSourceDocIds] = useState<string[] | null>(null);
+  const [sourceFaqIds, setSourceFaqIds] = useState<string[] | null>(null);
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
