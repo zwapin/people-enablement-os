@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw } from "lucide-react";
+import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -10,6 +10,7 @@ import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 import CurriculumList from "@/components/learn/CurriculumList";
+import CurriculumCard from "@/components/learn/CurriculumCard";
 import ProposalsList from "@/components/learn/ProposalsList";
 import RepRoadmap from "@/components/learn/RepRoadmap";
 import {
@@ -48,6 +49,18 @@ export default function Learn() {
     },
   });
 
+  const { data: curricula, refetch: refetchCurricula } = useQuery({
+    queryKey: ["curricula"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("curricula")
+        .select("*")
+        .order("order_index", { ascending: true });
+      if (error) throw error;
+      return data;
+    },
+  });
+
   const { data: completions } = useQuery({
     queryKey: ["module_completions", user?.id],
     queryFn: async () => {
@@ -61,9 +74,30 @@ export default function Learn() {
     enabled: !!user && (!isAdmin || viewAsRep),
   });
 
+  const refreshAll = () => {
+    refetch();
+    refetchCurricula();
+  };
+
   const publishedModules = modules?.filter((m) => m.status === "published") ?? [];
   const draftModules = modules?.filter((m) => m.status === "draft") ?? [];
   const proposedModules = modules?.filter((m) => m.status === "proposed") ?? [];
+
+  // Group modules by curriculum
+  const publishedCurricula = curricula?.filter(c => c.status === "published") ?? [];
+  const allCurricula = curricula ?? [];
+
+  const getModulesForCurriculum = (curriculumId: string, statusFilter?: string[]) => {
+    const filtered = modules?.filter(m => m.curriculum_id === curriculumId) ?? [];
+    if (statusFilter) return filtered.filter(m => statusFilter.includes(m.status));
+    return filtered;
+  };
+
+  const orphanModules = (statusFilter?: string[]) => {
+    const filtered = modules?.filter(m => !m.curriculum_id) ?? [];
+    if (statusFilter) return filtered.filter(m => statusFilter.includes(m.status));
+    return filtered;
+  };
 
   const stopGeneration = (success: boolean) => {
     if (success) {
@@ -77,13 +111,11 @@ export default function Learn() {
     }, 1500);
   };
 
-  // Subscribe to job status via Realtime
   const subscribeToJob = useCallback((jobId: string) => {
     activeJobId.current = jobId;
     setProgress(5);
     setProgressLabel("Avvio generazione...");
 
-    // Safety timeout at 5 minutes
     const timeout = setTimeout(() => {
       if (activeJobId.current === jobId) {
         stopGeneration(false);
@@ -109,21 +141,19 @@ export default function Learn() {
           const currentStep = row.current_step;
           const totalSteps = row.total_steps ?? 0;
           const completedSteps = row.completed_steps ?? 0;
-          console.log("[Learn] Job update:", jobId, "→", newStatus, currentStep, `${completedSteps}/${totalSteps}`);
 
-          // Update progress based on real data
           if (currentStep === "outline") {
             setProgress(10);
             setProgressLabel("Analisi Knowledge Base e creazione outline...");
           } else if (currentStep === "outline_completed") {
             setProgress(20);
             setProgressLabel(`Outline completato. Generazione ${totalSteps} moduli...`);
-            refetch(); // Show skeleton modules immediately
+            refreshAll();
           } else if (currentStep?.startsWith("module_") && totalSteps > 0) {
             const pct = 20 + Math.round((completedSteps / totalSteps) * 70);
             setProgress(pct);
             setProgressLabel(`Modulo ${completedSteps}/${totalSteps} completato...`);
-            refetch(); // Refresh to show content as it arrives
+            refreshAll();
           }
 
           if (newStatus === "completed") {
@@ -132,18 +162,17 @@ export default function Learn() {
             const partial = row.result?.partial === true;
             stopGeneration(true);
             if (partial) {
-              toast.warning(`Generazione parziale: ${count} moduli completati. Alcuni moduli potrebbero necessitare rigenerazione.`);
+              toast.warning(`Generazione parziale: ${count} moduli completati.`);
             } else {
               toast.success(`Curriculum generato: ${count} moduli proposti. Revisiona e approva.`);
             }
-            refetch();
+            refreshAll();
             supabase.removeChannel(channel);
             activeJobId.current = null;
           } else if (newStatus === "failed") {
             clearTimeout(timeout);
-            const error = row.error || "Errore sconosciuto";
             stopGeneration(false);
-            toast.error(`Generazione fallita: ${error}`);
+            toast.error(`Generazione fallita: ${row.error || "Errore sconosciuto"}`);
             supabase.removeChannel(channel);
             activeJobId.current = null;
           }
@@ -155,7 +184,7 @@ export default function Learn() {
       clearTimeout(timeout);
       supabase.removeChannel(channel);
     };
-  }, [refetch]);
+  }, [refetch, refetchCurricula]);
 
   const handleUpdateCurriculum = async (regenerateAll = false) => {
     setGenerating(true);
@@ -167,10 +196,7 @@ export default function Learn() {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-
-      if (data?.jobId) {
-        subscribeToJob(data.jobId);
-      }
+      if (data?.jobId) subscribeToJob(data.jobId);
     } catch (err: any) {
       stopGeneration(false);
       toast.error(err.message || "Generazione curriculum fallita");
@@ -181,6 +207,11 @@ export default function Learn() {
     const ids = proposedModules.map((m) => m.id);
     if (ids.length === 0) return;
 
+    // Also publish any proposed curricula that contain these modules
+    const proposedCurriculaIds = new Set(
+      proposedModules.filter(m => m.curriculum_id).map(m => m.curriculum_id!)
+    );
+
     const { error } = await supabase
       .from("modules")
       .update({ status: "published", updated_at: new Date().toISOString() })
@@ -188,9 +219,32 @@ export default function Learn() {
 
     if (error) {
       toast.error("Approvazione fallita");
+      return;
+    }
+
+    // Publish related curricula
+    if (proposedCurriculaIds.size > 0) {
+      await supabase
+        .from("curricula")
+        .update({ status: "published", updated_at: new Date().toISOString() })
+        .in("id", Array.from(proposedCurriculaIds));
+    }
+
+    toast.success(`${ids.length} moduli pubblicati`);
+    refreshAll();
+  };
+
+  const handleCreateCurriculum = async () => {
+    const { error } = await supabase.from("curricula").insert({
+      title: "Nuovo Curriculum",
+      status: "draft",
+      order_index: (curricula?.length ?? 0),
+    });
+    if (error) {
+      toast.error("Creazione fallita");
     } else {
-      toast.success(`${ids.length} moduli pubblicati`);
-      refetch();
+      toast.success("Curriculum creato");
+      refetchCurricula();
     }
   };
 
@@ -202,11 +256,11 @@ export default function Learn() {
   const handleEditorClose = () => {
     setEditorOpen(false);
     setEditingModuleId(null);
-    refetch();
+    refreshAll();
   };
 
   if (editorOpen) {
-    return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} />;
+    return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} curricula={allCurricula} />;
   }
 
   // Rep view
@@ -241,12 +295,19 @@ export default function Learn() {
             <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">Vista Rep</Label>
           </div>
         )}
-        <RepRoadmap modules={publishedModules} completions={completions ?? []} />
+        <RepRoadmap
+          modules={publishedModules}
+          completions={completions ?? []}
+          curricula={publishedCurricula}
+        />
       </div>
     );
   }
 
   // Admin view
+  const orphanPublished = orphanModules(["published"]);
+  const orphanDraft = orphanModules(["draft"]);
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -264,6 +325,10 @@ export default function Learn() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleCreateCurriculum}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nuovo Curriculum
+          </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" disabled={generating}>
@@ -275,7 +340,7 @@ export default function Learn() {
               <AlertDialogHeader>
                 <AlertDialogTitle>Rigenerare tutto il curriculum?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Questo cancellerà tutti i moduli esistenti e li rigenererà da zero dalla Knowledge Base. L'operazione non è reversibile.
+                  Questo cancellerà tutti i moduli e curricula esistenti e li rigenererà da zero dalla Knowledge Base. L'operazione non è reversibile.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -329,47 +394,62 @@ export default function Learn() {
           <ProposalsList
             modules={proposedModules}
             onEdit={handleEdit}
-            onRefresh={() => refetch()}
+            onRefresh={refreshAll}
           />
         </div>
       )}
 
-      {/* Published Curriculum */}
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">
-          Curriculum Pubblicato
-          <span className="ml-2 text-sm font-normal text-muted-foreground">
-            ({publishedModules.length} moduli)
-          </span>
-        </h2>
-        {publishedModules.length === 0 && !isLoading ? (
-          <div className="text-center py-12 text-muted-foreground text-sm">
-            Nessun modulo pubblicato. Usa "Aggiorna Curriculum" per generare proposte dalla Knowledge Base.
-          </div>
-        ) : (
-          <CurriculumList
-            modules={publishedModules}
-            isAdmin={true}
-            onEdit={handleEdit}
-            onRefresh={() => refetch()}
-          />
-        )}
-      </div>
+      {/* Curricula */}
+      {allCurricula.filter(c => c.status !== "archived").length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">Curricula</h2>
+          {allCurricula
+            .filter(c => c.status !== "archived")
+            .map(c => (
+              <CurriculumCard
+                key={c.id}
+                curriculum={c}
+                modules={getModulesForCurriculum(c.id)}
+                isAdmin={true}
+                onEdit={handleEdit}
+                onRefresh={refreshAll}
+              />
+            ))}
+        </div>
+      )}
 
-      {/* Draft Modules */}
-      {draftModules.length > 0 && (
+      {/* Orphan Published */}
+      {orphanPublished.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-foreground">
-            Bozze
+            Moduli non assegnati — Pubblicati
             <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({draftModules.length} moduli)
+              ({orphanPublished.length})
             </span>
           </h2>
           <CurriculumList
-            modules={draftModules}
+            modules={orphanPublished}
             isAdmin={true}
             onEdit={handleEdit}
-            onRefresh={() => refetch()}
+            onRefresh={refreshAll}
+          />
+        </div>
+      )}
+
+      {/* Orphan Drafts */}
+      {orphanDraft.length > 0 && (
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-foreground">
+            Moduli non assegnati — Bozze
+            <span className="ml-2 text-sm font-normal text-muted-foreground">
+              ({orphanDraft.length})
+            </span>
+          </h2>
+          <CurriculumList
+            modules={orphanDraft}
+            isAdmin={true}
+            onEdit={handleEdit}
+            onRefresh={refreshAll}
           />
         </div>
       )}
