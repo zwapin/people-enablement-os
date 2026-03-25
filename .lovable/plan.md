@@ -1,34 +1,39 @@
 
 
-# Fix: Estrazione testo PDF con AI
+# Fix: Extraction PDF timeout e curriculum generation vuota
 
-## Problema
-Il file PDF e stato caricato correttamente nello storage (Status 200) e un record esiste in `knowledge_documents`, ma il campo `content` contiene solo il messaggio di errore. Il parser PDF attuale usa semplici regex che non funzionano con la maggior parte dei PDF moderni (che usano stream compressi, font encoding, ecc.).
+## Problema identificato
+Due problemi collegati:
 
-## Soluzione
-Sostituire il parser PDF basilare con l'AI di Lovable per estrarre il testo. Il modello `google/gemini-2.5-flash` supporta input multimodali (inclusi PDF) e puo estrarre il testo completo.
+1. **Extract-document va in timeout**: I log mostrano solo boot/shutdown, nessun log di esecuzione effettiva. La chiamata curl va in timeout. Il PDF viene convertito in base64 e inviato a Gemini, ma l'operazione supera il timeout dell'edge function (default ~60s per PDF grandi).
 
-### Modifiche
+2. **Generate-curriculum restituisce 0 moduli**: Il contenuto del documento nel DB e ancora il placeholder `"[PDF text extraction returned empty...]"`. L'AI non ha materiale reale su cui generare il curriculum.
 
-#### 1. Aggiornare `supabase/functions/extract-document/index.ts`
-- Rimuovere le funzioni `extractTextFromPdfBytes` e `decodePdfString`
-- Per i PDF: convertire il file in base64 e inviarlo a Gemini via Lovable AI proxy
-- Il modello analizza il PDF (anche se scansionato/immagini) e restituisce il testo completo
-- Usare il secret `LOVABLE_API_KEY` gia configurato per chiamare l'endpoint AI
+## Piano
 
-```text
-Flusso:
-1. Download file da storage
-2. Converti in base64
-3. Invia a Gemini con prompt "Extract all text from this document"
-4. Salva il testo estratto nel campo content
-```
+### 1. Fix timeout edge function extract-document
+**File: `supabase/functions/extract-document/index.ts`**
 
-#### 2. Aggiornare il record esistente
-- Dopo il deploy, il documento gia caricato ("SALES PLAYBOOK") potra essere ri-estratto
-- Aggiungere un pulsante "Re-extract" nella UI di DocumentsList per ri-processare documenti con contenuto vuoto
+- Aggiungere logging per tracciare ogni step (download, conversione, chiamata AI)
+- Aggiungere `max_tokens: 8192` alla chiamata AI per evitare risposte infinite
+- Gestire PDF troppo grandi: se il base64 supera ~10MB, troncare o restituire errore chiaro
+- Aggiungere un timeout esplicito al fetch verso il gateway AI con `AbortController` (50s)
+
+### 2. Fix CORS headers
+Aggiornare i CORS headers per includere tutti gli header richiesti dal client Supabase SDK (mancano `x-supabase-client-platform`, etc.)
+
+### 3. Re-testare il flusso
+Dopo il deploy:
+1. Cliccare "Re-extract" sul documento SALES PLAYBOOK
+2. Il testo reale viene estratto e salvato nel DB
+3. Cliccare "Aggiorna Curriculum" → l'AI ha contenuto reale → genera moduli
 
 ### File coinvolti
-- `supabase/functions/extract-document/index.ts` — logica di estrazione AI
-- `src/components/learn/DocumentsList.tsx` — pulsante re-extract
+- `supabase/functions/extract-document/index.ts` — fix timeout, logging, CORS
+- `supabase/functions/generate-curriculum/index.ts` — fix CORS headers
+
+### Dettagli tecnici
+- Il timeout del gateway AI per PDF grandi puo superare 60s. Aggiungendo `AbortController` con 50s si gestisce gracefully
+- I log nel function body aiuteranno a diagnosticare futuri problemi
+- Il `max_tokens` limita la risposta AI evitando attese inutili
 
