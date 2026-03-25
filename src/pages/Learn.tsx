@@ -87,16 +87,18 @@ export default function Learn() {
   // Subscribe to job status via Realtime
   const subscribeToJob = useCallback((jobId: string) => {
     activeJobId.current = jobId;
+    setProgress(5);
+    setProgressLabel("Avvio generazione...");
 
-    // Safety timeout at 4 minutes
+    // Safety timeout at 5 minutes
     const timeout = setTimeout(() => {
       if (activeJobId.current === jobId) {
-        stopProgressSimulation(false);
+        stopGeneration(false);
         toast.error("La generazione sta impiegando troppo tempo. Riprova più tardi.");
         supabase.removeChannel(channel);
         activeJobId.current = null;
       }
-    }, 240000);
+    }, 300000);
 
     const channel = supabase
       .channel(`job-${jobId}`)
@@ -109,21 +111,45 @@ export default function Learn() {
           filter: `id=eq.${jobId}`,
         },
         (payload) => {
-          const newStatus = (payload.new as any).status;
-          console.log("[Learn] Job update:", jobId, "→", newStatus);
+          const row = payload.new as any;
+          const newStatus = row.status;
+          const currentStep = row.current_step;
+          const totalSteps = row.total_steps ?? 0;
+          const completedSteps = row.completed_steps ?? 0;
+          console.log("[Learn] Job update:", jobId, "→", newStatus, currentStep, `${completedSteps}/${totalSteps}`);
+
+          // Update progress based on real data
+          if (currentStep === "outline") {
+            setProgress(10);
+            setProgressLabel("Analisi Knowledge Base e creazione outline...");
+          } else if (currentStep === "outline_completed") {
+            setProgress(20);
+            setProgressLabel(`Outline completato. Generazione ${totalSteps} moduli...`);
+            refetch(); // Show skeleton modules immediately
+          } else if (currentStep?.startsWith("module_") && totalSteps > 0) {
+            const pct = 20 + Math.round((completedSteps / totalSteps) * 70);
+            setProgress(pct);
+            setProgressLabel(`Modulo ${completedSteps}/${totalSteps} completato...`);
+            refetch(); // Refresh to show content as it arrives
+          }
 
           if (newStatus === "completed") {
             clearTimeout(timeout);
-            const count = (payload.new as any).result?.count ?? 0;
-            stopProgressSimulation(true);
-            toast.success(`Curriculum generato: ${count} moduli proposti. Revisiona e approva.`);
+            const count = row.result?.count ?? 0;
+            const partial = row.result?.partial === true;
+            stopGeneration(true);
+            if (partial) {
+              toast.warning(`Generazione parziale: ${count} moduli completati. Alcuni moduli potrebbero necessitare rigenerazione.`);
+            } else {
+              toast.success(`Curriculum generato: ${count} moduli proposti. Revisiona e approva.`);
+            }
             refetch();
             supabase.removeChannel(channel);
             activeJobId.current = null;
           } else if (newStatus === "failed") {
             clearTimeout(timeout);
-            const error = (payload.new as any).error || "Errore sconosciuto";
-            stopProgressSimulation(false);
+            const error = row.error || "Errore sconosciuto";
+            stopGeneration(false);
             toast.error(`Generazione fallita: ${error}`);
             supabase.removeChannel(channel);
             activeJobId.current = null;
