@@ -57,36 +57,56 @@ export type Database = {
       }
       generation_jobs: {
         Row: {
+          completed_steps: number | null
           created_at: string | null
+          current_step: string | null
           error: string | null
           id: string
           input: Json | null
           job_type: string
+          parent_job_id: string | null
           result: Json | null
           status: string
+          total_steps: number | null
           updated_at: string | null
         }
         Insert: {
+          completed_steps?: number | null
           created_at?: string | null
+          current_step?: string | null
           error?: string | null
           id?: string
           input?: Json | null
           job_type: string
+          parent_job_id?: string | null
           result?: Json | null
           status?: string
+          total_steps?: number | null
           updated_at?: string | null
         }
         Update: {
+          completed_steps?: number | null
           created_at?: string | null
+          current_step?: string | null
           error?: string | null
           id?: string
           input?: Json | null
           job_type?: string
+          parent_job_id?: string | null
           result?: Json | null
           status?: string
+          total_steps?: number | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "generation_jobs_parent_job_id_fkey"
+            columns: ["parent_job_id"]
+            isOneToOne: false
+            referencedRelation: "generation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       knowledge_documents: {
         Row: {

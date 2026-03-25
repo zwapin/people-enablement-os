@@ -14,7 +14,6 @@ serve(async (req) => {
 
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
   if (!ANTHROPIC_API_KEY) {
-    console.error("[process-curriculum] ANTHROPIC_API_KEY not configured");
     return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500 });
   }
 
@@ -30,12 +29,11 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "job_id required" }), { status: 400 });
   }
 
-  console.log("[process-curriculum] Starting job:", jobId);
+  console.log("[process-curriculum] Starting outline job:", jobId);
 
-  // Update to processing
   await supabase
     .from("generation_jobs")
-    .update({ status: "processing", updated_at: new Date().toISOString() })
+    .update({ status: "processing", current_step: "outline", updated_at: new Date().toISOString() })
     .eq("id", jobId);
 
   try {
@@ -47,9 +45,8 @@ serve(async (req) => {
       .single();
 
     const regenerateAll = job?.input?.regenerate_all === true;
-    console.log("[process-curriculum] regenerateAll:", regenerateAll);
 
-    // Fetch all KB content
+    // Fetch KB content
     const [docsResult, faqsResult, modulesResult] = await Promise.all([
       supabase.from("knowledge_documents").select("id, title, context, content").order("created_at"),
       supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at"),
@@ -60,72 +57,58 @@ serve(async (req) => {
     const faqs = faqsResult.data || [];
     const existingModules = modulesResult.data || [];
 
-    console.log("[process-curriculum] Docs:", docs.length, "FAQs:", faqs.length, "Existing modules:", existingModules.length);
-
-    // If regenerate_all, delete ALL existing modules and their questions
+    // Delete existing modules if regenerating
     if (regenerateAll && existingModules.length > 0) {
       const moduleIds = existingModules.map(m => m.id);
-      console.log("[process-curriculum] Deleting", moduleIds.length, "modules");
       await supabase.from("assessment_questions").delete().in("module_id", moduleIds);
       await supabase.from("modules").delete().in("id", moduleIds);
+    } else if (!regenerateAll) {
+      await supabase.from("modules").delete().eq("status", "proposed");
     }
 
-    // Build KB context
+    // Build KB context (truncate individual docs to keep prompt manageable)
     let kbContext = "## DOCUMENTI DELLA KNOWLEDGE BASE\n\n";
     for (const doc of docs) {
       kbContext += `### Documento: ${doc.title} (ID: ${doc.id})\n`;
       if (doc.context) kbContext += `Contesto: ${doc.context}\n`;
-      const content = doc.content && doc.content.length > 30000
-        ? doc.content.substring(0, 30000) + "\n[... contenuto troncato ...]"
+      const content = doc.content && doc.content.length > 6000
+        ? doc.content.substring(0, 6000) + "\n[... troncato ...]"
         : doc.content;
       kbContext += `${content}\n\n`;
     }
-
-    kbContext += "\n## FAQ DELLA KNOWLEDGE BASE\n\n";
+    kbContext += "\n## FAQ\n\n";
     for (const faq of faqs) {
-      kbContext += `### FAQ (ID: ${faq.id})${faq.category ? ` [${faq.category}]` : ""}\n`;
       kbContext += `D: ${faq.question}\nR: ${faq.answer}\n\n`;
     }
 
-    // Build existing modules context (skip if regenerating all)
+    // Existing modules context
     let existingContext = "";
     if (!regenerateAll) {
-      const publishedOrDraft = existingModules.filter(m => m.status === "published" || m.status === "draft");
-      if (publishedOrDraft.length > 0) {
-        existingContext = "\n\n## MODULI ESISTENTI PUBBLICATI/BOZZA\n\n";
-        for (const mod of publishedOrDraft) {
-          existingContext += `- Modulo "${mod.title}" (${mod.status}, track: ${mod.track}): ${mod.summary || "nessun sommario"}\n`;
-          if (mod.source_document_ids) existingContext += `  Fonti: doc IDs ${JSON.stringify(mod.source_document_ids)}\n`;
+      const existing = existingModules.filter(m => m.status === "published" || m.status === "draft");
+      if (existing.length > 0) {
+        existingContext = "\n## MODULI ESISTENTI\n";
+        for (const mod of existing) {
+          existingContext += `- "${mod.title}" (${mod.status}, track: ${mod.track})\n`;
         }
-        existingContext += "\nNON riproporre moduli che sono già accurati.\n";
+        existingContext += "NON riproporre moduli già esistenti.\n";
       }
-      await supabase.from("modules").delete().eq("status", "proposed");
     }
 
-    const systemPrompt = `Sei un architetto di curriculum per la formazione commerciale. Il tuo compito è analizzare una Knowledge Base e progettare un curriculum completo per nuovi commerciali.
-
-IMPORTANTE: Genera TUTTO il contenuto in italiano.
+    // STEP 1: Generate OUTLINE only (fast, small output)
+    const outlinePrompt = `Sei un architetto di curriculum per la formazione commerciale.
+Analizza la Knowledge Base e proponi la STRUTTURA del curriculum (solo outline, senza contenuto dettagliato).
 
 ${kbContext}
 ${existingContext}
 
 ISTRUZIONI:
-1. Analizza TUTTO il contenuto della knowledge base in modo olistico
-2. Progetta una struttura logica del curriculum
-3. Per ogni modulo proposto, genera contenuto completo incluse domande di valutazione
-4. Indica quali documenti e FAQ della KB hai usato per ogni modulo (tramite i loro ID)
-5. Fornisci una motivazione per ogni modulo
-6. I moduli devono avere un flusso logico — concetti fondamentali prima, argomenti avanzati dopo
-7. Ogni modulo deve essere autonomo ma costruire sui precedenti
-8. Genera 3 domande di valutazione per modulo
-9. Il content_body deve essere RICCO e DETTAGLIATO: 800-1500 parole per modulo
-10. Proponi al massimo 5 moduli
-11. Mantieni esattamente 4 key_points per modulo
-12. PRESERVA le tabelle originali trovate nei documenti sorgente in formato markdown
+- Proponi al massimo 5 moduli
+- Per ogni modulo fornisci SOLO: titolo, summary breve, track, rationale, fonti usate
+- NON generare content_body, key_points o domande (verranno generati separatamente)
+- I moduli devono avere un flusso logico
+- Tutto in italiano`;
 
-Restituisci il curriculum usando il tool propose_curriculum.`;
-
-    console.log("[process-curriculum] Calling Anthropic API, prompt length:", systemPrompt.length);
+    console.log("[process-curriculum] Calling Anthropic for outline, prompt length:", outlinePrompt.length);
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -136,15 +119,15 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 16384,
-        system: systemPrompt,
+        max_tokens: 4096,
+        system: outlinePrompt,
         messages: [
-          { role: "user", content: "Analizza la knowledge base e proponi un curriculum formativo completo. Tutto in italiano." },
+          { role: "user", content: "Proponi la struttura del curriculum. Solo outline." },
         ],
         tools: [
           {
-            name: "propose_curriculum",
-            description: "Proponi un curriculum formativo strutturato basato sulla knowledge base. Tutto in italiano.",
+            name: "propose_outline",
+            description: "Proponi l'outline del curriculum",
             input_schema: {
               type: "object",
               properties: {
@@ -153,30 +136,14 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
                   items: {
                     type: "object",
                     properties: {
-                      title: { type: "string", description: "Titolo del modulo in italiano (max 60 caratteri)" },
-                      summary: { type: "string", description: "Panoramica di 1-2 frasi in italiano" },
+                      title: { type: "string", description: "Titolo modulo (max 60 car)" },
+                      summary: { type: "string", description: "1-2 frasi" },
                       track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
-                      key_points: { type: "array", items: { type: "string" }, description: "4 punti chiave in italiano" },
-                      content_body: { type: "string", description: "Contenuto formativo RICCO in markdown (800-1500 parole)" },
-                      ai_rationale: { type: "string", description: "Motivazione dell'esistenza di questo modulo" },
+                      ai_rationale: { type: "string" },
                       source_document_ids: { type: "array", items: { type: "string" } },
                       source_faq_ids: { type: "array", items: { type: "string" } },
-                      questions: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            question: { type: "string" },
-                            options: { type: "array", items: { type: "string" } },
-                            correct_index: { type: "integer" },
-                            feedback_correct: { type: "string" },
-                            feedback_wrong: { type: "string" },
-                          },
-                          required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
-                        },
-                      },
                     },
-                    required: ["title", "summary", "track", "key_points", "content_body", "ai_rationale", "source_document_ids", "source_faq_ids", "questions"],
+                    required: ["title", "summary", "track", "ai_rationale", "source_document_ids", "source_faq_ids"],
                   },
                 },
               },
@@ -184,27 +151,21 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
             },
           },
         ],
-        tool_choice: { type: "tool", name: "propose_curriculum" },
+        tool_choice: { type: "tool", name: "propose_outline" },
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("[process-curriculum] Anthropic error:", response.status, errText);
-      throw new Error(`Anthropic API error (${response.status}): ${errText.substring(0, 200)}`);
+      throw new Error(`Anthropic error (${response.status}): ${errText.substring(0, 200)}`);
     }
 
     const data = await response.json();
-    console.log("[process-curriculum] Anthropic response stop_reason:", data.stop_reason);
+    const toolBlock = data.content?.find((c: any) => c.type === "tool_use");
+    if (!toolBlock) throw new Error("L'AI non ha restituito un output strutturato");
 
-    const toolUseBlock = data.content?.find((c: any) => c.type === "tool_use");
-    if (!toolUseBlock) {
-      throw new Error("L'AI non ha restituito un output strutturato");
-    }
-
-    const curriculum = toolUseBlock.input;
-    const proposedModules = curriculum.modules || [];
-    console.log("[process-curriculum] Proposed modules:", proposedModules.length);
+    const outlineModules = toolBlock.input.modules || [];
+    console.log("[process-curriculum] Outline modules:", outlineModules.length);
 
     // Get next order_index
     const { data: lastModule } = await supabase
@@ -212,68 +173,80 @@ Restituisci il curriculum usando il tool propose_curriculum.`;
       .select("order_index")
       .order("order_index", { ascending: false })
       .limit(1);
-
     let nextOrder = lastModule && lastModule.length > 0 ? lastModule[0].order_index + 1 : 0;
 
-    // Insert proposed modules with their questions
+    // STEP 2: Save skeleton modules as "proposed" (no content_body yet)
     const savedModules = [];
-    for (const mod of proposedModules) {
-      const { data: savedMod, error: modError } = await supabase
+    for (const mod of outlineModules) {
+      const { data: saved, error } = await supabase
         .from("modules")
         .insert({
           title: mod.title,
           summary: mod.summary,
           track: mod.track,
-          key_points: mod.key_points,
-          content_body: mod.content_body,
           ai_rationale: mod.ai_rationale,
           source_document_ids: mod.source_document_ids,
           source_faq_ids: mod.source_faq_ids,
           status: "proposed",
           order_index: nextOrder++,
+          key_points: [],
+          content_body: null,
         })
-        .select()
+        .select("id, title, source_document_ids, source_faq_ids")
         .single();
 
-      if (modError) {
-        console.error("[process-curriculum] Failed to save module:", modError);
+      if (error) {
+        console.error("[process-curriculum] Failed to save module:", error);
         continue;
       }
-
-      if (mod.questions && mod.questions.length > 0) {
-        const qRows = mod.questions.map((q: any, i: number) => ({
-          module_id: savedMod.id,
-          question: q.question,
-          options: q.options,
-          correct_index: q.correct_index,
-          feedback_correct: q.feedback_correct || null,
-          feedback_wrong: q.feedback_wrong || null,
-          order_index: i,
-        }));
-        await supabase.from("assessment_questions").insert(qRows);
-      }
-
-      savedModules.push(savedMod);
+      savedModules.push(saved);
     }
 
-    console.log("[process-curriculum] Saved modules:", savedModules.length);
+    console.log("[process-curriculum] Saved skeleton modules:", savedModules.length);
 
-    // Update job to completed
+    // Update parent job with total steps
     await supabase
       .from("generation_jobs")
       .update({
-        status: "completed",
-        result: { count: savedModules.length },
+        current_step: "outline_completed",
+        total_steps: savedModules.length,
+        completed_steps: 0,
         updated_at: new Date().toISOString(),
       })
       .eq("id", jobId);
 
-    return new Response(JSON.stringify({ status: "completed", count: savedModules.length }), {
+    // STEP 3: Fire child jobs for each module (fire-and-forget)
+    for (const mod of savedModules) {
+      // Create child job
+      const { data: childJob } = await supabase
+        .from("generation_jobs")
+        .insert({
+          job_type: "module_content",
+          parent_job_id: jobId,
+          status: "pending",
+          input: { module_id: mod.id, module_title: mod.title, source_document_ids: mod.source_document_ids, source_faq_ids: mod.source_faq_ids },
+        })
+        .select("id")
+        .single();
+
+      if (childJob) {
+        // Fire-and-forget call to generate-module
+        fetch(`${supabaseUrl}/functions/v1/generate-module`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${serviceRoleKey}`,
+          },
+          body: JSON.stringify({ job_id: childJob.id }),
+        }).catch(err => console.error("[process-curriculum] Fire child error:", err));
+      }
+    }
+
+    return new Response(JSON.stringify({ status: "outline_completed", modules: savedModules.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
     console.error("[process-curriculum] Error:", e);
-
     await supabase
       .from("generation_jobs")
       .update({

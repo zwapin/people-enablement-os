@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 import CurriculumList from "@/components/learn/CurriculumList";
@@ -31,17 +31,10 @@ export default function Learn() {
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
-  const progressInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
   const [viewAsRep, setViewAsRep] = useState(false);
   const activeJobId = useRef<string | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (progressInterval.current) clearInterval(progressInterval.current);
-    };
-  }, []);
 
   const { data: modules, isLoading, refetch } = useQuery({
     queryKey: ["modules"],
@@ -72,35 +65,7 @@ export default function Learn() {
   const draftModules = modules?.filter((m) => m.status === "draft") ?? [];
   const proposedModules = modules?.filter((m) => m.status === "proposed") ?? [];
 
-  const startProgressSimulation = () => {
-    setProgress(0);
-    setProgressLabel("Avvio generazione...");
-    const steps = [
-      { at: 5, label: "Avvio generazione..." },
-      { at: 10, label: "Analisi Knowledge Base..." },
-      { at: 25, label: "Progettazione curriculum..." },
-      { at: 40, label: "Generazione contenuti moduli..." },
-      { at: 60, label: "Creazione domande di valutazione..." },
-      { at: 80, label: "Salvataggio moduli..." },
-    ];
-    let current = 0;
-    progressInterval.current = setInterval(() => {
-      current += 0.5;
-      if (current >= 90) {
-        // Hold at 90 until realtime callback
-        return;
-      }
-      setProgress(Math.round(current));
-      const step = [...steps].reverse().find(s => current >= s.at);
-      if (step) setProgressLabel(step.label);
-    }, 1000);
-  };
-
-  const stopProgressSimulation = (success: boolean) => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-      progressInterval.current = null;
-    }
+  const stopGeneration = (success: boolean) => {
     if (success) {
       setProgress(100);
       setProgressLabel("Completato!");
@@ -115,16 +80,18 @@ export default function Learn() {
   // Subscribe to job status via Realtime
   const subscribeToJob = useCallback((jobId: string) => {
     activeJobId.current = jobId;
+    setProgress(5);
+    setProgressLabel("Avvio generazione...");
 
-    // Safety timeout at 4 minutes
+    // Safety timeout at 5 minutes
     const timeout = setTimeout(() => {
       if (activeJobId.current === jobId) {
-        stopProgressSimulation(false);
+        stopGeneration(false);
         toast.error("La generazione sta impiegando troppo tempo. Riprova più tardi.");
         supabase.removeChannel(channel);
         activeJobId.current = null;
       }
-    }, 240000);
+    }, 300000);
 
     const channel = supabase
       .channel(`job-${jobId}`)
@@ -137,21 +104,45 @@ export default function Learn() {
           filter: `id=eq.${jobId}`,
         },
         (payload) => {
-          const newStatus = (payload.new as any).status;
-          console.log("[Learn] Job update:", jobId, "→", newStatus);
+          const row = payload.new as any;
+          const newStatus = row.status;
+          const currentStep = row.current_step;
+          const totalSteps = row.total_steps ?? 0;
+          const completedSteps = row.completed_steps ?? 0;
+          console.log("[Learn] Job update:", jobId, "→", newStatus, currentStep, `${completedSteps}/${totalSteps}`);
+
+          // Update progress based on real data
+          if (currentStep === "outline") {
+            setProgress(10);
+            setProgressLabel("Analisi Knowledge Base e creazione outline...");
+          } else if (currentStep === "outline_completed") {
+            setProgress(20);
+            setProgressLabel(`Outline completato. Generazione ${totalSteps} moduli...`);
+            refetch(); // Show skeleton modules immediately
+          } else if (currentStep?.startsWith("module_") && totalSteps > 0) {
+            const pct = 20 + Math.round((completedSteps / totalSteps) * 70);
+            setProgress(pct);
+            setProgressLabel(`Modulo ${completedSteps}/${totalSteps} completato...`);
+            refetch(); // Refresh to show content as it arrives
+          }
 
           if (newStatus === "completed") {
             clearTimeout(timeout);
-            const count = (payload.new as any).result?.count ?? 0;
-            stopProgressSimulation(true);
-            toast.success(`Curriculum generato: ${count} moduli proposti. Revisiona e approva.`);
+            const count = row.result?.count ?? 0;
+            const partial = row.result?.partial === true;
+            stopGeneration(true);
+            if (partial) {
+              toast.warning(`Generazione parziale: ${count} moduli completati. Alcuni moduli potrebbero necessitare rigenerazione.`);
+            } else {
+              toast.success(`Curriculum generato: ${count} moduli proposti. Revisiona e approva.`);
+            }
             refetch();
             supabase.removeChannel(channel);
             activeJobId.current = null;
           } else if (newStatus === "failed") {
             clearTimeout(timeout);
-            const error = (payload.new as any).error || "Errore sconosciuto";
-            stopProgressSimulation(false);
+            const error = row.error || "Errore sconosciuto";
+            stopGeneration(false);
             toast.error(`Generazione fallita: ${error}`);
             supabase.removeChannel(channel);
             activeJobId.current = null;
@@ -168,7 +159,8 @@ export default function Learn() {
 
   const handleUpdateCurriculum = async (regenerateAll = false) => {
     setGenerating(true);
-    startProgressSimulation();
+    setProgress(2);
+    setProgressLabel("Invio richiesta...");
     try {
       const { data, error } = await supabase.functions.invoke("generate-curriculum", {
         body: regenerateAll ? { regenerate_all: true } : {},
@@ -180,7 +172,7 @@ export default function Learn() {
         subscribeToJob(data.jobId);
       }
     } catch (err: any) {
-      stopProgressSimulation(false);
+      stopGeneration(false);
       toast.error(err.message || "Generazione curriculum fallita");
     }
   };
