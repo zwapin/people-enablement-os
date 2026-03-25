@@ -1,39 +1,85 @@
 
 
-# Fix: Extraction PDF timeout e curriculum generation vuota
+# UX Completa Curriculum — Piano di Implementazione
 
-## Problema identificato
-Due problemi collegati:
+Questo e un refactoring significativo della sezione Learn. Il lavoro si divide in due macro-aree: la **vista curriculum (lista moduli con roadmap)** e la **vista modulo (contenuto + assessment + score)**.
 
-1. **Extract-document va in timeout**: I log mostrano solo boot/shutdown, nessun log di esecuzione effettiva. La chiamata curl va in timeout. Il PDF viene convertito in base64 e inviato a Gemini, ma l'operazione supera il timeout dell'edge function (default ~60s per PDF grandi).
+## Panoramica architettura
 
-2. **Generate-curriculum restituisce 0 moduli**: Il contenuto del documento nel DB e ancora il placeholder `"[PDF text extraction returned empty...]"`. L'AI non ha materiale reale su cui generare il curriculum.
+```text
+/learn              → Lista curriculum (roadmap verticale)
+/learn/:moduleId    → Vista modulo (3 atti: contenuto → assessment → score)
+```
 
-## Piano
+Serve una nuova route in `App.tsx` e una nuova pagina `ModuleView`.
 
-### 1. Fix timeout edge function extract-document
-**File: `supabase/functions/extract-document/index.ts`**
+## Modifiche
 
-- Aggiungere logging per tracciare ogni step (download, conversione, chiamata AI)
-- Aggiungere `max_tokens: 8192` alla chiamata AI per evitare risposte infinite
-- Gestire PDF troppo grandi: se il base64 supera ~10MB, troncare o restituire errore chiaro
-- Aggiungere un timeout esplicito al fetch verso il gateway AI con `AbortController` (50s)
+### 1. Nuova route `/learn/:moduleId`
+**File: `src/App.tsx`**
+- Aggiungere route protetta `/learn/:moduleId` che renderizza il nuovo componente `ModuleView`
 
-### 2. Fix CORS headers
-Aggiornare i CORS headers per includere tutti gli header richiesti dal client Supabase SDK (mancano `x-supabase-client-platform`, etc.)
+### 2. Refactor vista rep in `Learn.tsx`
+**File: `src/pages/Learn.tsx`**
+- La vista rep (non-admin) diventa la roadmap verticale:
+  - Progress bar globale in cima (% completata, N/M moduli)
+  - Fetch `module_completions` per l'utente corrente
+  - Lista verticale con linea di connessione tra moduli (CSS `border-left` + pallini)
+  - Ogni card mostra: numero, titolo, sommario, tag track, tempo lettura stimato (basato su `content_body.length / 1000` min)
+  - **Stato visivo**: Completato (spunta verde + score), Disponibile (accent, cliccabile), Bloccato (opacita 50%, non cliccabile)
+  - Logica sblocco: modulo N disponibile se modulo N-1 completato (o se e il primo)
+  - Click su modulo disponibile → naviga a `/learn/:moduleId`
+- La vista admin resta invariata
 
-### 3. Re-testare il flusso
-Dopo il deploy:
-1. Cliccare "Re-extract" sul documento SALES PLAYBOOK
-2. Il testo reale viene estratto e salvato nel DB
-3. Cliccare "Aggiorna Curriculum" → l'AI ha contenuto reale → genera moduli
+### 3. Nuovo componente `ModuleView` — i tre atti
+**File: `src/pages/ModuleView.tsx`**
+
+Pagina singola con scroll verticale, tre sezioni:
+
+**Atto 1 — Contenuto**
+- Header: titolo, badge track, tempo lettura
+- Corpo markdown renderizzato (usare `react-markdown` o rendering HTML semplice dei `\n`, `**`, `#`)
+- Sezione "Punti chiave" in card riepilogativa
+- Bottone "Inizia Assessment" in fondo
+
+**Atto 2 — Assessment**
+- Sezione che appare sotto il contenuto dopo click
+- Fetch domande da `assessment_questions` per il modulo
+- Domande una alla volta con progress indicator ("Domanda 2 di 7")
+- 4 opzioni come bottoni verticali
+- Al click: blocco immediato, verde/rosso, feedback testuale, bottone "Prossima domanda"
+- Rimescolamento ordine domande e opzioni (shuffle con Fisher-Yates)
+- Stato locale, nessun salvataggio intermedio
+
+**Atto 3 — Score screen**
+- Punteggio grande (es. 6/7)
+- Messaggio contestuale per fascia (7/7 perfetto, 5-6 buono, sotto 5 riprova)
+- Riepilogo domande con icona verde/rossa e risposta corretta
+- Se score >= ~70% (calcolato su numero domande): salva in `module_completions` e mostra "Continua al modulo successivo"
+- Se non promosso: "Riprova assessment" — rimescola e riparte dall'Atto 2
+
+### 4. Aggiornare `CurriculumList.tsx` per la vista rep roadmap
+**File: `src/components/learn/CurriculumList.tsx`**
+- Nuova prop `completions` e `userId`
+- Per la vista rep: renderizzare con linea verticale di connessione, stati visivi (completato/disponibile/bloccato), link navigazione
+- Per la vista admin: resta come adesso
+
+### 5. Installare dipendenza
+- `react-markdown` per renderizzare il contenuto markdown nei moduli
 
 ### File coinvolti
-- `supabase/functions/extract-document/index.ts` — fix timeout, logging, CORS
-- `supabase/functions/generate-curriculum/index.ts` — fix CORS headers
+| File | Azione |
+|------|--------|
+| `src/App.tsx` | Aggiungere route `/learn/:moduleId` |
+| `src/pages/Learn.tsx` | Refactor vista rep con roadmap e progress globale |
+| `src/pages/ModuleView.tsx` | **Nuovo** — vista modulo 3 atti |
+| `src/components/learn/CurriculumList.tsx` | Aggiungere vista roadmap per rep |
+| `package.json` | Aggiungere `react-markdown` |
 
-### Dettagli tecnici
-- Il timeout del gateway AI per PDF grandi puo superare 60s. Aggiungendo `AbortController` con 50s si gestisce gracefully
-- I log nel function body aiuteranno a diagnosticare futuri problemi
-- Il `max_tokens` limita la risposta AI evitando attese inutili
+### Note implementative
+- Il tempo di lettura e stimato: `Math.ceil(content_body.length / 1000)` minuti (approssimazione)
+- La soglia di promozione e 70% arrotondata per eccesso (es. 5/7 = 71% = promosso)
+- Il rimescolamento usa Fisher-Yates per garantire distribuzione uniforme
+- `module_completions` gia ha RLS per insert/select per l'utente corrente
+- Tutto il testo UI e in italiano
 
