@@ -63,3 +63,34 @@
     font-family: 'DM Mono', monospace;
   }
 }
+
+/* TipTap Editor Styles */
+.tiptap {
+  @apply text-foreground;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  @apply text-muted-foreground pointer-events-none float-left h-0;
+  content: attr(data-placeholder);
+}
+
+.tiptap table {
+  @apply border-collapse w-full my-4;
+}
+
+.tiptap table td,
+.tiptap table th {
+  @apply border border-border px-3 py-2 text-sm;
+}
+
+.tiptap table th {
+  @apply bg-muted font-medium;
+}
+
+.tiptap blockquote {
+  @apply border-l-4 border-primary/50 pl-4 italic text-muted-foreground;
+}
+
+.tiptap hr {
+  @apply border-border my-6;
+}
