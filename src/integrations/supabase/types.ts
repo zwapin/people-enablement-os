@@ -143,6 +143,7 @@ export type Database = {
       }
       knowledge_documents: {
         Row: {
+          collection_id: string | null
           content: string
           context: string | null
           created_at: string
@@ -151,6 +152,7 @@ export type Database = {
           title: string
         }
         Insert: {
+          collection_id?: string | null
           content?: string
           context?: string | null
           created_at?: string
@@ -159,6 +161,7 @@ export type Database = {
           title: string
         }
         Update: {
+          collection_id?: string | null
           content?: string
           context?: string | null
           created_at?: string
@@ -166,12 +169,21 @@ export type Database = {
           id?: string
           title?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_documents_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       knowledge_faqs: {
         Row: {
           answer: string
           category: string | null
+          collection_id: string | null
           created_at: string
           id: string
           question: string
@@ -179,6 +191,7 @@ export type Database = {
         Insert: {
           answer: string
           category?: string | null
+          collection_id?: string | null
           created_at?: string
           id?: string
           question: string
@@ -186,11 +199,20 @@ export type Database = {
         Update: {
           answer?: string
           category?: string | null
+          collection_id?: string | null
           created_at?: string
           id?: string
           question?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_faqs_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       module_completions: {
         Row: {

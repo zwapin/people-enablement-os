@@ -1,0 +1,2 @@
+ALTER TABLE knowledge_documents ADD COLUMN collection_id uuid REFERENCES curricula(id) ON DELETE SET NULL;
+ALTER TABLE knowledge_faqs ADD COLUMN collection_id uuid REFERENCES curricula(id) ON DELETE SET NULL;
