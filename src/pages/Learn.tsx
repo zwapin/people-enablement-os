@@ -238,16 +238,15 @@ export default function Learn() {
   };
 
   const handleCreateCollection = async () => {
-    const { error } = await supabase.from("curricula").insert({
+    const { data, error } = await supabase.from("curricula").insert({
       title: "Nuova Collection",
       status: "draft",
       order_index: (curricula?.length ?? 0),
-    });
+    }).select("id").single();
     if (error) {
       toast.error("Creazione fallita");
     } else {
-      toast.success("Collection creata");
-      refetchCurricula();
+      navigate(`/learn/${data.id}`);
     }
   };
 
