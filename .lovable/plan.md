@@ -1,71 +1,45 @@
 
 
-# Collection = Curriculum — KB integrata in Formazione
+# Curriculum come pagina dedicata (no dropdown)
 
 ## Concetto
 
-Ogni Curriculum **è** una Collection. I documenti e le FAQ vengono caricati **dentro** il curriculum specifico (es. "Fondamenti del Sales Process" ha i suoi documenti). La generazione AI usa solo il KB di quella collection.
+Invece di collapsible/dropdown, ogni curriculum è una **card cliccabile** nella lista. Al click si entra in una **sotto-pagina dedicata** dove si trovano moduli, documenti, FAQ e azioni di generazione. Nessuna menzione di "collection" nell'UI — il termine resta "curriculum".
 
-La pagina Knowledge Base standalone viene deprecata — tutto si gestisce dentro Formazione.
+## Modifiche
 
-## Modifiche al Data Model
+### 1. Nuova route `/learn/:curriculumId`
+- In `App.tsx`, aggiungere route `<Route path="/learn/:curriculumId" element={<CurriculumDetail />} />`
+- Nuova pagina `src/pages/CurriculumDetail.tsx`
 
-### Migration SQL
-```sql
--- Aggiungere collection_id (= curriculum_id) a documenti e FAQ
-ALTER TABLE knowledge_documents ADD COLUMN collection_id uuid REFERENCES curricula(id) ON DELETE SET NULL;
-ALTER TABLE knowledge_faqs ADD COLUMN collection_id uuid REFERENCES curricula(id) ON DELETE SET NULL;
-```
+### 2. `CurriculumDetail.tsx` — Pagina dedicata al singolo curriculum
+- Prende `curriculumId` da `useParams()`
+- Header con titolo, descrizione, stato, bottoni admin (edit inline, pubblica/bozza, genera, genera contenuti)
+- Breadcrumb: Formazione > Nome Curriculum
+- Sezione **Moduli** (lista con CurriculumList)
+- Sezione **Documenti** (DocumentsList con `collectionId`)
+- Sezione **FAQ** (FaqList con `collectionId`)
+- Le tre sezioni sono visibili tutte nella stessa pagina (scroll) oppure con tabs — ma non dentro un collapsible
 
-## Modifiche Frontend
+### 3. `CurriculumCard.tsx` — Semplificato a card cliccabile
+- Rimuovere il Collapsible e i Tabs interni
+- Diventa una card con: titolo, descrizione, badge stato, conteggio moduli/documenti/FAQ
+- Al click → `navigate(/learn/${curriculum.id})`
+- I bottoni admin (edit, pubblica, archivia) restano sulla card per azioni rapide
 
-### 1. `CurriculumCard.tsx` — Aggiungere sezione KB dentro ogni curriculum
-- Dentro il `CollapsibleContent`, aggiungere Tabs: **Moduli** | **Documenti** | **FAQ**
-- Tab Moduli = quello che c'è ora (CurriculumList)
-- Tab Documenti = `DocumentsList` con prop `collectionId={curriculum.id}`
-- Tab FAQ = `FaqList` con prop `collectionId={curriculum.id}`
-- Bottone "Genera Curriculum" che lancia la generazione per questa specifica collection
+### 4. `Learn.tsx` — Lista di card
+- La sezione "Curricula" mostra le card semplificate
+- Nessun contenuto espanso inline
 
-### 2. `DocumentsList.tsx` — Filtro per collection
-- Aggiungere prop opzionale `collectionId?: string`
-- Filtrare query: `.eq("collection_id", collectionId)` quando presente
-- Insert: includere `collection_id` nel nuovo record
-
-### 3. `FaqList.tsx` — Filtro per collection
-- Stessa logica di DocumentsList
-
-### 4. `AppLayout.tsx` — Rimuovere link Knowledge Base dalla sidebar
-- Togliere `{ title: "Knowledge Base", url: "/knowledge", icon: Database }` da `adminItems`
-
-### 5. `App.tsx` — Rimuovere route `/knowledge`
-- Eliminare la route e l'import di KnowledgeBasePage
-
-### 6. `generate-curriculum/index.ts` — Accettare `collection_id`
-- Nuovo parametro opzionale `collection_id`
-- Validare che la collection specifica abbia documenti/FAQ
-- Passare `collection_id` a `process-curriculum`
-
-### 7. `process-curriculum/index.ts` — Filtrare KB per collection
-- Quando `collection_id` è presente, filtrare documenti e FAQ per `.eq("collection_id", collectionId)`
-- Generare moduli solo dentro quel curriculum
-- Rimuovere l'outline hardcoded — ogni collection genera la sua struttura basandosi sui suoi documenti
-
-### 8. `Learn.tsx` — Bottone genera per collection
-- Aggiungere callback `onGenerateCurriculum` a CurriculumCard
-- Il bottone "Aggiorna Curriculum" globale rimane come scorciatoia (genera tutte le collection in sequenza)
+### 5. Contatori KB sulla card
+- Query count di `knowledge_documents` e `knowledge_faqs` per `collection_id` da mostrare sulla card (es. "5 moduli · 3 documenti · 2 FAQ")
 
 ## File coinvolti
 
 | File | Modifica |
 |------|----------|
-| Migration SQL | `collection_id` su docs e faqs |
-| `CurriculumCard.tsx` | Tabs Moduli/Documenti/FAQ + bottone genera |
-| `DocumentsList.tsx` | Prop `collectionId`, filtro query |
-| `FaqList.tsx` | Prop `collectionId`, filtro query |
-| `AppLayout.tsx` | Rimuovere link KB |
-| `App.tsx` | Rimuovere route `/knowledge` |
-| `Learn.tsx` | Callback genera per collection |
-| `generate-curriculum/index.ts` | Parametro `collection_id` |
-| `process-curriculum/index.ts` | Filtro KB per collection |
-| Eliminare `src/pages/KnowledgeBase.tsx` e `src/components/learn/KnowledgeBase.tsx` | Deprecati |
+| `App.tsx` | Nuova route `/learn/:curriculumId` |
+| `CurriculumDetail.tsx` | Nuova pagina con moduli + documenti + FAQ |
+| `CurriculumCard.tsx` | Semplificare a card cliccabile, rimuovere Collapsible/Tabs |
+| `Learn.tsx` | Nessuna modifica sostanziale, le card navigano alla detail |
 
