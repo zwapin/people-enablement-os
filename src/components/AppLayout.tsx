@@ -15,6 +15,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 
 const navItems = [
   { title: "Formazione", url: "/learn", icon: BookOpen },
@@ -36,13 +37,10 @@ function AppSidebarContent() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border">
       <div className="px-4 py-5 flex items-center gap-2">
-        {!collapsed && (
-          <span className="text-lg font-bold tracking-tight text-foreground">
-            Klaaryo
-          </span>
-        )}
-        {collapsed && (
-          <span className="text-lg font-bold text-foreground">K</span>
+        {!collapsed ? (
+          <img src={klaaryoLogo} alt="Klaaryo" className="h-6 w-auto" />
+        ) : (
+          <img src={klaaryoLogo} alt="Klaaryo" className="h-5 w-5 object-contain object-left" />
         )}
       </div>
 
