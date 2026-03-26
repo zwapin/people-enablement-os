@@ -2,57 +2,26 @@ import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Lock, Clock, BookOpen } from "lucide-react";
+import { CheckCircle2, Clock } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Module = Tables<"modules">;
 type Completion = Tables<"module_completions">;
 
-interface Collection {
-  id: string;
-  title: string;
-  description: string | null;
-}
-
 interface RepRoadmapProps {
   modules: Module[];
   completions: Completion[];
-  collections?: Collection[];
 }
 
-type ModuleState = "completed" | "available";
-
-export default function RepRoadmap({ modules, completions, collections = [] }: RepRoadmapProps) {
+export default function RepRoadmap({ modules, completions }: RepRoadmapProps) {
   const navigate = useNavigate();
   const completionMap = new Map(completions.map((c) => [c.module_id, c]));
-
-  const getState = (mod: Module): ModuleState => {
-    if (completionMap.has(mod.id)) return "completed";
-    return "available";
-  };
 
   const completedCount = modules.filter((m) => completionMap.has(m.id)).length;
   const progressPct = modules.length > 0 ? Math.round((completedCount / modules.length) * 100) : 0;
 
-  // Group modules by curriculum
-  const collectionsMap = new Map(collections.map(c => [c.id, c]));
-  const grouped: { collection: Collection | null; modules: Module[] }[] = [];
-
-  // Curricula with their modules (in order)
-  for (const c of collections) {
-    const cModules = modules.filter(m => m.curriculum_id === c.id);
-    if (cModules.length > 0) grouped.push({ collection: c, modules: cModules });
-  }
-
-  // Orphan modules
-  const orphans = modules.filter(m => !m.curriculum_id);
-  if (orphans.length > 0) grouped.push({ collection: null, modules: orphans });
-
-  // If no curricula at all, just show flat
-  const sections = grouped.length > 0 ? grouped : [{ collection: null, modules }];
-
   const renderModule = (mod: Module, idx: number, isLast: boolean) => {
-    const state = getState(mod);
+    const isCompleted = completionMap.has(mod.id);
     const completion = completionMap.get(mod.id);
     const readingTime = mod.content_body
       ? Math.max(1, Math.ceil(mod.content_body.length / 1000))
@@ -63,12 +32,12 @@ export default function RepRoadmap({ modules, completions, collections = [] }: R
         <div className="flex flex-col items-center shrink-0 w-8">
           <div
             className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${
-              state === "completed"
+              isCompleted
                 ? "bg-primary text-primary-foreground"
                 : "bg-primary/20 border-2 border-primary text-primary"
             }`}
           >
-            {state === "completed" ? (
+            {isCompleted ? (
               <CheckCircle2 className="h-4 w-4" />
             ) : (
               <span className="text-xs font-bold">{idx + 1}</span>
@@ -77,16 +46,16 @@ export default function RepRoadmap({ modules, completions, collections = [] }: R
           {!isLast && (
             <div
               className={`w-0.5 flex-1 min-h-[1rem] ${
-                state === "completed" ? "bg-primary/40" : "bg-border"
+                isCompleted ? "bg-primary/40" : "bg-border"
               }`}
             />
           )}
         </div>
 
-        <div className={`flex-1 pb-6`}>
+        <div className="flex-1 pb-6">
           <Card
             className={`p-4 transition-all ${
-              state === "available"
+              !isCompleted
                 ? "bg-card border-primary/30 cursor-pointer hover:border-primary/60 hover:shadow-md hover:shadow-primary/5"
                 : "bg-card border-border cursor-pointer"
             }`}
@@ -109,7 +78,7 @@ export default function RepRoadmap({ modules, completions, collections = [] }: R
                     <Clock className="h-3 w-3" />
                     {readingTime} min
                   </span>
-                  {state === "completed" && completion && (
+                  {isCompleted && completion && (
                     <span className="flex items-center gap-1 text-primary">
                       <CheckCircle2 className="h-3 w-3" />
                       Punteggio: {completion.score}
@@ -117,12 +86,12 @@ export default function RepRoadmap({ modules, completions, collections = [] }: R
                   )}
                 </div>
               </div>
-              {state === "available" && (
+              {!isCompleted && (
                 <Badge className="shrink-0 bg-primary/10 text-primary border-primary/20 text-[10px]">
                   Disponibile
                 </Badge>
               )}
-              {state === "completed" && (
+              {isCompleted && (
                 <Badge variant="outline" className="shrink-0 border-primary/30 text-primary text-[10px]">
                   Completato
                 </Badge>
@@ -135,64 +104,24 @@ export default function RepRoadmap({ modules, completions, collections = [] }: R
   };
 
   return (
-    <div className="space-y-8 max-w-2xl mx-auto">
-      {/* Header + global progress */}
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Il tuo percorso</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-          Completa i moduli per avanzare nella collection.
-        </p>
+    <div className="space-y-6">
+      {/* Progress for this collection */}
+      <Card className="p-4 bg-card border-border space-y-2">
+        <div className="flex items-center justify-between text-sm flex-wrap gap-1">
+          <span className="text-muted-foreground">Progresso</span>
+          <span className="font-mono text-foreground">
+            {completedCount}/{modules.length} moduli · {progressPct}%
+          </span>
         </div>
-        <Card className="p-4 bg-card border-border space-y-2">
-          <div className="flex items-center justify-between text-sm flex-wrap gap-1">
-            <span className="text-muted-foreground">Progresso collection</span>
-            <span className="font-mono text-foreground">
-              {completedCount}/{modules.length} moduli · {progressPct}%
-            </span>
-          </div>
-          <Progress value={progressPct} className="h-2" />
-        </Card>
+        <Progress value={progressPct} className="h-2" />
+      </Card>
+
+      {/* Timeline */}
+      <div className="relative">
+        {modules.map((mod, idx) =>
+          renderModule(mod, idx, idx === modules.length - 1)
+        )}
       </div>
-
-      {/* Sections */}
-      {sections.map((section, sIdx) => {
-        const sectionCompleted = section.modules.filter(m => completionMap.has(m.id)).length;
-        const sectionPct = section.modules.length > 0
-          ? Math.round((sectionCompleted / section.modules.length) * 100)
-          : 0;
-
-        return (
-          <div key={section.collection?.id ?? "orphan"} className="space-y-4">
-            {section.collection && (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                  <h2 className="text-lg font-semibold text-foreground">
-                    {section.collection.title}
-                  </h2>
-                </div>
-                {section.collection.description && (
-                  <p className="text-sm text-muted-foreground">
-                    {section.collection.description}
-                  </p>
-                )}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                  <span>{sectionCompleted}/{section.modules.length} completati</span>
-                  <Progress value={sectionPct} className="h-1.5 w-24" />
-                  <span>{sectionPct}%</span>
-                </div>
-              </div>
-            )}
-
-            <div className="relative">
-              {section.modules.map((mod, idx) =>
-                renderModule(mod, idx, idx === section.modules.length - 1)
-              )}
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

@@ -391,7 +391,21 @@ export default function Learn() {
 
   // Rep view
   if (!isAdmin || viewAsRep) {
-    if (publishedModules.length === 0 && !isLoading) {
+    const firstName = profile?.full_name?.split(" ")[0] || "utente";
+
+    // Calculate global progress
+    const globalCompleted = publishedModules.filter(m => completions?.some(c => c.module_id === m.id)).length;
+    const globalPct = publishedModules.length > 0 ? Math.round((globalCompleted / publishedModules.length) * 100) : 0;
+
+    // Build collection cards data
+    const repCollections = publishedCollections.map(c => {
+      const cModules = publishedModules.filter(m => m.curriculum_id === c.id);
+      const cCompleted = cModules.filter(m => completions?.some(comp => comp.module_id === m.id)).length;
+      const cPct = cModules.length > 0 ? Math.round((cCompleted / cModules.length) * 100) : 0;
+      return { ...c, moduleCount: cModules.length, completedCount: cCompleted, pct: cPct };
+    }).filter(c => c.moduleCount > 0);
+
+    if (repCollections.length === 0 && !isLoading) {
       return (
         <div className="space-y-6">
           {isAdmin && (
@@ -414,18 +428,69 @@ export default function Learn() {
     }
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-8 max-w-3xl mx-auto">
         {isAdmin && (
           <div className="flex items-center gap-3">
             <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={setViewAsRep} />
             <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">Vista Rep</Label>
           </div>
         )}
-        <RepRoadmap
-          modules={publishedModules}
-          completions={completions ?? []}
-          collections={publishedCollections}
-        />
+
+        {/* Greeting */}
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+            Ciao {firstName}! 👋
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Ecco le tue collection di formazione. Continua da dove eri rimasto.
+          </p>
+        </div>
+
+        {/* Global progress */}
+        <Card className="p-4 bg-card border-border space-y-2">
+          <div className="flex items-center justify-between text-sm flex-wrap gap-1">
+            <span className="text-muted-foreground">Progresso totale</span>
+            <span className="font-mono text-foreground">
+              {globalCompleted}/{publishedModules.length} moduli · {globalPct}%
+            </span>
+          </div>
+          <Progress value={globalPct} className="h-2" />
+        </Card>
+
+        {/* Collection cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {repCollections.map(c => (
+            <Card
+              key={c.id}
+              className="flex flex-col h-full p-5 bg-card border-border cursor-pointer hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 transition-all"
+              onClick={() => navigate(`/learn/${c.id}`)}
+            >
+              <div className="flex items-start gap-3 flex-1">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <BookOpen className="h-5 w-5 text-primary" />
+                </div>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <h3 className="font-semibold text-foreground leading-tight">{c.title}</h3>
+                  {c.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{c.description}</p>
+                  )}
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{c.completedCount}/{c.moduleCount} completati</span>
+                  <span className="font-mono">{c.pct}%</span>
+                </div>
+                <Progress value={c.pct} className="h-1.5" />
+              </div>
+              {c.pct === 100 && (
+                <Badge className="mt-3 w-fit bg-primary/10 text-primary border-primary/20 text-[10px]">
+                  ✓ Completata
+                </Badge>
+              )}
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useRef, useCallback, useEffect } from "react";
+import RepRoadmap from "@/components/learn/RepRoadmap";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +41,7 @@ import ModuleEditor from "@/components/learn/ModuleEditor";
 export default function CollectionDetail() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
 
