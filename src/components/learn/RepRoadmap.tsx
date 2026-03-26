@@ -139,13 +139,13 @@ export default function RepRoadmap({ modules, completions, curricula = [] }: Rep
       {/* Header + global progress */}
       <div className="space-y-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Il tuo percorso</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-foreground">Il tuo percorso</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Completa i moduli per avanzare nel curriculum.
           </p>
         </div>
         <Card className="p-4 bg-card border-border space-y-2">
-          <div className="flex items-center justify-between text-sm">
+          <div className="flex items-center justify-between text-sm flex-wrap gap-1">
             <span className="text-muted-foreground">Progresso curriculum</span>
             <span className="font-mono text-foreground">
               {completedCount}/{modules.length} moduli · {progressPct}%
@@ -177,7 +177,7 @@ export default function RepRoadmap({ modules, completions, curricula = [] }: Rep
                     {section.curriculum.description}
                   </p>
                 )}
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                   <span>{sectionCompleted}/{section.modules.length} completati</span>
                   <Progress value={sectionPct} className="h-1.5 w-24" />
                   <span>{sectionPct}%</span>
