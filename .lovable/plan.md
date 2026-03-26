@@ -1,38 +1,70 @@
 
 
-# Tema Light (White shadcn)
+# Editor Modulo — Layout Notion-style
 
-Cambiare il tema da dark a light aggiornando le CSS custom properties in `src/index.css`. Tutti i componenti shadcn si adatteranno automaticamente.
+Ridisegnare `ModuleEditor` per replicare il layout di `ModuleView` (pagina singola, colonna centrata `max-w-3xl`, lettura pulita) ma con tutti i campi editabili inline e il canvas TipTap come protagonista.
+
+## Struttura della pagina
+
+```text
+┌─────────────────────────────────────────┐
+│ ← Torna al curriculum                  │
+│                                         │
+│ [Badge Area ▾]  [Curriculum ▾]          │
+│ Titolo del modulo (input inline h1)     │
+│ Sommario (textarea inline, no border)   │
+│                                         │
+│ ─────────────────────────────────────── │
+│                                         │
+│ [Canvas TipTap — toolbar floating]      │
+│ Il contenuto del modulo va qui...       │
+│ Premi / per i comandi                   │
+│                                         │
+│                                         │
+│ ─────────────────────────────────────── │
+│                                         │
+│ 💡 Punti Chiave (collapsible card)      │
+│    • punto 1  [x]                       │
+│    • punto 2  [x]                       │
+│    + Aggiungi                           │
+│                                         │
+│ ─────────────────────────────────────── │
+│                                         │
+│ 📝 Domande Assessment (collapsible)     │
+│    D1: testo domanda...                 │
+│    ...                                  │
+│                                         │
+│ ─────────────────────────────────────── │
+│                                         │
+│ [Annulla]  [Salva bozza]  [Pubblica]    │
+└─────────────────────────────────────────┘
+```
 
 ## Modifiche
 
-### `src/index.css` — Nuove variabili colore light
-Sostituire i valori `:root` con il tema light standard shadcn, mantenendo il lime accent `--primary: 75 87% 67%` per coerenza brand:
+### `src/components/learn/ModuleEditor.tsx` — Redesign completo
 
-| Variabile | Da (dark) | A (light) |
-|-----------|-----------|-----------|
-| `--background` | `0 0% 5.5%` | `0 0% 100%` |
-| `--foreground` | `40 20% 95%` | `0 0% 3.9%` |
-| `--card` | `0 0% 8.6%` | `0 0% 100%` |
-| `--card-foreground` | `40 20% 95%` | `0 0% 3.9%` |
-| `--popover` | `0 0% 8.6%` | `0 0% 100%` |
-| `--muted` | `0 0% 12%` | `0 0% 96.1%` |
-| `--muted-foreground` | `0 0% 40%` | `0 0% 45.1%` |
-| `--accent` | `0 0% 12%` | `0 0% 96.1%` |
-| `--secondary` | `0 0% 12%` | `0 0% 96.1%` |
-| `--border` | `0 0% 16.5%` | `0 0% 89.8%` |
-| `--input` | `0 0% 16.5%` | `0 0% 89.8%` |
-| `--primary` | mantieni lime | mantieni lime (foreground → dark) |
-| `--sidebar-*` | dark | valori light corrispondenti |
+1. **Layout**: `max-w-3xl mx-auto` come ModuleView, rimuovere le Card wrapper
+2. **Header inline**:
+   - Back link come in ModuleView (text button, non icon)
+   - Titolo: `<input>` senza bordo, font `text-2xl sm:text-3xl font-bold`, placeholder "Titolo del modulo"
+   - Sommario: `<textarea>` senza bordo, `text-muted-foreground`, auto-resize
+   - Badge area/curriculum come piccoli Select inline sopra il titolo (come i metadata badge in ModuleView)
+3. **Canvas TipTap**: a piena larghezza, senza card wrapper, solo il toolbar sopra e l'area di editing. Rimuovere il bordo extra — il canvas È la pagina
+4. **Punti chiave**: sezione collapsible (Collapsible di shadcn) sotto il contenuto, stile Card leggero come in ModuleView
+5. **Domande Assessment**: sezione collapsible, con il contatore nel titolo
+6. **Action bar**: sticky bottom o in fondo pagina, `Annulla | Salva bozza | Pubblica`
+7. **Generate AI button**: spostato nella toolbar del canvas o come floating action, non nel header della sezione contenuto
 
-### Controllo componenti
-- Verificare che `CurriculumCard`, `CurriculumDetail`, `AppLayout` non abbiano classi hardcoded dark (es. `bg-[#161616]`, `text-white`) che sovrascrivono le variabili CSS
-- Sostituire eventuali colori hardcoded con classi semantiche (`bg-card`, `text-foreground`, etc.)
+### `src/components/learn/ModuleCanvas.tsx` — Cleanup bordi
 
-## File coinvolti
+- Rimuovere `border rounded` wrapper, lasciare solo toolbar + area editing seamless
+- Toolbar: sticky o floating, con sfondo `bg-background/80 backdrop-blur`
+
+### File coinvolti
 
 | File | Modifica |
 |------|----------|
-| `src/index.css` | Variabili CSS `:root` → tema light |
-| Componenti vari | Rimuovere eventuali colori hardcoded dark |
+| `src/components/learn/ModuleEditor.tsx` | Redesign layout Notion-style |
+| `src/components/learn/ModuleCanvas.tsx` | Bordi/wrapper più minimali |
 
