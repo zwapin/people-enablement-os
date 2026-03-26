@@ -22,12 +22,12 @@ import {
   Loader2,
   BookOpen,
 } from "lucide-react";
-import CurriculumList from "@/components/learn/CurriculumList";
+import CollectionModuleList from "@/components/learn/CollectionModuleList";
 import DocumentsList from "@/components/learn/DocumentsList";
 import FaqList from "@/components/learn/FaqList";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 
-export default function CurriculumDetail() {
+export default function CollectionDetail() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
@@ -43,8 +43,8 @@ export default function CurriculumDetail() {
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, label: "" });
   const activeJobId = useRef<string | null>(null);
 
-  const { data: curriculum } = useQuery({
-    queryKey: ["curriculum", curriculumId],
+  const { data: collection } = useQuery({
+    queryKey: ["collection", curriculumId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("curricula")
@@ -57,7 +57,7 @@ export default function CurriculumDetail() {
     enabled: !!curriculumId,
   });
 
-  const { data: allCurricula } = useQuery({
+  const { data: allCollections } = useQuery({
     queryKey: ["curricula"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -85,7 +85,7 @@ export default function CurriculumDetail() {
 
   const refreshAll = () => {
     refetchModules();
-    queryClient.invalidateQueries({ queryKey: ["curriculum", curriculumId] });
+    queryClient.invalidateQueries({ queryKey: ["collection", curriculumId] });
     queryClient.invalidateQueries({ queryKey: ["curricula"] });
     queryClient.invalidateQueries({ queryKey: ["doc-count", curriculumId] });
     queryClient.invalidateQueries({ queryKey: ["faq-count", curriculumId] });
@@ -271,10 +271,10 @@ export default function CurriculumDetail() {
   };
 
   if (editorOpen) {
-    return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} curricula={allCurricula ?? []} />;
+    return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} collections={allCollections ?? []} />;
   }
 
-  if (!curriculum) {
+  if (!collection) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -297,7 +297,7 @@ export default function CurriculumDetail() {
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>{curriculum.title}</BreadcrumbPage>
+            <BreadcrumbPage>{collection.title}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
@@ -310,16 +310,16 @@ export default function CurriculumDetail() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-foreground">{curriculum.title}</h1>
+              <h1 className="text-2xl font-bold text-foreground">{collection.title}</h1>
               <Badge
-                variant={curriculum.status === "published" ? "default" : "secondary"}
+                variant={collection.status === "published" ? "default" : "secondary"}
                 className="text-[10px] uppercase"
               >
-                {curriculum.status === "published" ? "Pubblicato" : curriculum.status === "draft" ? "Bozza" : curriculum.status}
+                {collection.status === "published" ? "Pubblicato" : collection.status === "draft" ? "Bozza" : collection.status}
               </Badge>
             </div>
-            {curriculum.description && (
-              <p className="text-sm text-muted-foreground mt-1">{curriculum.description}</p>
+            {collection.description && (
+              <p className="text-sm text-muted-foreground mt-1">{collection.description}</p>
             )}
           </div>
         </div>
@@ -393,7 +393,7 @@ export default function CurriculumDetail() {
             Nessun modulo. Clicca "Genera moduli" per crearli dalla Knowledge Base.
           </p>
         ) : (
-          <CurriculumList
+          <CollectionModuleList
             modules={currentModules}
             isAdmin={isAdmin}
             onEdit={handleEdit}

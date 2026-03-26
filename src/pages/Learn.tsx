@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
-import CurriculumList from "@/components/learn/CurriculumList";
-import CurriculumCard from "@/components/learn/CurriculumCard";
+import CollectionModuleList from "@/components/learn/CollectionModuleList";
+import CollectionCard from "@/components/learn/CollectionCard";
 import ProposalsList from "@/components/learn/ProposalsList";
 import RepRoadmap from "@/components/learn/RepRoadmap";
 import {
@@ -84,11 +84,11 @@ export default function Learn() {
   const proposedModules = modules?.filter((m) => m.status === "proposed") ?? [];
 
   // Group modules by curriculum
-  const publishedCurricula = curricula?.filter(c => c.status === "published") ?? [];
-  const allCurricula = curricula ?? [];
+  const publishedCollections = curricula?.filter(c => c.status === "published") ?? [];
+  const allCollections = curricula ?? [];
 
-  const getModulesForCurriculum = (curriculumId: string, statusFilter?: string[]) => {
-    const filtered = modules?.filter(m => m.curriculum_id === curriculumId) ?? [];
+  const getModulesForCollection = (collectionId: string, statusFilter?: string[]) => {
+    const filtered = modules?.filter(m => m.curriculum_id === collectionId) ?? [];
     if (statusFilter) return filtered.filter(m => statusFilter.includes(m.status));
     return filtered;
   };
@@ -164,7 +164,7 @@ export default function Learn() {
             if (partial) {
               toast.warning(`Generazione parziale: ${count} moduli completati.`);
             } else {
-              toast.success(`Curriculum generato: ${count} moduli proposti. Revisiona e approva.`);
+              toast.success(`Collection generata: ${count} moduli proposti. Revisiona e approva.`);
             }
             refreshAll();
             supabase.removeChannel(channel);
@@ -202,7 +202,7 @@ export default function Learn() {
       if (data?.jobId) subscribeToJob(data.jobId);
     } catch (err: any) {
       stopGeneration(false);
-      toast.error(err.message || "Generazione curriculum fallita");
+      toast.error(err.message || "Generazione collection fallita");
     }
   };
 
@@ -237,21 +237,21 @@ export default function Learn() {
     refreshAll();
   };
 
-  const handleCreateCurriculum = async () => {
+  const handleCreateCollection = async () => {
     const { error } = await supabase.from("curricula").insert({
-      title: "Nuovo Curriculum",
+      title: "Nuova Collection",
       status: "draft",
       order_index: (curricula?.length ?? 0),
     });
     if (error) {
       toast.error("Creazione fallita");
     } else {
-      toast.success("Curriculum creato");
+      toast.success("Collection creata");
       refetchCurricula();
     }
   };
 
-  const handleMigrateToCurricula = async () => {
+  const handleMigrateToCollections = async () => {
     const orphans = modules?.filter(m => !m.curriculum_id && (m.status === "published" || m.status === "draft")) ?? [];
     if (orphans.length === 0) {
       toast.info("Nessun modulo orfano da convertire");
@@ -260,8 +260,7 @@ export default function Learn() {
 
     let converted = 0;
     for (const mod of orphans) {
-      // Create a curriculum from this module
-      const { data: newCurr, error: currErr } = await supabase
+      const { data: newColl, error: collErr } = await supabase
         .from("curricula")
         .insert({
           title: mod.title,
@@ -273,21 +272,20 @@ export default function Learn() {
         .select("id")
         .single();
 
-      if (currErr || !newCurr) {
-        console.error("Failed to create curriculum from module:", currErr);
+      if (collErr || !newColl) {
+        console.error("Failed to create collection from module:", collErr);
         continue;
       }
 
-      // Assign the original module to this curriculum as intro module
       await supabase
         .from("modules")
-        .update({ curriculum_id: newCurr.id, updated_at: new Date().toISOString() })
+        .update({ curriculum_id: newColl.id, updated_at: new Date().toISOString() })
         .eq("id", mod.id);
 
       converted++;
     }
 
-    toast.success(`${converted} moduli convertiti in curricula. Ora clicca "Aggiorna Curriculum" per generare i sotto-moduli.`);
+    toast.success(`${converted} moduli convertiti in collection. Ora clicca "Aggiorna Collection" per generare i sotto-moduli.`);
     refreshAll();
   };
 
@@ -387,7 +385,7 @@ export default function Learn() {
   };
 
   if (editorOpen) {
-    return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} curricula={allCurricula} />;
+    return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} collections={allCollections} />;
   }
 
   // Rep view
@@ -407,7 +405,7 @@ export default function Learn() {
             </div>
             <h2 className="text-lg font-semibold text-foreground">Nessun modulo disponibile</h2>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Il tuo curriculum apparirà qui quando l'admin pubblicherà i moduli.
+              La tua collection apparirà qui quando l'admin pubblicherà i moduli.
             </p>
           </div>
         </div>
@@ -425,7 +423,7 @@ export default function Learn() {
         <RepRoadmap
           modules={publishedModules}
           completions={completions ?? []}
-          curricula={publishedCurricula}
+          collections={publishedCollections}
         />
       </div>
     );
@@ -443,7 +441,7 @@ export default function Learn() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Formazione</h1>
             <p className="text-sm text-muted-foreground mt-1">
-              L'AI analizza la Knowledge Base e propone il curriculum. Tu approvi.
+              L'AI analizza la Knowledge Base e propone la collection. Tu approvi.
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -467,9 +465,9 @@ export default function Learn() {
               {bulkGenerating ? `Generazione ${bulkProgress.current}/${bulkProgress.total}...` : "Genera tutti"}
             </span>
           </Button>
-          <Button variant="outline" size="sm" onClick={handleCreateCurriculum}>
+          <Button variant="outline" size="sm" onClick={handleCreateCollection}>
             <Plus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Nuovo Curriculum</span>
+            <span className="hidden sm:inline">Nuova Collection</span>
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
@@ -480,9 +478,9 @@ export default function Learn() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Rigenerare tutto il curriculum?</AlertDialogTitle>
+                <AlertDialogTitle>Rigenerare tutte le collection?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Questo cancellerà tutti i moduli e curricula esistenti e li rigenererà da zero dalla Knowledge Base. L'operazione non è reversibile.
+                  Questo cancellerà tutti i moduli e collection esistenti e li rigenererà da zero dalla Knowledge Base. L'operazione non è reversibile.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -500,7 +498,7 @@ export default function Learn() {
               <RefreshCw className="h-4 w-4 sm:mr-2" />
             )}
             <span className="hidden sm:inline">
-              {generating ? "Generazione..." : "Aggiorna Curriculum"}
+              {generating ? "Generazione..." : "Aggiorna Collection"}
             </span>
           </Button>
         </div>
@@ -528,7 +526,7 @@ export default function Learn() {
           </div>
           <Progress value={progress} className="h-2" />
           <p className="text-xs text-muted-foreground">
-            L'AI sta analizzando la Knowledge Base e generando il curriculum con Claude. Può richiedere fino a 3 minuti.
+            L'AI sta analizzando la Knowledge Base e generando la collection. Può richiedere fino a 3 minuti.
           </p>
         </div>
       )}
@@ -556,17 +554,17 @@ export default function Learn() {
         </div>
       )}
 
-      {/* Curricula */}
-      {allCurricula.filter(c => c.status !== "archived").length > 0 && (
+      {/* Collections */}
+      {allCollections.filter(c => c.status !== "archived").length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Curricula</h2>
-          {allCurricula
+          <h2 className="text-lg font-semibold text-foreground">Collections</h2>
+          {allCollections
             .filter(c => c.status !== "archived")
             .map(c => (
-              <CurriculumCard
+              <CollectionCard
                 key={c.id}
-                curriculum={c}
-                modules={getModulesForCurriculum(c.id)}
+                collection={c}
+                modules={getModulesForCollection(c.id)}
                 isAdmin={true}
                 onRefresh={refreshAll}
               />
@@ -583,7 +581,7 @@ export default function Learn() {
               ({orphanPublished.length})
             </span>
           </h2>
-          <CurriculumList
+          <CollectionModuleList
             modules={orphanPublished}
             isAdmin={true}
             onEdit={handleEdit}
@@ -601,7 +599,7 @@ export default function Learn() {
               ({orphanDraft.length})
             </span>
           </h2>
-          <CurriculumList
+          <CollectionModuleList
             modules={orphanDraft}
             isAdmin={true}
             onEdit={handleEdit}
