@@ -1,70 +1,53 @@
 
 
-# Editor Modulo — Layout Notion-style
+# Piano: Progress indicator, Preview Rep, e allineamento formattazione
 
-Ridisegnare `ModuleEditor` per replicare il layout di `ModuleView` (pagina singola, colonna centrata `max-w-3xl`, lettura pulita) ma con tutti i campi editabili inline e il canvas TipTap come protagonista.
+## 1. Progress indicator durante generazione AI
 
-## Struttura della pagina
+Attualmente il bottone "Genera con AI" mostra solo un Loader2 spinner. Aggiungere un overlay/banner visibile nel canvas che mostra lo stato della generazione.
 
-```text
-┌─────────────────────────────────────────┐
-│ ← Torna al curriculum                  │
-│                                         │
-│ [Badge Area ▾]  [Curriculum ▾]          │
-│ Titolo del modulo (input inline h1)     │
-│ Sommario (textarea inline, no border)   │
-│                                         │
-│ ─────────────────────────────────────── │
-│                                         │
-│ [Canvas TipTap — toolbar floating]      │
-│ Il contenuto del modulo va qui...       │
-│ Premi / per i comandi                   │
-│                                         │
-│                                         │
-│ ─────────────────────────────────────── │
-│                                         │
-│ 💡 Punti Chiave (collapsible card)      │
-│    • punto 1  [x]                       │
-│    • punto 2  [x]                       │
-│    + Aggiungi                           │
-│                                         │
-│ ─────────────────────────────────────── │
-│                                         │
-│ 📝 Domande Assessment (collapsible)     │
-│    D1: testo domanda...                 │
-│    ...                                  │
-│                                         │
-│ ─────────────────────────────────────── │
-│                                         │
-│ [Annulla]  [Salva bozza]  [Pubblica]    │
-└─────────────────────────────────────────┘
-```
+**ModuleEditor.tsx**:
+- Quando `generating === true`, mostrare un overlay sopra il canvas con:
+  - Animazione progress indeterminata (Progress component con animazione)
+  - Testo di stato che cambia: "Analisi documenti sorgente..." → "Generazione contenuto..." → "Quasi fatto..."
+  - Usare `useEffect` con timer per ciclare i messaggi ogni ~4 secondi
+  - L'overlay copre l'area canvas con sfondo semi-trasparente `bg-background/80 backdrop-blur`
 
-## Modifiche
+## 2. Bottone Preview "Vista Rep"
 
-### `src/components/learn/ModuleEditor.tsx` — Redesign completo
+Aggiungere un bottone nella action bar (o nell'header) che apre una modale/drawer full-width con il contenuto renderizzato esattamente come lo vede il Rep in `ModuleView`.
 
-1. **Layout**: `max-w-3xl mx-auto` come ModuleView, rimuovere le Card wrapper
-2. **Header inline**:
-   - Back link come in ModuleView (text button, non icon)
-   - Titolo: `<input>` senza bordo, font `text-2xl sm:text-3xl font-bold`, placeholder "Titolo del modulo"
-   - Sommario: `<textarea>` senza bordo, `text-muted-foreground`, auto-resize
-   - Badge area/curriculum come piccoli Select inline sopra il titolo (come i metadata badge in ModuleView)
-3. **Canvas TipTap**: a piena larghezza, senza card wrapper, solo il toolbar sopra e l'area di editing. Rimuovere il bordo extra — il canvas È la pagina
-4. **Punti chiave**: sezione collapsible (Collapsible di shadcn) sotto il contenuto, stile Card leggero come in ModuleView
-5. **Domande Assessment**: sezione collapsible, con il contatore nel titolo
-6. **Action bar**: sticky bottom o in fondo pagina, `Annulla | Salva bozza | Pubblica`
-7. **Generate AI button**: spostato nella toolbar del canvas o come floating action, non nel header della sezione contenuto
+**ModuleEditor.tsx**:
+- Aggiungere bottone `Eye` icon "Anteprima Rep" nell'header vicino ai badge
+- Al click, aprire un Dialog/Sheet full-screen che renderizza il contenuto con le stesse classi e componenti di `ModuleView`
+- Creare un componente `ModulePreview` che riceve title, summary, track, contentBody, keyPoints, questions e li renderizza con lo stesso markup di ModuleView (article con ReactMarkdown + remarkGfm + custom components)
+- Include anche la sezione Assessment in read-only/preview mode
 
-### `src/components/learn/ModuleCanvas.tsx` — Cleanup bordi
+**Nuovo file `src/components/learn/ModulePreview.tsx`**:
+- Estrae il rendering markup da ModuleView in un componente riutilizzabile
+- Riceve i dati come props (non da DB), così funziona live con i dati dell'editor
+- Stesso layout `max-w-3xl`, stesse custom components per ReactMarkdown (h2 con border-b, h3 con barra primary, blockquote styled, tabelle con bordi, ecc.)
 
-- Rimuovere `border rounded` wrapper, lasciare solo toolbar + area editing seamless
-- Toolbar: sticky o floating, con sfondo `bg-background/80 backdrop-blur`
+## 3. Allineamento formattazione TipTap ↔ ModuleView
 
-### File coinvolti
+Il canvas TipTap usa `prose prose-sm` generico, mentre ModuleView ha custom components molto specifici. Allineare gli stili del canvas TipTap per avere una resa visiva coerente.
+
+**ModuleCanvas.tsx / index.css**:
+- Aggiungere stili CSS custom per il TipTap editor (`.ProseMirror`) che replicano la formattazione di ModuleView:
+  - `h2`: `text-xl font-bold mt-10 mb-4 pb-2 border-b border-border`
+  - `h3`: `text-lg font-semibold mt-8 mb-3` con barra primary a sinistra
+  - `blockquote`: `border-l-4 border-primary/50 bg-secondary/30 rounded-r-lg px-5 py-4`
+  - `table`: bordi, header con `bg-muted/60`, padding consistente
+  - `strong`: `bg-primary/10 px-1 rounded`
+  - `ul li`: dot primary, spacing coerente
+- Questi stili vanno in `src/index.css` sotto un selettore `.ProseMirror`
+
+## File coinvolti
 
 | File | Modifica |
 |------|----------|
-| `src/components/learn/ModuleEditor.tsx` | Redesign layout Notion-style |
-| `src/components/learn/ModuleCanvas.tsx` | Bordi/wrapper più minimali |
+| `src/components/learn/ModuleEditor.tsx` | Overlay progress + bottone anteprima |
+| `src/components/learn/ModulePreview.tsx` | Nuovo — componente preview Vista Rep |
+| `src/components/learn/ModuleCanvas.tsx` | Classe prose aggiornata |
+| `src/index.css` | Stili `.ProseMirror` allineati a ModuleView |
 
