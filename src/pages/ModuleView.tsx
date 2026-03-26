@@ -225,7 +225,7 @@ export default function ModuleView() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 pb-20">
+    <div className="max-w-3xl mx-auto space-y-8 pb-20 px-4 sm:px-0">
       {/* Back */}
       <button
         onClick={() => navigate("/learn")}
@@ -246,7 +246,7 @@ export default function ModuleView() {
             {readingTime} min lettura
           </span>
         </div>
-        <h1 className="text-3xl font-bold text-foreground">{module.title}</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">{module.title}</h1>
         {module.summary && (
           <p className="text-muted-foreground">{module.summary}</p>
         )}
@@ -479,7 +479,7 @@ export default function ModuleView() {
         <div className="space-y-8 pt-8 border-t border-border">
           {/* Big score */}
           <div className="text-center space-y-3">
-            <div className="text-6xl font-bold text-foreground">
+            <div className="text-4xl sm:text-6xl font-bold text-foreground">
               {correctCount}
               <span className="text-2xl text-muted-foreground">
                 /{totalQuestions}
@@ -543,7 +543,7 @@ export default function ModuleView() {
           </div>
 
           {/* Actions */}
-          <div className="flex justify-center gap-3">
+          <div className="flex justify-center gap-3 flex-wrap px-4">
             {passed ? (
               <Button size="lg" onClick={handleSaveAndContinue} disabled={saving}>
                 {nextModule
