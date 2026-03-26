@@ -18,19 +18,27 @@ interface FaqForm {
 
 const emptyForm: FaqForm = { question: "", answer: "", category: "" };
 
-export default function FaqList() {
+interface FaqListProps {
+  collectionId?: string;
+}
+
+export default function FaqList({ collectionId }: FaqListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FaqForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
   const { data: faqs, isLoading, refetch } = useQuery({
-    queryKey: ["knowledge-faqs"],
+    queryKey: ["knowledge-faqs", collectionId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("knowledge_faqs")
         .select("*")
         .order("created_at", { ascending: false });
+      if (collectionId) {
+        query = query.eq("collection_id", collectionId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -44,11 +52,12 @@ export default function FaqList() {
 
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         question: form.question.trim(),
         answer: form.answer.trim(),
         category: form.category.trim() || null,
       };
+      if (collectionId) payload.collection_id = collectionId;
 
       if (editingId) {
         const { error } = await supabase
@@ -107,14 +116,11 @@ export default function FaqList() {
     );
   }
 
-  // Gather unique categories
-  const categories = [...new Set((faqs || []).map((f) => f.category).filter(Boolean))];
-
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
         {!showForm && (
-          <Button onClick={() => setShowForm(true)}>
+          <Button size="sm" onClick={() => setShowForm(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Aggiungi FAQ
           </Button>

@@ -1,4 +1,4 @@
-import { BookOpen, TrendingUp, BarChart3, Users, LogOut, Database } from "lucide-react";
+import { BookOpen, TrendingUp, BarChart3, Users, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -24,7 +24,6 @@ const navItems = [
 
 const adminItems = [
   { title: "Team", url: "/people", icon: Users },
-  { title: "Knowledge Base", url: "/knowledge", icon: Database },
 ];
 
 function AppSidebarContent() {
