@@ -24,7 +24,7 @@ interface QuestionForm {
   feedback_wrong: string;
 }
 
-interface Curriculum {
+interface Collection {
   id: string;
   title: string;
   status: string;
@@ -33,10 +33,10 @@ interface Curriculum {
 interface ModuleEditorProps {
   moduleId: string | null;
   onClose: () => void;
-  curricula?: Curriculum[];
+  collections?: Collection[];
 }
 
-export default function ModuleEditor({ moduleId, onClose, curricula = [] }: ModuleEditorProps) {
+export default function ModuleEditor({ moduleId, onClose, collections = [] }: ModuleEditorProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -302,7 +302,7 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Torna al curriculum
+        Torna alla collection
       </button>
 
       {/* Metadata badges inline */}
@@ -322,11 +322,11 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
 
           <Select value={curriculumId || "_none"} onValueChange={(v) => setCurriculumId(v === "_none" ? null : v)}>
             <SelectTrigger className="w-auto h-7 text-xs border-dashed gap-1 px-2">
-              <SelectValue placeholder="Nessun curriculum" />
+              <SelectValue placeholder="Nessuna collection" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_none">Nessun curriculum</SelectItem>
-              {curricula.map(c => (
+              <SelectItem value="_none">Nessuna collection</SelectItem>
+              {collections.map(c => (
                 <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
               ))}
             </SelectContent>
