@@ -1,52 +1,60 @@
 
 
-# Piano: Miglioramento flusso creazione Collection
+# Miglioramento UI Rep: Saluto + Collection Cards con navigazione
 
-## Problema attuale
-Cliccando "Nuova Collection" in `Learn.tsx`, viene creata una collection con titolo "Nuova Collection" e l'utente resta sulla pagina lista. Nessun redirect, nessun prompt per titolo o documenti.
+## Situazione attuale
+Il rep vede `RepRoadmap` che mostra un'unica lista verticale con tutti i moduli raggruppati per collection inline, con il roadmap (timeline) visibile subito. Le card hanno dimensioni inconsistenti e manca un saluto personalizzato.
 
 ## Soluzione
 
-### 1. Creazione con redirect + titolo inline
-In `Learn.tsx` → `handleCreateCollection`:
-- Dopo l'insert, ottenere l'`id` della nuova collection (`.select("id").single()`)
-- Fare `navigate(`/learn/${newId}`)` per portare l'utente dentro la collection
+### 1. Saluto personalizzato
+In `Learn.tsx` (vista rep), aggiungere un header "Ciao {nome}!" prima del contenuto, usando `profile.full_name` dal context. Sotto, un sottotitolo motivazionale (es. "Ecco le tue collection di formazione").
 
-In `CollectionDetail.tsx`:
-- Rendere il titolo **editabile inline** (click per editare) quando la collection è in stato `draft`
-- Se il titolo è "Nuova Collection" (default), mostrarlo già in modalità edit con autofocus così l'utente lo cambia subito
-- Al blur/enter, salvare il titolo via update su `curricula`
+### 2. Vista rep a livello Collection (cards uniformi)
+Invece di mostrare subito `RepRoadmap` con tutti i moduli, la pagina Learn mostra **card Collection** uniformi in una griglia. Ogni card mostra:
+- Titolo collection
+- Descrizione (troncata)
+- Progress bar con `X/Y moduli completati`
+- Icona `BookOpen`
 
-### 2. "Genera moduli" condizionato ai documenti
-In `CollectionDetail.tsx`:
-- Aggiungere una query per contare i documenti della collection (`knowledge_documents` con `collection_id`)
-- Se `documentsCount > 0`: il bottone "Genera moduli" funziona normalmente
-- Se `documentsCount === 0`: al click, mostrare un **Dialog** che dice "Nessun documento caricato. Carica almeno un documento per generare i moduli." con due bottoni:
-  - "Carica documento" → apre direttamente il dialog di upload di `DocumentsList`
-  - "Annulla"
+Le card hanno tutte la stessa altezza (`h-full` + flex layout). Click su una card → naviga a `/learn/:collectionId` dove si vede il roadmap dei moduli di quella specifica collection.
 
-### File coinvolti
+### 3. Pagina CollectionDetail per rep
+In `CollectionDetail.tsx`, se l'utente è un rep (non admin), mostrare:
+- Breadcrumb "Formazione > Nome Collection"
+- Il roadmap verticale (`RepRoadmap`) filtrato solo sui moduli di quella collection
+- Stats: moduli completati, percentuale, punteggio medio
+
+### File da modificare
 
 | File | Modifica |
 |------|----------|
-| `src/pages/Learn.tsx` | `handleCreateCollection`: aggiungere `.select("id").single()` + `navigate` |
-| `src/pages/CollectionDetail.tsx` | Titolo editabile inline + logica "genera" condizionata a documenti presenti |
-| `src/components/learn/DocumentsList.tsx` | Esporre `refetch` o accettare prop `onUploadComplete` per refresh dal parent |
+| `src/pages/Learn.tsx` | Vista rep: sostituire `RepRoadmap` con griglia di collection cards + saluto |
+| `src/components/learn/RepRoadmap.tsx` | Semplificare: riceve moduli di UNA sola collection (rimuovere raggruppamento interno) |
+| `src/pages/CollectionDetail.tsx` | Aggiungere vista rep con roadmap + stats quando `!isAdmin` |
 
-### Dettagli tecnici
+### Dettagli implementativi
 
-**Titolo editabile** in CollectionDetail:
+**Learn.tsx (rep view):**
 ```
-- Stato: `editingTitle` (boolean), `titleValue` (string)
-- Se `collection.title === "Nuova Collection"` → `editingTitle = true` al mount
-- Renderizzare un `<Input>` al posto dell'`<h1>` quando in editing
-- onBlur/onKeyDown Enter → salva con supabase update + invalidate query
+- Header: "Ciao {profile.full_name?.split(' ')[0]}!" + subtitle
+- Barra progresso globale (tutti i moduli)
+- Grid 1-2 colonne di Card per ogni publishedCollection
+- Ogni card: titolo, descrizione, progress, click → navigate(`/learn/${c.id}`)
+- Card con className="h-full" per uniformità
 ```
 
-**Genera condizionato**:
+**CollectionDetail.tsx (rep view):**
 ```
-- Query: `knowledge_documents` count where `collection_id = curriculumId`
-- Nel bottone "Genera moduli" onClick: check count, se 0 mostra dialog
-- Il dialog contiene il form di upload documenti inline (riuso DocumentsList upload logic)
+- Se !isAdmin: mostrare breadcrumb + RepRoadmap con solo i moduli della collection
+- Query completions per l'utente corrente
+- Stats header: completati/totali, punteggio medio
+```
+
+**RepRoadmap.tsx:**
+```
+- Rimuovere prop collections e logica di raggruppamento
+- Riceve solo modules e completions di una singola collection
+- Mantiene la timeline verticale invariata
 ```
 
