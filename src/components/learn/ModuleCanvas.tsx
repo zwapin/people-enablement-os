@@ -199,17 +199,6 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
 
   return (
     <div className="relative" ref={editorRef}>
-      {/* Bubble Menu (floating toolbar) */}
-      <BubbleMenu editor={editor} tippyOptions={{ duration: 150 }} className="flex items-center gap-0.5 rounded-lg border border-border bg-popover p-1 shadow-md">
-        <ToolbarBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} icon={Bold} tooltip="Grassetto" />
-        <ToolbarBtn active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} icon={Italic} tooltip="Corsivo" />
-        <ToolbarBtn active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} icon={Strikethrough} tooltip="Barrato" />
-        <ToolbarBtn active={editor.isActive("highlight")} onClick={() => editor.chain().focus().toggleHighlight().run()} icon={Highlighter} tooltip="Evidenzia" />
-        <div className="w-px h-5 bg-border mx-1" />
-        <ToolbarBtn active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} icon={Heading2} tooltip="H2" />
-        <ToolbarBtn active={editor.isActive("heading", { level: 3 })} onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} icon={Heading3} tooltip="H3" />
-      </BubbleMenu>
-
       {/* Top toolbar */}
       <div className="flex items-center gap-0.5 border-b border-border px-2 py-1 bg-muted/50 rounded-t-md flex-wrap">
         <ToolbarBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} icon={Bold} tooltip="Grassetto" />
