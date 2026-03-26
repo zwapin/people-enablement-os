@@ -30,6 +30,7 @@ export default function Learn() {
   const { profile, user } = useAuth();
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
