@@ -1,50 +1,52 @@
 
 
-# Rinominare "Curriculum/Curricula" → "Collection/Collections"
+# Piano: Miglioramento flusso creazione Collection
 
-Cambiare tutte le occorrenze visibili all'utente e i nomi dei componenti/variabili, mantenendo invariato il nome della tabella DB `curricula`.
+## Problema attuale
+Cliccando "Nuova Collection" in `Learn.tsx`, viene creata una collection con titolo "Nuova Collection" e l'utente resta sulla pagina lista. Nessun redirect, nessun prompt per titolo o documenti.
 
-## Modifiche per file
+## Soluzione
 
-### `src/components/learn/CurriculumCard.tsx` → rinominare file a `CollectionCard.tsx`
-- Rinominare interfaccia `Curriculum` → `Collection`, `CurriculumCardProps` → `CollectionCardProps`
-- Export `CollectionCard`
-- Toast: "Curriculum aggiornato" → "Collection aggiornata", "Curriculum pubblicato/archiviato" → "Collection pubblicata/archiviata"
+### 1. Creazione con redirect + titolo inline
+In `Learn.tsx` → `handleCreateCollection`:
+- Dopo l'insert, ottenere l'`id` della nuova collection (`.select("id").single()`)
+- Fare `navigate(`/learn/${newId}`)` per portare l'utente dentro la collection
 
-### `src/components/learn/CurriculumList.tsx` → rinominare file a `CollectionModuleList.tsx`
-- Interfaccia `CurriculumListProps` → `CollectionModuleListProps`
-- Export corrispondente
+In `CollectionDetail.tsx`:
+- Rendere il titolo **editabile inline** (click per editare) quando la collection è in stato `draft`
+- Se il titolo è "Nuova Collection" (default), mostrarlo già in modalità edit con autofocus così l'utente lo cambia subito
+- Al blur/enter, salvare il titolo via update su `curricula`
 
-### `src/pages/CurriculumDetail.tsx` → rinominare file a `CollectionDetail.tsx`
-- Variabili: `curriculumId` (dalla route, resta), `curriculum` → `collection`
-- Breadcrumb: "Curricula" → "Collections"
-- Titolo e label visibili aggiornati
+### 2. "Genera moduli" condizionato ai documenti
+In `CollectionDetail.tsx`:
+- Aggiungere una query per contare i documenti della collection (`knowledge_documents` con `collection_id`)
+- Se `documentsCount > 0`: il bottone "Genera moduli" funziona normalmente
+- Se `documentsCount === 0`: al click, mostrare un **Dialog** che dice "Nessun documento caricato. Carica almeno un documento per generare i moduli." con due bottoni:
+  - "Carica documento" → apre direttamente il dialog di upload di `DocumentsList`
+  - "Annulla"
 
-### `src/pages/Learn.tsx`
-- Import aggiornati per i nuovi nomi componenti
-- Variabili: `publishedCurricula` → `publishedCollections`, `allCurricula` → `allCollections`, `getModulesForCurriculum` → `getModulesForCollection`
-- Label UI: "Curricula" → "Collections"
+### File coinvolti
 
-### `src/components/learn/ModuleEditor.tsx`
-- Interfaccia `Curriculum` → `Collection`
-- Props: `curricula` → `collections`
-- Placeholder: "Nessun curriculum" → "Nessuna collection"
-- Back link: "Torna al curriculum" → "Torna alla collection"
+| File | Modifica |
+|------|----------|
+| `src/pages/Learn.tsx` | `handleCreateCollection`: aggiungere `.select("id").single()` + `navigate` |
+| `src/pages/CollectionDetail.tsx` | Titolo editabile inline + logica "genera" condizionata a documenti presenti |
+| `src/components/learn/DocumentsList.tsx` | Esporre `refetch` o accettare prop `onUploadComplete` per refresh dal parent |
 
-### `src/components/learn/RepRoadmap.tsx`
-- Interfaccia `Curriculum` → `Collection`
-- Props/variabili: `curricula` → `collections`, `curriculaMap` → `collectionsMap`
-- Testo UI: "Progresso curriculum" → "Progresso collection", "Completa i moduli per avanzare nel curriculum" → "...nella collection"
+### Dettagli tecnici
 
-### `src/pages/ModuleView.tsx`
-- Testo bottoni: "Torna al curriculum" → "Torna alla collection"
+**Titolo editabile** in CollectionDetail:
+```
+- Stato: `editingTitle` (boolean), `titleValue` (string)
+- Se `collection.title === "Nuova Collection"` → `editingTitle = true` al mount
+- Renderizzare un `<Input>` al posto dell'`<h1>` quando in editing
+- onBlur/onKeyDown Enter → salva con supabase update + invalidate query
+```
 
-### `src/App.tsx`
-- Import `CurriculumDetail` → `CollectionDetail`
-- Route path resta `/learn/:curriculumId` (parametro URL, non impatta utente)
-
-### Note
-- Il nome della tabella DB `curricula` e le query Supabase `.from("curricula")` restano invariati
-- Le colonne DB (`curriculum_id`) restano invariate
-- Solo testi visibili e nomi componenti/variabili nel frontend cambiano
+**Genera condizionato**:
+```
+- Query: `knowledge_documents` count where `collection_id = curriculumId`
+- Nel bottone "Genera moduli" onClick: check count, se 0 mostra dialog
+- Il dialog contiene il form di upload documenti inline (riuso DocumentsList upload logic)
+```
 
