@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus, Sparkles } from "lucide-react";
@@ -29,6 +30,7 @@ export default function Learn() {
   const { profile, user } = useAuth();
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
@@ -238,16 +240,15 @@ export default function Learn() {
   };
 
   const handleCreateCollection = async () => {
-    const { error } = await supabase.from("curricula").insert({
+    const { data, error } = await supabase.from("curricula").insert({
       title: "Nuova Collection",
       status: "draft",
       order_index: (curricula?.length ?? 0),
-    });
+    }).select("id").single();
     if (error) {
       toast.error("Creazione fallita");
     } else {
-      toast.success("Collection creata");
-      refetchCurricula();
+      navigate(`/learn/${data.id}`);
     }
   };
 

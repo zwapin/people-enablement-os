@@ -2,10 +2,11 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
   Breadcrumb,
@@ -16,11 +17,20 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ArrowLeft,
   RefreshCw,
   Sparkles,
   Loader2,
   BookOpen,
+  Upload,
+  Pencil,
 } from "lucide-react";
 import CollectionModuleList from "@/components/learn/CollectionModuleList";
 import DocumentsList from "@/components/learn/DocumentsList";
@@ -42,6 +52,14 @@ export default function CollectionDetail() {
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, label: "" });
   const activeJobId = useRef<string | null>(null);
+
+  // Inline title editing
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState("");
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
+  // No-docs dialog
+  const [noDocsDialogOpen, setNoDocsDialogOpen] = useState(false);
 
   const { data: collection } = useQuery({
     queryKey: ["collection", curriculumId],
@@ -83,8 +101,54 @@ export default function CollectionDetail() {
     enabled: !!curriculumId,
   });
 
+  // Count documents for this collection
+  const { data: docCount, refetch: refetchDocCount } = useQuery({
+    queryKey: ["doc-count", curriculumId],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("knowledge_documents")
+        .select("*", { count: "exact", head: true })
+        .eq("collection_id", curriculumId!);
+      if (error) throw error;
+      return count ?? 0;
+    },
+    enabled: !!curriculumId,
+  });
+
+  // Auto-enter title edit mode for new collections
+  useEffect(() => {
+    if (collection) {
+      setTitleValue(collection.title);
+      if (collection.title === "Nuova Collection" && collection.status === "draft") {
+        setEditingTitle(true);
+        setTimeout(() => titleInputRef.current?.select(), 100);
+      }
+    }
+  }, [collection]);
+
+  const handleSaveTitle = async () => {
+    const trimmed = titleValue.trim();
+    if (!trimmed || trimmed === collection?.title) {
+      setTitleValue(collection?.title || "");
+      setEditingTitle(false);
+      return;
+    }
+    const { error } = await supabase
+      .from("curricula")
+      .update({ title: trimmed, updated_at: new Date().toISOString() })
+      .eq("id", curriculumId!);
+    if (error) {
+      toast.error("Errore nel salvataggio del titolo");
+    } else {
+      queryClient.invalidateQueries({ queryKey: ["collection", curriculumId] });
+      queryClient.invalidateQueries({ queryKey: ["curricula"] });
+    }
+    setEditingTitle(false);
+  };
+
   const refreshAll = () => {
     refetchModules();
+    refetchDocCount();
     queryClient.invalidateQueries({ queryKey: ["collection", curriculumId] });
     queryClient.invalidateQueries({ queryKey: ["curricula"] });
     queryClient.invalidateQueries({ queryKey: ["doc-count", curriculumId] });
@@ -173,6 +237,15 @@ export default function CollectionDetail() {
   }, [curriculumId]);
 
   const handleGenerate = async () => {
+    // Check if there are documents first
+    if ((docCount ?? 0) === 0) {
+      setNoDocsDialogOpen(true);
+      return;
+    }
+    doGenerate();
+  };
+
+  const doGenerate = async () => {
     setGenerating(true);
     setProgress(2);
     setProgressLabel("Invio richiesta...");
@@ -310,7 +383,36 @@ export default function CollectionDetail() {
           </Button>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-foreground">{collection.title}</h1>
+              {editingTitle ? (
+                <Input
+                  ref={titleInputRef}
+                  value={titleValue}
+                  onChange={(e) => setTitleValue(e.target.value)}
+                  onBlur={handleSaveTitle}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveTitle();
+                    if (e.key === "Escape") {
+                      setTitleValue(collection.title);
+                      setEditingTitle(false);
+                    }
+                  }}
+                  className="text-2xl font-bold h-auto py-0 px-1 border-primary"
+                  autoFocus
+                />
+              ) : (
+                <h1
+                  className="text-2xl font-bold text-foreground cursor-pointer group flex items-center gap-1.5"
+                  onClick={() => {
+                    if (isAdmin) {
+                      setEditingTitle(true);
+                      setTimeout(() => titleInputRef.current?.select(), 50);
+                    }
+                  }}
+                >
+                  {collection.title}
+                  {isAdmin && <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />}
+                </h1>
+              )}
               <Badge
                 variant={collection.status === "published" ? "default" : "secondary"}
                 className="text-[10px] uppercase"
@@ -405,9 +507,9 @@ export default function CollectionDetail() {
       {/* Documenti & FAQ — solo admin */}
       {isAdmin && (
         <>
-          <div className="space-y-3">
+          <div className="space-y-3" data-documents-section>
             <h2 className="text-lg font-semibold text-foreground">Documenti</h2>
-            <DocumentsList collectionId={curriculumId!} />
+            <DocumentsList collectionId={curriculumId!} onUploadComplete={refreshAll} />
           </div>
 
           <div className="space-y-3">
@@ -416,6 +518,33 @@ export default function CollectionDetail() {
           </div>
         </>
       )}
+
+      {/* No documents dialog */}
+      <Dialog open={noDocsDialogOpen} onOpenChange={setNoDocsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nessun documento caricato</DialogTitle>
+            <DialogDescription>
+              Carica almeno un documento per generare i moduli. I documenti vengono usati dall'AI per creare il contenuto formativo.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setNoDocsDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={() => {
+              setNoDocsDialogOpen(false);
+              // Scroll to documents section
+              setTimeout(() => {
+                document.querySelector('[data-documents-section]')?.scrollIntoView({ behavior: 'smooth' });
+              }, 100);
+            }}>
+              <Upload className="h-4 w-4 mr-2" />
+              Vai ai documenti
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

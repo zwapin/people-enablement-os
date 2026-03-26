@@ -13,9 +13,10 @@ import { format } from "date-fns";
 
 interface DocumentsListProps {
   collectionId?: string;
+  onUploadComplete?: () => void;
 }
 
-export default function DocumentsList({ collectionId }: DocumentsListProps) {
+export default function DocumentsList({ collectionId, onUploadComplete }: DocumentsListProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
@@ -81,6 +82,7 @@ export default function DocumentsList({ collectionId }: DocumentsListProps) {
       setContext("");
       setFile(null);
       refetch();
+      onUploadComplete?.();
     } catch (err: any) {
       toast.error(err.message || "Errore nel caricamento del documento");
     } finally {
