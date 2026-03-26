@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Collapsible,
   CollapsibleContent,
@@ -23,8 +24,11 @@ import {
   BookOpen,
   Sparkles,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import CurriculumList from "./CurriculumList";
+import DocumentsList from "./DocumentsList";
+import FaqList from "./FaqList";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Module = Tables<"modules">;
@@ -48,6 +52,8 @@ interface CurriculumCardProps {
   onRefresh: () => void;
   onBulkGenerate?: (curriculumId: string) => void;
   isBulkGenerating?: boolean;
+  onGenerateCurriculum?: (collectionId: string) => void;
+  isGenerating?: boolean;
 }
 
 export default function CurriculumCard({
@@ -58,6 +64,8 @@ export default function CurriculumCard({
   onRefresh,
   onBulkGenerate,
   isBulkGenerating,
+  onGenerateCurriculum,
+  isGenerating,
 }: CurriculumCardProps) {
   const [open, setOpen] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -193,6 +201,22 @@ export default function CurriculumCard({
 
           {isAdmin && !editing && (
             <div className="flex items-center gap-1 shrink-0">
+              {onGenerateCurriculum && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={() => onGenerateCurriculum(curriculum.id)}
+                  disabled={isGenerating}
+                  title="Genera curriculum da KB"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 text-primary" />
+                  )}
+                </Button>
+              )}
               {onBulkGenerate && modules.some(m => !m.content_body) && (
                 <Button
                   variant="ghost"
@@ -249,17 +273,50 @@ export default function CurriculumCard({
 
         <CollapsibleContent>
           <div className="px-4 pb-4 sm:pl-14">
-            {modules.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">
-                Nessun modulo in questo curriculum.
-              </p>
+            {isAdmin ? (
+              <Tabs defaultValue="modules" className="space-y-3">
+                <TabsList className="h-8">
+                  <TabsTrigger value="modules" className="text-xs">Moduli</TabsTrigger>
+                  <TabsTrigger value="documents" className="text-xs">Documenti</TabsTrigger>
+                  <TabsTrigger value="faqs" className="text-xs">FAQ</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="modules">
+                  {modules.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">
+                      Nessun modulo in questo curriculum.
+                    </p>
+                  ) : (
+                    <CurriculumList
+                      modules={modules}
+                      isAdmin={isAdmin}
+                      onEdit={onEdit}
+                      onRefresh={onRefresh}
+                    />
+                  )}
+                </TabsContent>
+
+                <TabsContent value="documents">
+                  <DocumentsList collectionId={curriculum.id} />
+                </TabsContent>
+
+                <TabsContent value="faqs">
+                  <FaqList collectionId={curriculum.id} />
+                </TabsContent>
+              </Tabs>
             ) : (
-              <CurriculumList
-                modules={modules}
-                isAdmin={isAdmin}
-                onEdit={onEdit}
-                onRefresh={onRefresh}
-              />
+              modules.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-2">
+                  Nessun modulo in questo curriculum.
+                </p>
+              ) : (
+                <CurriculumList
+                  modules={modules}
+                  isAdmin={isAdmin}
+                  onEdit={onEdit}
+                  onRefresh={onRefresh}
+                />
+              )
             )}
           </div>
         </CollapsibleContent>

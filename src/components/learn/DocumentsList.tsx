@@ -11,7 +11,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Plus, FileText, Trash2, Loader2, Upload, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
-export default function DocumentsList() {
+interface DocumentsListProps {
+  collectionId?: string;
+}
+
+export default function DocumentsList({ collectionId }: DocumentsListProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
@@ -20,12 +24,16 @@ export default function DocumentsList() {
   const [reExtracting, setReExtracting] = useState<string | null>(null);
 
   const { data: documents, isLoading, refetch } = useQuery({
-    queryKey: ["knowledge-documents"],
+    queryKey: ["knowledge-documents", collectionId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("knowledge_documents")
         .select("*")
         .order("created_at", { ascending: false });
+      if (collectionId) {
+        query = query.eq("collection_id", collectionId);
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
@@ -47,22 +55,23 @@ export default function DocumentsList() {
 
       if (uploadError) throw uploadError;
 
-      // Call extract-document edge function
       const { data, error } = await supabase.functions.invoke("extract-document", {
         body: { file_path: fileName, file_name: file.name },
       });
 
       if (error) throw error;
 
-      // Insert into knowledge_documents
+      const insertPayload: any = {
+        title: title.trim() || file.name,
+        context: context.trim() || null,
+        content: data?.content || "",
+        file_path: fileName,
+      };
+      if (collectionId) insertPayload.collection_id = collectionId;
+
       const { error: insertError } = await supabase
         .from("knowledge_documents")
-        .insert({
-          title: title.trim() || file.name,
-          context: context.trim() || null,
-          content: data?.content || "",
-          file_path: fileName,
-        });
+        .insert(insertPayload);
 
       if (insertError) throw insertError;
 
@@ -134,7 +143,7 @@ export default function DocumentsList() {
       <div className="flex justify-end">
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Carica documento
             </Button>
@@ -186,7 +195,7 @@ export default function DocumentsList() {
         <Card className="p-8 text-center bg-card border-border">
           <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
           <p className="text-sm text-muted-foreground">
-            Nessun documento caricato. Carica PDF, DOCX o TXT per costruire la tua knowledge base.
+            Nessun documento caricato. Carica PDF, DOCX o TXT per alimentare la generazione AI.
           </p>
         </Card>
       ) : (
