@@ -1,53 +1,26 @@
 
 
-# Piano: Progress indicator, Preview Rep, e allineamento formattazione
+# Associare il PDF a tutti i curricula
 
-## 1. Progress indicator durante generazione AI
+## Situazione attuale
+- Il PDF "SALES PLAYBOOK" esiste nel DB con 69.790 caratteri estratti
+- Ha `collection_id = NULL` → non è legato a nessun curriculum
+- I 5 curricula esistenti non hanno documenti associati
+- Quando l'AI genera per un curriculum specifico, non trova materiale sorgente
 
-Attualmente il bottone "Genera con AI" mostra solo un Loader2 spinner. Aggiungere un overlay/banner visibile nel canvas che mostra lo stato della generazione.
+## Soluzione
+Creare una copia del record `knowledge_documents` per ciascuno dei 5 curricula, mantenendo lo stesso `file_path` e `content` ma con il `collection_id` corretto.
 
-**ModuleEditor.tsx**:
-- Quando `generating === true`, mostrare un overlay sopra il canvas con:
-  - Animazione progress indeterminata (Progress component con animazione)
-  - Testo di stato che cambia: "Analisi documenti sorgente..." → "Generazione contenuto..." → "Quasi fatto..."
-  - Usare `useEffect` con timer per ciclare i messaggi ogni ~4 secondi
-  - L'overlay copre l'area canvas con sfondo semi-trasparente `bg-background/80 backdrop-blur`
+### Migrazione SQL
+Inserire 5 nuovi record nella tabella `knowledge_documents`, uno per ogni curriculum, copiando titolo, contesto, contenuto e file_path dal documento originale (id `2bb02955-...`).
 
-## 2. Bottone Preview "Vista Rep"
+I 5 curricula target:
+1. `c1000001-...-000000000001` — Fondamenti del Sales Process
+2. `c1000001-...-000000000002` — ICP Targeting e Account Tiering
+3. `c1000001-...-000000000003` — SDR Mastery
+4. `c1000001-...-000000000004` — AE Excellence
+5. `c1000001-...-000000000005` — Customer Success
 
-Aggiungere un bottone nella action bar (o nell'header) che apre una modale/drawer full-width con il contenuto renderizzato esattamente come lo vede il Rep in `ModuleView`.
-
-**ModuleEditor.tsx**:
-- Aggiungere bottone `Eye` icon "Anteprima Rep" nell'header vicino ai badge
-- Al click, aprire un Dialog/Sheet full-screen che renderizza il contenuto con le stesse classi e componenti di `ModuleView`
-- Creare un componente `ModulePreview` che riceve title, summary, track, contentBody, keyPoints, questions e li renderizza con lo stesso markup di ModuleView (article con ReactMarkdown + remarkGfm + custom components)
-- Include anche la sezione Assessment in read-only/preview mode
-
-**Nuovo file `src/components/learn/ModulePreview.tsx`**:
-- Estrae il rendering markup da ModuleView in un componente riutilizzabile
-- Riceve i dati come props (non da DB), così funziona live con i dati dell'editor
-- Stesso layout `max-w-3xl`, stesse custom components per ReactMarkdown (h2 con border-b, h3 con barra primary, blockquote styled, tabelle con bordi, ecc.)
-
-## 3. Allineamento formattazione TipTap ↔ ModuleView
-
-Il canvas TipTap usa `prose prose-sm` generico, mentre ModuleView ha custom components molto specifici. Allineare gli stili del canvas TipTap per avere una resa visiva coerente.
-
-**ModuleCanvas.tsx / index.css**:
-- Aggiungere stili CSS custom per il TipTap editor (`.ProseMirror`) che replicano la formattazione di ModuleView:
-  - `h2`: `text-xl font-bold mt-10 mb-4 pb-2 border-b border-border`
-  - `h3`: `text-lg font-semibold mt-8 mb-3` con barra primary a sinistra
-  - `blockquote`: `border-l-4 border-primary/50 bg-secondary/30 rounded-r-lg px-5 py-4`
-  - `table`: bordi, header con `bg-muted/60`, padding consistente
-  - `strong`: `bg-primary/10 px-1 rounded`
-  - `ul li`: dot primary, spacing coerente
-- Questi stili vanno in `src/index.css` sotto un selettore `.ProseMirror`
-
-## File coinvolti
-
-| File | Modifica |
-|------|----------|
-| `src/components/learn/ModuleEditor.tsx` | Overlay progress + bottone anteprima |
-| `src/components/learn/ModulePreview.tsx` | Nuovo — componente preview Vista Rep |
-| `src/components/learn/ModuleCanvas.tsx` | Classe prose aggiornata |
-| `src/index.css` | Stili `.ProseMirror` allineati a ModuleView |
+### Nessuna modifica al codice
+Il sistema già funziona correttamente — `DocumentsList` filtra per `collection_id` e `generate-curriculum` cerca documenti per `collection_id`. Basta popolare i dati.
 
