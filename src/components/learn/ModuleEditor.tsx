@@ -1,19 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import ModuleCanvas from "./ModuleCanvas";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save, Sparkles } from "lucide-react";
-import type { Tables } from "@/integrations/supabase/types";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import ModuleCanvas from "./ModuleCanvas";
+import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save, Sparkles, ChevronDown, Lightbulb, HelpCircle } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
-
-type Module = Tables<"modules">;
 
 interface QuestionForm {
   id?: string;
@@ -51,6 +49,19 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
   const [status, setStatus] = useState<string>("draft");
   const [curriculumId, setCurriculumId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
+
+  const [keyPointsOpen, setKeyPointsOpen] = useState(true);
+  const [questionsOpen, setQuestionsOpen] = useState(true);
+
+  const summaryRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize summary textarea
+  useEffect(() => {
+    if (summaryRef.current) {
+      summaryRef.current.style.height = "auto";
+      summaryRef.current.style.height = summaryRef.current.scrollHeight + "px";
+    }
+  }, [summary]);
 
   useEffect(() => {
     if (moduleId) loadModule();
@@ -260,156 +271,249 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onClose}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
-        <h1 className="text-2xl font-bold text-foreground">Modifica Modulo</h1>
-      </div>
+    <div className="max-w-3xl mx-auto space-y-8 pb-28 px-4 sm:px-0">
+      {/* Back link */}
+      <button
+        onClick={onClose}
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Torna al curriculum
+      </button>
 
-      <Card className="p-4 border-border bg-card space-y-4">
-        <h3 className="font-medium text-foreground">Dettagli Modulo</h3>
+      {/* Metadata badges inline */}
+      <header className="space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Select value={track} onValueChange={setTrack}>
+            <SelectTrigger className="w-auto h-7 text-xs border-dashed gap-1 px-2">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Sales">Vendite</SelectItem>
+              <SelectItem value="CS">CS</SelectItem>
+              <SelectItem value="Ops">Ops</SelectItem>
+              <SelectItem value="General">Generale</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="col-span-2 space-y-2">
-            <Label>Titolo</Label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo del modulo" />
-          </div>
-          <div className="space-y-2">
-            <Label>Area</Label>
-            <Select value={track} onValueChange={setTrack}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Sales">Vendite</SelectItem>
-                <SelectItem value="CS">CS</SelectItem>
-                <SelectItem value="Ops">Ops</SelectItem>
-                <SelectItem value="General">Generale</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Curriculum</Label>
-            <Select value={curriculumId || "_none"} onValueChange={(v) => setCurriculumId(v === "_none" ? null : v)}>
-              <SelectTrigger><SelectValue placeholder="Nessuno" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_none">Nessun curriculum</SelectItem>
-                {curricula.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={curriculumId || "_none"} onValueChange={(v) => setCurriculumId(v === "_none" ? null : v)}>
+            <SelectTrigger className="w-auto h-7 text-xs border-dashed gap-1 px-2">
+              <SelectValue placeholder="Nessun curriculum" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_none">Nessun curriculum</SelectItem>
+              {curricula.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Badge variant="outline" className="text-[10px] capitalize">
+            {status}
+          </Badge>
         </div>
 
-        <div className="space-y-2">
-          <Label>Sommario</Label>
-          <Textarea value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Panoramica breve" className="min-h-[60px]" />
-        </div>
+        {/* Inline title */}
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Titolo del modulo"
+          className="w-full text-2xl sm:text-3xl font-bold text-foreground bg-transparent border-none outline-none placeholder:text-muted-foreground/40"
+        />
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Punti chiave</Label>
-            <Button variant="ghost" size="sm" onClick={addKeyPoint}>
-              <Plus className="h-3 w-3 mr-1" />Aggiungi
+        {/* Inline summary */}
+        <textarea
+          ref={summaryRef}
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+          placeholder="Aggiungi un sommario..."
+          rows={1}
+          className="w-full text-muted-foreground bg-transparent border-none outline-none resize-none placeholder:text-muted-foreground/40 text-sm leading-relaxed"
+        />
+      </header>
+
+      {/* Separator */}
+      <hr className="border-border" />
+
+      {/* TipTap Canvas — the main content area */}
+      <div className="space-y-2">
+        {moduleId && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerate}
+              disabled={generating || saving}
+              className="text-xs gap-1.5"
+            >
+              {generating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3" />
+              )}
+              {generating ? "Generazione..." : contentBody ? "Rigenera tutto" : "Genera con AI"}
             </Button>
           </div>
-          {keyPoints.map((kp, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <Input value={kp} onChange={(e) => updateKeyPoint(i, e.target.value)} placeholder={`Punto chiave ${i + 1}`} />
-              <Button variant="ghost" size="icon" onClick={() => removeKeyPoint(i)}><Trash2 className="h-3 w-3" /></Button>
-            </div>
-          ))}
-        </div>
+        )}
+        <ModuleCanvas
+          content={contentBody}
+          onChange={setContentBody}
+          disabled={generating}
+          moduleTitle={title}
+          moduleId={moduleId || undefined}
+        />
+      </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <Label>Contenuto</Label>
-            {moduleId && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleGenerate}
-                disabled={generating || saving}
-              >
-                {generating ? (
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3 w-3 mr-1" />
-                )}
-                {generating ? "Generazione..." : contentBody ? "Rigenera tutto con AI" : "Genera tutto con AI"}
-              </Button>
-            )}
-          </div>
-          <ModuleCanvas
-            content={contentBody}
-            onChange={setContentBody}
-            disabled={generating}
-            moduleTitle={title}
-            moduleId={moduleId || undefined}
-          />
-        </div>
-      </Card>
+      {/* Separator */}
+      <hr className="border-border" />
 
-      <Card className="p-4 border-border bg-card space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="font-medium text-foreground">
-            Domande di Valutazione
-            <Badge variant="secondary" className="ml-2 text-[10px]">{questions.length}</Badge>
-          </h3>
-          <Button variant="ghost" size="sm" onClick={addQuestion}>
+      {/* Key Points — collapsible */}
+      <Collapsible open={keyPointsOpen} onOpenChange={setKeyPointsOpen}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${keyPointsOpen ? "" : "-rotate-90"}`} />
+          <Lightbulb className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">Punti Chiave</span>
+          {keyPoints.length > 0 && (
+            <Badge variant="secondary" className="text-[10px] ml-1">{keyPoints.length}</Badge>
+          )}
+          <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 text-xs"
+            onClick={(e) => { e.stopPropagation(); addKeyPoint(); }}
+          >
             <Plus className="h-3 w-3 mr-1" />Aggiungi
           </Button>
-        </div>
-
-        {questions.map((q, qi) => (
-          <div key={qi} className="border border-border rounded-md p-3 space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <GripVertical className="h-3 w-3" />
-                <span>D{qi + 1}</span>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => removeQuestion(qi)} className="h-6 w-6 text-destructive hover:text-destructive">
-                <Trash2 className="h-3 w-3" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3 space-y-2 pl-6">
+          {keyPoints.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">Nessun punto chiave. Clicca "Aggiungi" per iniziare.</p>
+          )}
+          {keyPoints.map((kp, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="text-primary text-sm">•</span>
+              <Input
+                value={kp}
+                onChange={(e) => updateKeyPoint(i, e.target.value)}
+                placeholder={`Punto chiave ${i + 1}`}
+                className="flex-1 h-8 text-sm border-transparent hover:border-input focus:border-input transition-colors bg-transparent"
+              />
+              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 hover:opacity-100 focus:opacity-100" onClick={() => removeKeyPoint(i)}>
+                <Trash2 className="h-3 w-3 text-muted-foreground" />
               </Button>
             </div>
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
 
-            <Textarea value={q.question} onChange={(e) => updateQuestion(qi, "question", e.target.value)} placeholder="Testo domanda" className="min-h-[50px]" />
+      {/* Separator */}
+      <hr className="border-border" />
 
-            <div className="space-y-2">
-              <Label className="text-xs">Opzioni (seleziona la corretta)</Label>
-              {q.options.map((opt, oi) => (
-                <div key={oi} className="flex items-center gap-2">
-                  <input type="radio" name={`correct-${qi}`} checked={q.correct_index === oi} onChange={() => updateQuestion(qi, "correct_index", oi)} className="accent-primary" />
-                  <Input value={opt} onChange={(e) => updateOption(qi, oi, e.target.value)} placeholder={`Opzione ${oi + 1}`} className="flex-1" />
+      {/* Assessment Questions — collapsible */}
+      <Collapsible open={questionsOpen} onOpenChange={setQuestionsOpen}>
+        <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${questionsOpen ? "" : "-rotate-90"}`} />
+          <HelpCircle className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">Domande di Valutazione</span>
+          {questions.length > 0 && (
+            <Badge variant="secondary" className="text-[10px] ml-1">{questions.length}</Badge>
+          )}
+          <div className="flex-1" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 text-xs"
+            onClick={(e) => { e.stopPropagation(); addQuestion(); }}
+          >
+            <Plus className="h-3 w-3 mr-1" />Aggiungi
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="mt-3 space-y-4 pl-6">
+          {questions.length === 0 && (
+            <p className="text-xs text-muted-foreground italic">Nessuna domanda. Clicca "Aggiungi" per iniziare.</p>
+          )}
+          {questions.map((q, qi) => (
+            <div key={qi} className="border border-border/50 rounded-lg p-4 space-y-3 bg-muted/20">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <GripVertical className="h-3 w-3" />
+                  <span className="font-mono">D{qi + 1}</span>
                 </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Feedback corretto</Label>
-                <Input value={q.feedback_correct} onChange={(e) => updateQuestion(qi, "feedback_correct", e.target.value)} placeholder="Perché è corretto" />
+                <Button variant="ghost" size="icon" onClick={() => removeQuestion(qi)} className="h-6 w-6 text-muted-foreground hover:text-destructive">
+                  <Trash2 className="h-3 w-3" />
+                </Button>
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Feedback errato</Label>
-                <Input value={q.feedback_wrong} onChange={(e) => updateQuestion(qi, "feedback_wrong", e.target.value)} placeholder="Suggerimento verso la risposta" />
+
+              <Textarea
+                value={q.question}
+                onChange={(e) => updateQuestion(qi, "question", e.target.value)}
+                placeholder="Testo domanda"
+                className="min-h-[40px] text-sm border-transparent hover:border-input focus:border-input bg-transparent resize-none"
+              />
+
+              <div className="space-y-1.5">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Opzioni</Label>
+                {q.options.map((opt, oi) => (
+                  <div key={oi} className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name={`correct-${qi}`}
+                      checked={q.correct_index === oi}
+                      onChange={() => updateQuestion(qi, "correct_index", oi)}
+                      className="accent-primary"
+                    />
+                    <Input
+                      value={opt}
+                      onChange={(e) => updateOption(qi, oi, e.target.value)}
+                      placeholder={`Opzione ${oi + 1}`}
+                      className="flex-1 h-8 text-sm border-transparent hover:border-input focus:border-input bg-transparent"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Feedback corretto</Label>
+                  <Input
+                    value={q.feedback_correct}
+                    onChange={(e) => updateQuestion(qi, "feedback_correct", e.target.value)}
+                    placeholder="Perché è corretto"
+                    className="h-8 text-sm border-transparent hover:border-input focus:border-input bg-transparent"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Feedback errato</Label>
+                  <Input
+                    value={q.feedback_wrong}
+                    onChange={(e) => updateQuestion(qi, "feedback_wrong", e.target.value)}
+                    placeholder="Suggerimento verso la risposta"
+                    className="h-8 text-sm border-transparent hover:border-input focus:border-input bg-transparent"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </Card>
+          ))}
+        </CollapsibleContent>
+      </Collapsible>
 
-      <div className="flex flex-wrap items-center justify-end gap-3 pb-8">
-        <Button variant="outline" onClick={onClose}>Annulla</Button>
-        <Button variant="secondary" onClick={() => handleSave("draft")} disabled={saving}>
-          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          <Save className="h-4 w-4 mr-2" />Salva bozza
-        </Button>
-        <Button onClick={() => handleSave("published")} disabled={saving}>
-          {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Pubblica
-        </Button>
+      {/* Sticky action bar */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/80 backdrop-blur-sm">
+        <div className="max-w-3xl mx-auto flex items-center justify-end gap-3 px-4 py-3">
+          <Button variant="ghost" onClick={onClose} className="text-sm">
+            Annulla
+          </Button>
+          <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving} className="text-sm gap-1.5">
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            <Save className="h-3.5 w-3.5" />
+            Salva bozza
+          </Button>
+          <Button onClick={() => handleSave("published")} disabled={saving} className="text-sm">
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Pubblica
+          </Button>
+        </div>
       </div>
     </div>
   );
