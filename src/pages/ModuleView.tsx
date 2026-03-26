@@ -218,7 +218,7 @@ export default function ModuleView() {
         <p className="text-muted-foreground">Modulo non trovato.</p>
         <Button variant="outline" onClick={() => navigate("/learn")}>
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Torna al curriculum
+          Torna alla collection
         </Button>
       </div>
     );
@@ -232,7 +232,7 @@ export default function ModuleView() {
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Torna al curriculum
+        Torna alla collection
       </button>
 
       {/* ===== ATTO 1 — CONTENUTO ===== */}

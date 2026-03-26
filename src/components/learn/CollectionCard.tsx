@@ -23,7 +23,7 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type Module = Tables<"modules">;
 
-interface Curriculum {
+interface Collection {
   id: string;
   title: string;
   description: string | null;
@@ -34,42 +34,42 @@ interface Curriculum {
   updated_at: string;
 }
 
-interface CurriculumCardProps {
-  curriculum: Curriculum;
+interface CollectionCardProps {
+  collection: Collection;
   modules: Module[];
   isAdmin: boolean;
   onRefresh: () => void;
 }
 
-export default function CurriculumCard({
-  curriculum,
+export default function CollectionCard({
+  collection,
   modules,
   isAdmin,
   onRefresh,
-}: CurriculumCardProps) {
+}: CollectionCardProps) {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(curriculum.title);
-  const [editDesc, setEditDesc] = useState(curriculum.description || "");
+  const [editTitle, setEditTitle] = useState(collection.title);
+  const [editDesc, setEditDesc] = useState(collection.description || "");
 
   const { data: docCount } = useQuery({
-    queryKey: ["doc-count", curriculum.id],
+    queryKey: ["doc-count", collection.id],
     queryFn: async () => {
       const { count } = await supabase
         .from("knowledge_documents")
         .select("*", { count: "exact", head: true })
-        .eq("collection_id", curriculum.id);
+        .eq("collection_id", collection.id);
       return count ?? 0;
     },
   });
 
   const { data: faqCount } = useQuery({
-    queryKey: ["faq-count", curriculum.id],
+    queryKey: ["faq-count", collection.id],
     queryFn: async () => {
       const { count } = await supabase
         .from("knowledge_faqs")
         .select("*", { count: "exact", head: true })
-        .eq("collection_id", curriculum.id);
+        .eq("collection_id", collection.id);
       return count ?? 0;
     },
   });
@@ -83,12 +83,12 @@ export default function CurriculumCard({
         description: editDesc.trim() || null,
         updated_at: new Date().toISOString(),
       })
-      .eq("id", curriculum.id);
+      .eq("id", collection.id);
 
     if (error) {
       toast.error("Aggiornamento fallito");
     } else {
-      toast.success("Curriculum aggiornato");
+      toast.success("Collection aggiornata");
       setEditing(false);
       onRefresh();
     }
@@ -96,17 +96,17 @@ export default function CurriculumCard({
 
   const handleToggleStatus = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const newStatus = curriculum.status === "published" ? "draft" : "published";
+    const newStatus = collection.status === "published" ? "draft" : "published";
     const { error } = await supabase
       .from("curricula")
       .update({ status: newStatus, updated_at: new Date().toISOString() })
-      .eq("id", curriculum.id);
+      .eq("id", collection.id);
 
     if (error) {
       toast.error("Aggiornamento stato fallito");
     } else {
       toast.success(
-        `Curriculum ${newStatus === "published" ? "pubblicato" : "spostato in bozza"}`
+        `Collection ${newStatus === "published" ? "pubblicata" : "spostata in bozza"}`
       );
       onRefresh();
     }
@@ -117,19 +117,19 @@ export default function CurriculumCard({
     const { error } = await supabase
       .from("curricula")
       .update({ status: "archived", updated_at: new Date().toISOString() })
-      .eq("id", curriculum.id);
+      .eq("id", collection.id);
 
     if (error) {
       toast.error("Archiviazione fallita");
     } else {
-      toast.success("Curriculum archiviato");
+      toast.success("Collection archiviata");
       onRefresh();
     }
   };
 
   const handleCardClick = () => {
     if (!editing) {
-      navigate(`/learn/${curriculum.id}`);
+      navigate(`/learn/${collection.id}`);
     }
   };
 
@@ -176,26 +176,26 @@ export default function CurriculumCard({
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-primary shrink-0" />
                 <h3 className="font-semibold text-foreground truncate">
-                  {curriculum.title}
+                  {collection.title}
                 </h3>
                 <Badge
                   variant={
-                    curriculum.status === "published" ? "default" : "secondary"
+                    collection.status === "published" ? "default" : "secondary"
                   }
                   className="text-[10px] uppercase shrink-0"
                 >
-                  {curriculum.status === "published"
+                  {collection.status === "published"
                     ? "Pubblicato"
-                    : curriculum.status === "draft"
+                    : collection.status === "draft"
                     ? "Bozza"
-                    : curriculum.status === "archived"
+                    : collection.status === "archived"
                     ? "Archiviato"
-                    : curriculum.status}
+                    : collection.status}
                 </Badge>
               </div>
-              {curriculum.description && (
+              {collection.description && (
                 <p className="text-sm text-muted-foreground mt-1 truncate">
-                  {curriculum.description}
+                  {collection.description}
                 </p>
               )}
               <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
@@ -224,12 +224,12 @@ export default function CurriculumCard({
               className="h-7 w-7"
               onClick={handleToggleStatus}
               title={
-                curriculum.status === "published"
+                collection.status === "published"
                   ? "Sposta in bozza"
                   : "Pubblica"
               }
             >
-              {curriculum.status === "published" ? (
+              {collection.status === "published" ? (
                 <EyeOff className="h-4 w-4" />
               ) : (
                 <Eye className="h-4 w-4" />

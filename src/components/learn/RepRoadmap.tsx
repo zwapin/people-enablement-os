@@ -8,7 +8,7 @@ import type { Tables } from "@/integrations/supabase/types";
 type Module = Tables<"modules">;
 type Completion = Tables<"module_completions">;
 
-interface Curriculum {
+interface Collection {
   id: string;
   title: string;
   description: string | null;
@@ -17,12 +17,12 @@ interface Curriculum {
 interface RepRoadmapProps {
   modules: Module[];
   completions: Completion[];
-  curricula?: Curriculum[];
+  collections?: Collection[];
 }
 
 type ModuleState = "completed" | "available";
 
-export default function RepRoadmap({ modules, completions, curricula = [] }: RepRoadmapProps) {
+export default function RepRoadmap({ modules, completions, collections = [] }: RepRoadmapProps) {
   const navigate = useNavigate();
   const completionMap = new Map(completions.map((c) => [c.module_id, c]));
 
@@ -35,21 +35,21 @@ export default function RepRoadmap({ modules, completions, curricula = [] }: Rep
   const progressPct = modules.length > 0 ? Math.round((completedCount / modules.length) * 100) : 0;
 
   // Group modules by curriculum
-  const curriculaMap = new Map(curricula.map(c => [c.id, c]));
-  const grouped: { curriculum: Curriculum | null; modules: Module[] }[] = [];
+  const collectionsMap = new Map(collections.map(c => [c.id, c]));
+  const grouped: { collection: Collection | null; modules: Module[] }[] = [];
 
   // Curricula with their modules (in order)
-  for (const c of curricula) {
+  for (const c of collections) {
     const cModules = modules.filter(m => m.curriculum_id === c.id);
-    if (cModules.length > 0) grouped.push({ curriculum: c, modules: cModules });
+    if (cModules.length > 0) grouped.push({ collection: c, modules: cModules });
   }
 
   // Orphan modules
   const orphans = modules.filter(m => !m.curriculum_id);
-  if (orphans.length > 0) grouped.push({ curriculum: null, modules: orphans });
+  if (orphans.length > 0) grouped.push({ collection: null, modules: orphans });
 
   // If no curricula at all, just show flat
-  const sections = grouped.length > 0 ? grouped : [{ curriculum: null, modules }];
+  const sections = grouped.length > 0 ? grouped : [{ collection: null, modules }];
 
   const renderModule = (mod: Module, idx: number, isLast: boolean) => {
     const state = getState(mod);
@@ -141,12 +141,12 @@ export default function RepRoadmap({ modules, completions, curricula = [] }: Rep
         <div>
           <h1 className="text-xl sm:text-2xl font-bold text-foreground">Il tuo percorso</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Completa i moduli per avanzare nel curriculum.
-          </p>
+          Completa i moduli per avanzare nella collection.
+        </p>
         </div>
         <Card className="p-4 bg-card border-border space-y-2">
           <div className="flex items-center justify-between text-sm flex-wrap gap-1">
-            <span className="text-muted-foreground">Progresso curriculum</span>
+            <span className="text-muted-foreground">Progresso collection</span>
             <span className="font-mono text-foreground">
               {completedCount}/{modules.length} moduli · {progressPct}%
             </span>
@@ -163,18 +163,18 @@ export default function RepRoadmap({ modules, completions, curricula = [] }: Rep
           : 0;
 
         return (
-          <div key={section.curriculum?.id ?? "orphan"} className="space-y-4">
-            {section.curriculum && (
+          <div key={section.collection?.id ?? "orphan"} className="space-y-4">
+            {section.collection && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <BookOpen className="h-5 w-5 text-primary" />
                   <h2 className="text-lg font-semibold text-foreground">
-                    {section.curriculum.title}
+                    {section.collection.title}
                   </h2>
                 </div>
-                {section.curriculum.description && (
+                {section.collection.description && (
                   <p className="text-sm text-muted-foreground">
-                    {section.curriculum.description}
+                    {section.collection.description}
                   </p>
                 )}
                 <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
