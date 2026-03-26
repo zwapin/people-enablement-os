@@ -565,6 +565,26 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
           </Button>
         </div>
       </div>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Anteprima Vista Rep</span>
+            </div>
+          </div>
+          <ModulePreview
+            title={title}
+            summary={summary}
+            track={track}
+            contentBody={contentBody}
+            keyPoints={keyPoints}
+            questions={questions}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
