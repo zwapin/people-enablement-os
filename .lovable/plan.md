@@ -1,26 +1,50 @@
 
 
-# Associare il PDF a tutti i curricula
+# Rinominare "Curriculum/Curricula" → "Collection/Collections"
 
-## Situazione attuale
-- Il PDF "SALES PLAYBOOK" esiste nel DB con 69.790 caratteri estratti
-- Ha `collection_id = NULL` → non è legato a nessun curriculum
-- I 5 curricula esistenti non hanno documenti associati
-- Quando l'AI genera per un curriculum specifico, non trova materiale sorgente
+Cambiare tutte le occorrenze visibili all'utente e i nomi dei componenti/variabili, mantenendo invariato il nome della tabella DB `curricula`.
 
-## Soluzione
-Creare una copia del record `knowledge_documents` per ciascuno dei 5 curricula, mantenendo lo stesso `file_path` e `content` ma con il `collection_id` corretto.
+## Modifiche per file
 
-### Migrazione SQL
-Inserire 5 nuovi record nella tabella `knowledge_documents`, uno per ogni curriculum, copiando titolo, contesto, contenuto e file_path dal documento originale (id `2bb02955-...`).
+### `src/components/learn/CurriculumCard.tsx` → rinominare file a `CollectionCard.tsx`
+- Rinominare interfaccia `Curriculum` → `Collection`, `CurriculumCardProps` → `CollectionCardProps`
+- Export `CollectionCard`
+- Toast: "Curriculum aggiornato" → "Collection aggiornata", "Curriculum pubblicato/archiviato" → "Collection pubblicata/archiviata"
 
-I 5 curricula target:
-1. `c1000001-...-000000000001` — Fondamenti del Sales Process
-2. `c1000001-...-000000000002` — ICP Targeting e Account Tiering
-3. `c1000001-...-000000000003` — SDR Mastery
-4. `c1000001-...-000000000004` — AE Excellence
-5. `c1000001-...-000000000005` — Customer Success
+### `src/components/learn/CurriculumList.tsx` → rinominare file a `CollectionModuleList.tsx`
+- Interfaccia `CurriculumListProps` → `CollectionModuleListProps`
+- Export corrispondente
 
-### Nessuna modifica al codice
-Il sistema già funziona correttamente — `DocumentsList` filtra per `collection_id` e `generate-curriculum` cerca documenti per `collection_id`. Basta popolare i dati.
+### `src/pages/CurriculumDetail.tsx` → rinominare file a `CollectionDetail.tsx`
+- Variabili: `curriculumId` (dalla route, resta), `curriculum` → `collection`
+- Breadcrumb: "Curricula" → "Collections"
+- Titolo e label visibili aggiornati
+
+### `src/pages/Learn.tsx`
+- Import aggiornati per i nuovi nomi componenti
+- Variabili: `publishedCurricula` → `publishedCollections`, `allCurricula` → `allCollections`, `getModulesForCurriculum` → `getModulesForCollection`
+- Label UI: "Curricula" → "Collections"
+
+### `src/components/learn/ModuleEditor.tsx`
+- Interfaccia `Curriculum` → `Collection`
+- Props: `curricula` → `collections`
+- Placeholder: "Nessun curriculum" → "Nessuna collection"
+- Back link: "Torna al curriculum" → "Torna alla collection"
+
+### `src/components/learn/RepRoadmap.tsx`
+- Interfaccia `Curriculum` → `Collection`
+- Props/variabili: `curricula` → `collections`, `curriculaMap` → `collectionsMap`
+- Testo UI: "Progresso curriculum" → "Progresso collection", "Completa i moduli per avanzare nel curriculum" → "...nella collection"
+
+### `src/pages/ModuleView.tsx`
+- Testo bottoni: "Torna al curriculum" → "Torna alla collection"
+
+### `src/App.tsx`
+- Import `CurriculumDetail` → `CollectionDetail`
+- Route path resta `/learn/:curriculumId` (parametro URL, non impatta utente)
+
+### Note
+- Il nome della tabella DB `curricula` e le query Supabase `.from("curricula")` restano invariati
+- Le colonne DB (`curriculum_id`) restano invariate
+- Solo testi visibili e nomi componenti/variabili nel frontend cambiano
 
