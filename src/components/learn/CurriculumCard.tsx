@@ -117,7 +117,7 @@ export default function CurriculumCard({
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <Card className="border-border bg-card overflow-hidden">
-        <div className="flex items-center gap-3 p-4">
+        <div className="flex items-start sm:items-center gap-3 p-4 flex-wrap">
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="icon" className="shrink-0 h-7 w-7">
               {open ? (
@@ -248,7 +248,7 @@ export default function CurriculumCard({
         </div>
 
         <CollapsibleContent>
-          <div className="px-4 pb-4 pl-14">
+          <div className="px-4 pb-4 sm:pl-14">
             {modules.length === 0 ? (
               <p className="text-sm text-muted-foreground py-2">
                 Nessun modulo in questo curriculum.

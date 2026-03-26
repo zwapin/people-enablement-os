@@ -2,10 +2,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface ProfileRow {
   id: string;
@@ -26,6 +28,8 @@ interface PeopleTableProps {
 }
 
 export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
+  const isMobile = useIsMobile();
+
   const handleToggleActive = async (profile: ProfileRow) => {
     const { error } = await supabase
       .from("profiles")
@@ -52,6 +56,62 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
     }
   };
 
+  if (profiles.length === 0) {
+    return (
+      <div className="rounded-md border border-border p-8 text-center text-muted-foreground">
+        Nessun membro del team. Invita il tuo primo rep per iniziare.
+      </div>
+    );
+  }
+
+  if (isMobile) {
+    return (
+      <div className="space-y-3">
+        {profiles.map((p) => (
+          <Card key={p.id} className="p-4 space-y-3 border-border bg-card">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0">
+                <p className="font-medium text-foreground truncate">{p.full_name}</p>
+                <p className="text-sm text-muted-foreground truncate">{p.email}</p>
+              </div>
+              <Switch
+                checked={p.is_active}
+                onCheckedChange={() => handleToggleActive(p)}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              {p.department && (
+                <Badge variant="secondary" className="font-normal">{p.department}</Badge>
+              )}
+              {p.job_role && (
+                <span className="text-muted-foreground">{p.job_role}</span>
+              )}
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <Select
+                value={p.role}
+                onValueChange={(v) => handleRoleChange(p, v as "admin" | "rep")}
+              >
+                <SelectTrigger className="w-24 h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="rep">Rep</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-xs text-muted-foreground">
+                {p.last_activity_at
+                  ? formatDistanceToNow(new Date(p.last_activity_at), { addSuffix: true, locale: it })
+                  : "Mai"}
+              </span>
+            </div>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-md border border-border">
       <Table>
@@ -67,55 +127,47 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {profiles.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                Nessun membro del team. Invita il tuo primo rep per iniziare.
+          {profiles.map((p) => (
+            <TableRow key={p.id}>
+              <TableCell className="font-medium">{p.full_name}</TableCell>
+              <TableCell className="text-muted-foreground">{p.email}</TableCell>
+              <TableCell>
+                {p.department ? (
+                  <Badge variant="secondary" className="font-normal">
+                    {p.department}
+                  </Badge>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </TableCell>
+              <TableCell>{p.job_role || <span className="text-muted-foreground">—</span>}</TableCell>
+              <TableCell>
+                <Select
+                  value={p.role}
+                  onValueChange={(v) => handleRoleChange(p, v as "admin" | "rep")}
+                >
+                  <SelectTrigger className="w-24 h-8 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="rep">Rep</SelectItem>
+                  </SelectContent>
+                </Select>
+              </TableCell>
+              <TableCell className="text-muted-foreground text-sm">
+                {p.last_activity_at
+                  ? formatDistanceToNow(new Date(p.last_activity_at), { addSuffix: true, locale: it })
+                  : "Mai"}
+              </TableCell>
+              <TableCell>
+                <Switch
+                  checked={p.is_active}
+                  onCheckedChange={() => handleToggleActive(p)}
+                />
               </TableCell>
             </TableRow>
-          ) : (
-            profiles.map((p) => (
-              <TableRow key={p.id}>
-                <TableCell className="font-medium">{p.full_name}</TableCell>
-                <TableCell className="text-muted-foreground">{p.email}</TableCell>
-                <TableCell>
-                  {p.department ? (
-                    <Badge variant="secondary" className="font-normal">
-                      {p.department}
-                    </Badge>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
-                </TableCell>
-                <TableCell>{p.job_role || <span className="text-muted-foreground">—</span>}</TableCell>
-                <TableCell>
-                  <Select
-                    value={p.role}
-                    onValueChange={(v) => handleRoleChange(p, v as "admin" | "rep")}
-                  >
-                    <SelectTrigger className="w-24 h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="rep">Rep</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  {p.last_activity_at
-                    ? formatDistanceToNow(new Date(p.last_activity_at), { addSuffix: true, locale: it })
-                    : "Mai"}
-                </TableCell>
-                <TableCell>
-                  <Switch
-                    checked={p.is_active}
-                    onCheckedChange={() => handleToggleActive(p)}
-                  />
-                </TableCell>
-              </TableRow>
-            ))
-          )}
+          ))}
         </TableBody>
       </Table>
     </div>

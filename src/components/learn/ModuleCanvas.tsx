@@ -200,7 +200,7 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
   return (
     <div className="relative" ref={editorRef}>
       {/* Top toolbar */}
-      <div className="flex items-center gap-0.5 border-b border-border px-2 py-1 bg-muted/50 rounded-t-md flex-wrap">
+      <div className="flex items-center gap-0.5 border-b border-border px-2 py-1 bg-muted/50 rounded-t-md overflow-x-auto">
         <ToolbarBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} icon={Bold} tooltip="Grassetto" />
         <ToolbarBtn active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} icon={Italic} tooltip="Corsivo" />
         <ToolbarBtn active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} icon={Strikethrough} tooltip="Barrato" />
