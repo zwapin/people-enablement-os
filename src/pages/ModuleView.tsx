@@ -189,7 +189,7 @@ export default function ModuleView() {
     }
     setSaving(false);
     if (nextModule) {
-      navigate(`/learn/${nextModule.id}`);
+      navigate(`/learn/${nextModule.id}/view`);
     } else {
       navigate("/learn");
     }

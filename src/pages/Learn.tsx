@@ -568,12 +568,7 @@ export default function Learn() {
                 curriculum={c}
                 modules={getModulesForCurriculum(c.id)}
                 isAdmin={true}
-                onEdit={handleEdit}
                 onRefresh={refreshAll}
-                onBulkGenerate={handleBulkGenerate}
-                isBulkGenerating={bulkGenerating}
-                onGenerateCurriculum={(collectionId) => handleUpdateCurriculum(false, collectionId)}
-                isGenerating={generating}
               />
             ))}
         </div>

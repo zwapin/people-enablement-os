@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Learn from "./pages/Learn";
 import ModuleView from "./pages/ModuleView";
+import CurriculumDetail from "./pages/CurriculumDetail";
 import Grow from "./pages/Grow";
 import Perform from "./pages/Perform";
 import People from "./pages/People";
@@ -47,7 +48,15 @@ const App = () => (
               }
             />
             <Route
-              path="/learn/:moduleId"
+              path="/learn/:curriculumId"
+              element={
+                <ProtectedRoute>
+                  <AppLayout><CurriculumDetail /></AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/learn/:moduleId/view"
               element={
                 <ProtectedRoute>
                   <AppLayout><ModuleView /></AppLayout>

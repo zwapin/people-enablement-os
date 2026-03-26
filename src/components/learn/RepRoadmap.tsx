@@ -90,7 +90,7 @@ export default function RepRoadmap({ modules, completions, curricula = [] }: Rep
                 ? "bg-card border-primary/30 cursor-pointer hover:border-primary/60 hover:shadow-md hover:shadow-primary/5"
                 : "bg-card border-border cursor-pointer"
             }`}
-            onClick={() => navigate(`/learn/${mod.id}`)}
+            onClick={() => navigate(`/learn/${mod.id}/view`)}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1 space-y-1">
