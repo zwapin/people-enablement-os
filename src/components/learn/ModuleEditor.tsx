@@ -271,7 +271,7 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
       <Card className="p-4 border-border bg-card space-y-4">
         <h3 className="font-medium text-foreground">Dettagli Modulo</h3>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="col-span-2 space-y-2">
             <Label>Titolo</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Titolo del modulo" />
@@ -386,7 +386,7 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="space-y-1">
                 <Label className="text-xs">Feedback corretto</Label>
                 <Input value={q.feedback_correct} onChange={(e) => updateQuestion(qi, "feedback_correct", e.target.value)} placeholder="Perché è corretto" />
@@ -400,7 +400,7 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
         ))}
       </Card>
 
-      <div className="flex items-center justify-end gap-3 pb-8">
+      <div className="flex flex-wrap items-center justify-end gap-3 pb-8">
         <Button variant="outline" onClick={onClose}>Annulla</Button>
         <Button variant="secondary" onClick={() => handleSave("draft")} disabled={saving}>
           {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

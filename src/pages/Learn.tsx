@@ -435,20 +435,20 @@ export default function Learn() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-6">
+      <div className="space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Formazione</h1>
             <p className="text-sm text-muted-foreground mt-1">
               L'AI analizza la Knowledge Base e propone il curriculum. Tu approvi.
             </p>
           </div>
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 shrink-0">
             <Switch id="view-toggle-admin" checked={viewAsRep} onCheckedChange={setViewAsRep} />
             <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">Vista Rep</Label>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -456,21 +456,23 @@ export default function Learn() {
             disabled={bulkGenerating || generating}
           >
             {bulkGenerating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
             ) : (
-              <Sparkles className="h-4 w-4 mr-2" />
+              <Sparkles className="h-4 w-4 sm:mr-2" />
             )}
-            {bulkGenerating ? `Generazione ${bulkProgress.current}/${bulkProgress.total}...` : "Genera tutti i contenuti"}
+            <span className="hidden sm:inline">
+              {bulkGenerating ? `Generazione ${bulkProgress.current}/${bulkProgress.total}...` : "Genera tutti"}
+            </span>
           </Button>
           <Button variant="outline" size="sm" onClick={handleCreateCurriculum}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuovo Curriculum
+            <Plus className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Nuovo Curriculum</span>
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="outline" disabled={generating}>
-                <RotateCcw className="h-4 w-4 mr-2" />
-                Rigenera tutto
+              <Button variant="outline" size="sm" disabled={generating}>
+                <RotateCcw className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Rigenera tutto</span>
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
@@ -488,13 +490,15 @@ export default function Learn() {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-          <Button onClick={() => handleUpdateCurriculum(false)} disabled={generating}>
+          <Button size="sm" onClick={() => handleUpdateCurriculum(false)} disabled={generating}>
             {generating ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
             ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
+              <RefreshCw className="h-4 w-4 sm:mr-2" />
             )}
-            {generating ? "Generazione in corso..." : "Aggiorna Curriculum"}
+            <span className="hidden sm:inline">
+              {generating ? "Generazione..." : "Aggiorna Curriculum"}
+            </span>
           </Button>
         </div>
       </div>
