@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState, useRef, useCallback, useEffect } from "react";
+import RepRoadmap from "@/components/learn/RepRoadmap";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +41,7 @@ import ModuleEditor from "@/components/learn/ModuleEditor";
 export default function CollectionDetail() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const isAdmin = profile?.role === "admin";
   const queryClient = useQueryClient();
 
@@ -357,6 +358,89 @@ export default function CollectionDetail() {
 
   const currentModules = modules ?? [];
   const hasEmptyModules = currentModules.some(m => !m.content_body);
+
+  // Rep view: show roadmap with stats
+  if (!isAdmin) {
+    const publishedModules = currentModules.filter(m => m.status === "published");
+
+    // Fetch completions for rep
+    const { data: repCompletions } = useQuery({
+      queryKey: ["module_completions", user?.id, curriculumId],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from("module_completions")
+          .select("*")
+          .eq("user_id", user!.id);
+        if (error) throw error;
+        return data;
+      },
+      enabled: !!user,
+    });
+
+    const collectionCompletions = (repCompletions ?? []).filter(c =>
+      publishedModules.some(m => m.id === c.module_id)
+    );
+    const completedCount = collectionCompletions.length;
+    const avgScore = completedCount > 0
+      ? Math.round(collectionCompletions.reduce((sum, c) => sum + c.score, 0) / completedCount)
+      : 0;
+
+    return (
+      <div className="space-y-6 max-w-2xl mx-auto">
+        {/* Breadcrumb */}
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/learn" onClick={(e) => { e.preventDefault(); navigate("/learn"); }}>
+                Formazione
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{collection.title}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        {/* Title */}
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/learn")}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{collection.title}</h1>
+            {collection.description && (
+              <p className="text-sm text-muted-foreground mt-1">{collection.description}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Stats row */}
+        {completedCount > 0 && (
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <BookOpen className="h-4 w-4" />
+              {completedCount}/{publishedModules.length} completati
+            </span>
+            <span>·</span>
+            <span>Punteggio medio: <strong className="text-foreground">{avgScore}</strong></span>
+          </div>
+        )}
+
+        {publishedModules.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
+            <BookOpen className="h-8 w-8 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">Nessun modulo pubblicato in questa collection.</p>
+          </div>
+        ) : (
+          <RepRoadmap
+            modules={publishedModules}
+            completions={repCompletions ?? []}
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
