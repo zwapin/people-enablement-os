@@ -82,6 +82,7 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
       setContext("");
       setFile(null);
       refetch();
+      onUploadComplete?.();
     } catch (err: any) {
       toast.error(err.message || "Errore nel caricamento del documento");
     } finally {
