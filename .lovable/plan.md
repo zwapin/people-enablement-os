@@ -1,42 +1,58 @@
 
 
-# Generazione contenuti: per-modulo e bulk per curriculum
+# Canvas Editor per Moduli — stile Notion
 
-## Situazione attuale
-- Il pulsante "Genera con AI" / "Rigenera con AI" **esiste già** nel ModuleEditor (riga 327-341)
-- Funziona: crea un job, invoca `generate-module`, aggiorna contenuto + domande
-- Problema: con 28 moduli, aprirli uno a uno è tedioso
+## Obiettivo
+Sostituire la textarea Markdown nel ModuleEditor con un rich text editor a blocchi (stile Notion), dove l'admin può scrivere con formatting visuale e generare contenuto AI inline, con riferimento opzionale a documenti del Knowledge Base.
 
-## Cosa aggiungere
+## Scelta tecnologica: TipTap
 
-### 1. Pulsante "Genera tutti" su ogni CurriculumCard
-Aggiungere un pulsante con icona Sparkles su ogni curriculum nella vista admin. Cliccandolo:
-- Prende tutti i moduli del curriculum che hanno `content_body` vuoto (o tutti se forzato)
-- Li genera uno alla volta in sequenza (per evitare rate limit)
-- Mostra progresso: "Generazione modulo 3/9..."
+TipTap è il miglior fit per React + Tailwind: headless, estensibile, output HTML/Markdown, supporta slash commands e toolbar floating. BlockNote sarebbe un'alternativa ma TipTap offre più controllo.
 
-### 2. Pulsante "Genera tutti i curricula" globale
-Un pulsante in alto nella pagina Learn che lancia la generazione per TUTTI i moduli senza contenuto, curriculum per curriculum.
+## Cosa cambia
 
-### File da modificare
+### 1. Installare TipTap
+Pacchetti: `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-placeholder`, `@tiptap/extension-heading`, `@tiptap/extension-table`, `@tiptap/extension-highlight`, `@tiptap/extension-typography`, `turndown` (HTML→Markdown), `showdown` (Markdown→HTML per caricare contenuto esistente).
 
-| File | Modifica |
-|------|----------|
-| `src/pages/Learn.tsx` | Aggiungere `handleBulkGenerate(curriculumId?)` che itera sui moduli vuoti e chiama `generate-module` per ciascuno con delay tra le chiamate. Aggiungere pulsante globale "Genera tutti i contenuti" |
-| `src/components/learn/CurriculumList.tsx` | Passare callback `onBulkGenerate` e mostrare pulsante Sparkles per curriculum |
+### 2. Nuovo componente `src/components/learn/ModuleCanvas.tsx`
+- Editor TipTap con toolbar floating (bold, italic, heading, bullet list, ordered list, blockquote, table, separator)
+- Slash command menu (`/`) con opzioni: Heading, Lista, Tabella, Blockquote, **Genera con AI**
+- Il comando "Genera con AI" apre un piccolo dialog inline con:
+  - Prompt testuale (es. "Scrivi la sezione sulla Discovery Call")
+  - Select opzionale per scegliere un documento dal Knowledge Base come riferimento
+  - Bottone "Genera" → chiama `generate-module` edge function in modalità diretta, inserisce il risultato nel punto del cursore
+- Converte Markdown esistente (`content_body`) in HTML al caricamento
+- Converte HTML in Markdown al salvataggio (per compatibilità con la vista rep che usa ReactMarkdown)
 
-### 3. Logica `handleBulkGenerate`
+### 3. Aggiornare `ModuleEditor.tsx`
+- Sostituire la `<Textarea>` del contenuto con `<ModuleCanvas>`
+- Il pulsante "Genera con AI" globale resta come opzione per rigenerare tutto il modulo
+- Il canvas riceve `contentBody` e `setContentBody` come props
 
+### 4. AI inline nel canvas
+- Quando l'utente usa il comando AI dal canvas:
+  - Mostra un popover con campo prompt + dropdown dei `knowledge_documents`
+  - Chiama l'edge function `generate-module` in modalità diretta (`text` mode) con il prompt e il contenuto del documento selezionato come context
+  - Inserisce il markdown generato convertito in HTML nel punto del cursore
+  - Nessuna modifica backend necessaria — l'edge function supporta già `handleDirectGeneration` con `knowledge_context`
+
+### File da creare/modificare
+
+| File | Azione |
+|------|--------|
+| `src/components/learn/ModuleCanvas.tsx` | **Nuovo** — Editor TipTap con toolbar, slash commands, AI inline |
+| `src/components/learn/AIGeneratePopover.tsx` | **Nuovo** — Popover per prompt AI + selezione documento KB |
+| `src/components/learn/ModuleEditor.tsx` | Sostituire textarea con ModuleCanvas |
+
+### Flusso utente
 ```text
-Per ogni modulo senza content_body:
-  1. Crea generation_job (job_type: "generate-module")
-  2. Invoca generate-module con job_id
-  3. Attendi completamento (poll job status)
-  4. Aggiorna progresso UI
-  5. Pausa 2s tra moduli (rate limit)
-Alla fine: refetch moduli + toast successo
+Admin apre modulo → vede canvas ricco con toolbar
+  → può scrivere liberamente con H2, H3, bold, liste, tabelle
+  → preme "/" → menu appare → seleziona "Genera con AI"
+  → popover: scrive "Scrivi sezione sulla Qualification Call"
+  → opzionale: seleziona "Sales Playbook Klaaryo" dal dropdown KB
+  → clicca Genera → contenuto appare nel canvas
+  → continua a editare, aggiungere sezioni, rigenerare parti
+  → Salva → content_body salvato come Markdown
 ```
-
-### 4. Nessuna modifica backend
-L'edge function `generate-module` gestisce già tutto. Serve solo orchestrare le chiamate dal frontend.
 
