@@ -16,7 +16,7 @@ interface DocumentsListProps {
   onUploadComplete?: () => void;
 }
 
-export default function DocumentsList({ collectionId }: DocumentsListProps) {
+export default function DocumentsList({ collectionId, onUploadComplete }: DocumentsListProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
