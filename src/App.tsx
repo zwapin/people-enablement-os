@@ -48,7 +48,15 @@ const App = () => (
               }
             />
             <Route
-              path="/learn/:moduleId"
+              path="/learn/:curriculumId"
+              element={
+                <ProtectedRoute>
+                  <AppLayout><CurriculumDetail /></AppLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/learn/:moduleId/view"
               element={
                 <ProtectedRoute>
                   <AppLayout><ModuleView /></AppLayout>
