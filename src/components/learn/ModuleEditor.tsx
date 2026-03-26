@@ -54,8 +54,30 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
 
   const [keyPointsOpen, setKeyPointsOpen] = useState(true);
   const [questionsOpen, setQuestionsOpen] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [generatingStep, setGeneratingStep] = useState(0);
 
   const summaryRef = useRef<HTMLTextAreaElement>(null);
+
+  // Cycling generation status messages
+  const generationMessages = useMemo(() => [
+    "Analisi documenti sorgente...",
+    "Strutturazione del contenuto...",
+    "Generazione contenuto...",
+    "Creazione domande di valutazione...",
+    "Quasi fatto...",
+  ], []);
+
+  useEffect(() => {
+    if (!generating) {
+      setGeneratingStep(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setGeneratingStep((prev) => (prev + 1) % generationMessages.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [generating, generationMessages]);
 
   // Auto-resize summary textarea
   useEffect(() => {
@@ -313,6 +335,18 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
           <Badge variant="outline" className="text-[10px] capitalize">
             {status}
           </Badge>
+
+          <div className="flex-1" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPreviewOpen(true)}
+            className="text-xs gap-1.5"
+          >
+            <Eye className="h-3 w-3" />
+            Anteprima Rep
+          </Button>
         </div>
 
         {/* Inline title */}
