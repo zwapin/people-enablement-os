@@ -13,6 +13,7 @@ import { format } from "date-fns";
 
 interface DocumentsListProps {
   collectionId?: string;
+  onUploadComplete?: () => void;
 }
 
 export default function DocumentsList({ collectionId }: DocumentsListProps) {
