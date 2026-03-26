@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ModuleCanvas from "./ModuleCanvas";
-import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save, Sparkles, ChevronDown, Lightbulb, HelpCircle } from "lucide-react";
+import ModulePreview from "./ModulePreview";
+import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save, Sparkles, ChevronDown, Lightbulb, HelpCircle, Eye } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuestionForm {
