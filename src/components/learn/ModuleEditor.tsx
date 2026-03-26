@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ModuleCanvas from "./ModuleCanvas";
-import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save, Sparkles, ChevronDown, Lightbulb, HelpCircle } from "lucide-react";
+import ModulePreview from "./ModulePreview";
+import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save, Sparkles, ChevronDown, Lightbulb, HelpCircle, Eye } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuestionForm {
@@ -52,8 +54,30 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
 
   const [keyPointsOpen, setKeyPointsOpen] = useState(true);
   const [questionsOpen, setQuestionsOpen] = useState(true);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [generatingStep, setGeneratingStep] = useState(0);
 
   const summaryRef = useRef<HTMLTextAreaElement>(null);
+
+  // Cycling generation status messages
+  const generationMessages = useMemo(() => [
+    "Analisi documenti sorgente...",
+    "Strutturazione del contenuto...",
+    "Generazione contenuto...",
+    "Creazione domande di valutazione...",
+    "Quasi fatto...",
+  ], []);
+
+  useEffect(() => {
+    if (!generating) {
+      setGeneratingStep(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setGeneratingStep((prev) => (prev + 1) % generationMessages.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [generating, generationMessages]);
 
   // Auto-resize summary textarea
   useEffect(() => {
@@ -311,6 +335,18 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
           <Badge variant="outline" className="text-[10px] capitalize">
             {status}
           </Badge>
+
+          <div className="flex-1" />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPreviewOpen(true)}
+            className="text-xs gap-1.5"
+          >
+            <Eye className="h-3 w-3" />
+            Anteprima Rep
+          </Button>
         </div>
 
         {/* Inline title */}
@@ -336,7 +372,7 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
       <hr className="border-border" />
 
       {/* TipTap Canvas — the main content area */}
-      <div className="space-y-2">
+      <div className="space-y-2 relative">
         {moduleId && (
           <div className="flex justify-end">
             <Button
@@ -355,6 +391,20 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
             </Button>
           </div>
         )}
+
+        {/* Generation progress overlay */}
+        {generating && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm rounded-lg">
+            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+            <div className="w-48 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full w-1/3 bg-primary rounded-full animate-progress-indeterminate" />
+            </div>
+            <p className="text-sm text-muted-foreground animate-pulse">
+              {generationMessages[generatingStep]}
+            </p>
+          </div>
+        )}
+
         <ModuleCanvas
           content={contentBody}
           onChange={setContentBody}
@@ -515,6 +565,26 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
           </Button>
         </div>
       </div>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+          <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">Anteprima Vista Rep</span>
+            </div>
+          </div>
+          <ModulePreview
+            title={title}
+            summary={summary}
+            track={track}
+            contentBody={contentBody}
+            keyPoints={keyPoints}
+            questions={questions}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

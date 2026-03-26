@@ -153,3 +153,81 @@
 .tiptap hr {
   @apply border-border my-6;
 }
+
+/* ProseMirror — align TipTap editor with published ModuleView styles */
+.ProseMirror h2 {
+  @apply text-xl font-bold mt-10 mb-4 pb-2 border-b border-border;
+}
+
+.ProseMirror h3 {
+  @apply text-lg font-semibold mt-8 mb-3 flex items-center gap-2;
+}
+
+.ProseMirror h3::before {
+  content: "";
+  @apply inline-block w-1 h-5 rounded-full bg-primary shrink-0;
+}
+
+.ProseMirror blockquote {
+  @apply my-6 border-l-4 border-primary/50 rounded-r-lg px-5 py-4 not-italic;
+  background: hsl(var(--secondary) / 0.3);
+}
+
+.ProseMirror ul {
+  @apply my-5 space-y-2 pl-1 list-none;
+}
+
+.ProseMirror ol {
+  @apply my-5 space-y-2 pl-1 list-decimal list-inside;
+}
+
+.ProseMirror ul > li {
+  @apply flex items-start gap-2.5 leading-relaxed;
+}
+
+.ProseMirror ul > li::before {
+  content: "";
+  @apply mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0 inline-block;
+}
+
+.ProseMirror strong {
+  @apply font-semibold px-1 rounded;
+  background: hsl(var(--primary) / 0.1);
+}
+
+.ProseMirror p {
+  @apply leading-relaxed mb-4;
+}
+
+.ProseMirror table {
+  @apply my-6 w-full text-sm border-collapse;
+}
+
+.ProseMirror table th {
+  @apply px-4 py-3 text-left font-semibold border-b border-border;
+  background: hsl(var(--muted) / 0.6);
+}
+
+.ProseMirror table td {
+  @apply px-4 py-3 border-b;
+  border-color: hsl(var(--border) / 0.5);
+}
+
+.ProseMirror table tr:nth-child(even) {
+  background: hsl(var(--muted) / 0.2);
+}
+
+.ProseMirror hr {
+  @apply my-8;
+  border-color: hsl(var(--border) / 0.5);
+}
+
+/* Generation progress overlay animation */
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.8s ease-in-out infinite;
+}
