@@ -45,11 +45,19 @@ serve(async (req) => {
       .single();
 
     const regenerateAll = job?.input?.regenerate_all === true;
+    const collectionId = job?.input?.collection_id || null;
 
-    // Fetch KB content
+    // Fetch KB content — scoped to collection if provided
+    let docsQuery = supabase.from("knowledge_documents").select("id, title, context, content").order("created_at");
+    let faqsQuery = supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at");
+    if (collectionId) {
+      docsQuery = docsQuery.eq("collection_id", collectionId);
+      faqsQuery = faqsQuery.eq("collection_id", collectionId);
+    }
+
     const [docsResult, faqsResult, modulesResult, curriculaResult] = await Promise.all([
-      supabase.from("knowledge_documents").select("id, title, context, content").order("created_at"),
-      supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at"),
+      docsQuery,
+      faqsQuery,
       supabase.from("modules").select("*").in("status", ["published", "draft", "proposed"]).order("order_index"),
       supabase.from("curricula").select("*").order("order_index"),
     ]);
@@ -59,19 +67,25 @@ serve(async (req) => {
     const existingModules = modulesResult.data || [];
     const existingCurricula = curriculaResult.data || [];
 
-    // Delete existing modules if regenerating
-    if (regenerateAll && existingModules.length > 0) {
+    // When generating for a specific collection, only clean modules in that collection's curriculum
+    if (collectionId) {
+      const proposedInCollection = existingModules
+        .filter(m => m.curriculum_id === collectionId && m.status === "proposed")
+        .map(m => m.id);
+      if (proposedInCollection.length > 0) {
+        await supabase.from("assessment_questions").delete().in("module_id", proposedInCollection);
+        await supabase.from("modules").delete().in("id", proposedInCollection);
+      }
+    } else if (regenerateAll && existingModules.length > 0) {
       const moduleIds = existingModules.map(m => m.id);
       await supabase.from("assessment_questions").delete().in("module_id", moduleIds);
       await supabase.from("modules").delete().in("id", moduleIds);
     } else if (!regenerateAll) {
-      // Delete only proposed modules
       const proposedIds = existingModules.filter(m => m.status === "proposed").map(m => m.id);
       if (proposedIds.length > 0) {
         await supabase.from("assessment_questions").delete().in("module_id", proposedIds);
         await supabase.from("modules").delete().in("id", proposedIds);
       }
-      // Delete proposed curricula
       await supabase.from("curricula").delete().eq("status", "proposed");
     }
 
@@ -92,102 +106,48 @@ serve(async (req) => {
 
     // Existing modules context and curricula enrichment mode
     let existingContext = "";
-    let enrichMode = false;
-    const curriculaToEnrich: any[] = [];
 
-    if (!regenerateAll) {
+    if (collectionId) {
+      // Collection-scoped generation: show only modules in this collection
+      const collectionModules = existingModules.filter(m => m.curriculum_id === collectionId && (m.status === "published" || m.status === "draft"));
+      const targetCurriculum = existingCurricula.find(c => c.id === collectionId);
+      if (collectionModules.length > 0) {
+        existingContext = "\n## MODULI ESISTENTI IN QUESTA COLLECTION\n";
+        for (const mod of collectionModules) {
+          existingContext += `- "${mod.title}" (${mod.status})\n`;
+        }
+        existingContext += "NON riproporre moduli già esistenti.\n";
+      }
+      if (targetCurriculum) {
+        existingContext += `\n## COLLECTION TARGET\nTitolo: "${targetCurriculum.title}"\nDescrizione: ${targetCurriculum.description || "nessuna"}\n`;
+        existingContext += "Genera moduli SOLO per questa collection specifica.\n";
+      }
+    } else if (!regenerateAll) {
       const existing = existingModules.filter(m => m.status === "published" || m.status === "draft");
       if (existing.length > 0) {
         existingContext = "\n## MODULI ESISTENTI\n";
         for (const mod of existing) {
-          existingContext += `- "${mod.title}" (${mod.status}, track: ${mod.track}, curriculum_id: ${mod.curriculum_id || "nessuno"})\n`;
+          existingContext += `- "${mod.title}" (${mod.status}, curriculum_id: ${mod.curriculum_id || "nessuno"})\n`;
         }
         existingContext += "NON riproporre moduli già esistenti.\n";
       }
-
-      // Check if there are curricula that need sub-modules
-      if (existingCurricula.length > 0) {
-        existingContext += "\n## CURRICULA ESISTENTI\n";
-        for (const c of existingCurricula) {
-          const currModules = existing.filter(m => m.curriculum_id === c.id);
-          existingContext += `- "${c.title}" (${c.status}) — ${currModules.length} moduli: ${currModules.map(m => `"${m.title}"`).join(", ") || "nessuno"}\n`;
-          if (currModules.length < 4) {
-            curriculaToEnrich.push({ ...c, existingModuleCount: currModules.length, existingModuleTitles: currModules.map(m => m.title) });
-          }
-        }
-
-        if (curriculaToEnrich.length > 0) {
-          enrichMode = true;
-          existingContext += "\n⚠️ MODALITÀ ARRICCHIMENTO: I curricula sopra con meno di 4 moduli devono essere ARRICCHITI con sotto-moduli aggiuntivi.\n";
-          existingContext += "Per ogni curriculum esistente, genera 4-8 sotto-moduli che coprono aspetti specifici e dettagliati del tema.\n";
-          existingContext += "Ogni sotto-modulo deve essere granulare (es. per un curriculum AE: 'Discovery Call', 'Qualificazione BANT', 'Demo Structure', 'Gestione Obiezioni', etc.)\n";
-          existingContext += "NON creare nuovi curricula, usa quelli esistenti.\n";
-        } else {
-          existingContext += "Puoi aggiungere moduli a curricula esistenti o proporne di nuovi.\n";
-        }
-      }
     }
 
-    // STEP 1: Generate OUTLINE with curricula groupings
-    // Hardcoded outline structure based on Sales Playbook Klaaryo analysis
-    const CURRICULUM_OUTLINE = `
-STRUTTURA TARGET DEI CURRICULA (usa questa come guida obbligatoria):
-
-CURRICULUM 1: "Fondamenti del Sales Process Klaaryo" (track: Vendite)
-  - Modulo 1: Perché esiste questo processo — mindset e principi
-  - Modulo 2: Struttura del team SDR → AE → CS
-  - Modulo 3: Tool Stack e utilizzo operativo (HubSpot, Klaaryo)
-  - Modulo 4: Metodologie di vendita — SPICED & MEDDICC
-  - Modulo 5: Regole di ingaggio e standard di qualità
-
-CURRICULUM 2: "ICP Targeting e Account Tiering Strategy" (track: Vendite)
-  - Modulo 1: Cos'è l'ICP Klaaryo — settore, workforce, volume
-  - Modulo 2: Sistema di Tiering (Tier 1 / Tier 2 / Tier 3)
-  - Modulo 3: Cadenza e intensità outreach per tier
-  - Modulo 4: Identificazione trigger e prioritizzazione account
-
-CURRICULUM 3: "SDR Mastery — Da Cold Call a Qualified Opportunity" (track: Vendite)
-  - Modulo 1: Pre-Sales — Targeting e preparazione lista
-  - Modulo 2: Outbound — Cold Call script e tecniche di apertura
-  - Modulo 3: Qualification Call — Script, checklist e talk ratio 70/30
-  - Modulo 4: Gate Q-Call → Disco Call — criteri di passaggio
-  - Modulo 5: Handoff SDR → AE — processo e note HubSpot
-  - Modulo 6: Gestione obiezioni e re-engagement
-
-CURRICULUM 4: "AE Excellence — Dal Discovery al Closing" (track: Vendite)
-  - Modulo 1: Warm-up meeting e preparazione pre-Disco Call
-  - Modulo 2: Discovery Call SPICED — struttura e domande obbligatorie
-  - Modulo 3: Stakeholder Mapping e gestione del Decision Maker
-  - Modulo 4: Executive Call — coinvolgere CEO/DM e Mutual Close Plan
-  - Modulo 5: Demo mirata — struttura, regole e validazione fit
-  - Modulo 6: Proposta commerciale e ROI — preparazione e presentazione
-  - Modulo 7: Negoziazione e gestione obiezioni su pricing
-  - Modulo 8: Closing — dalla firma all'handoff CS
-  - Modulo 9: Follow-up strategico e gestione pipeline
-
-CURRICULUM 5: "Customer Success e Post-Sales Excellence" (track: CS)
-  - Modulo 1: Onboarding cliente — primi 30 giorni
-  - Modulo 2: Adoption e nurturing continuo
-  - Modulo 3: Renewal e gestione rinnovi
-  - Modulo 4: Escalation e supporto strategico
-`;
-
-    const outlinePrompt = enrichMode
+    // STEP 1: Generate OUTLINE
+    const outlinePrompt = collectionId
       ? `Sei un architetto di curriculum per la formazione commerciale.
-Analizza la Knowledge Base e ARRICCHISCI i curricula esistenti con sotto-moduli dettagliati.
+Analizza la Knowledge Base fornita e proponi moduli di formazione per questa SPECIFICA collection.
 
 ${kbContext}
 ${existingContext}
 
-${CURRICULUM_OUTLINE}
-
 ISTRUZIONI:
-- Devi generare sotto-moduli per i curricula esistenti che hanno pochi moduli
-- SEGUI LA STRUTTURA TARGET sopra: usa esattamente quei titoli di moduli per i curricula corrispondenti
-- Per ogni modulo fornisci: titolo (esattamente come nella struttura target), summary dettagliata basata sul contenuto del playbook, track, rationale che spiega cosa copre e perché, fonti usate, sezioni rilevanti del documento sorgente
-- Usa ESATTAMENTE i titoli dei curricula esistenti (non crearne di nuovi)
-- Non riproporre moduli già esistenti dentro quei curricula
-- I moduli devono avere un flusso logico progressivo dentro il curriculum
+- Genera 3-8 moduli che coprano in modo progressivo e dettagliato gli argomenti presenti nei documenti e FAQ forniti
+- Ogni modulo deve essere granulare e specifico (es. non "Introduzione generale" ma "Cold Call: Script e Tecniche di Apertura")
+- Per ogni modulo fornisci: titolo (max 60 car), summary dettagliata, rationale, fonti usate (document_ids e faq_ids)
+- NON generare content_body, key_points o domande (verranno generati separatamente)
+- I moduli devono seguire un ordine logico progressivo
+- Basa la struttura ESCLUSIVAMENTE sui documenti e FAQ forniti — non inventare contenuto
 - Tutto in italiano`
       : `Sei un architetto di curriculum per la formazione commerciale.
 Analizza la Knowledge Base e proponi la STRUTTURA del curriculum organizzata in CURRICULA (percorsi tematici).
@@ -195,16 +155,80 @@ Analizza la Knowledge Base e proponi la STRUTTURA del curriculum organizzata in 
 ${kbContext}
 ${existingContext}
 
-${CURRICULUM_OUTLINE}
-
 ISTRUZIONI:
-- SEGUI OBBLIGATORIAMENTE LA STRUTTURA TARGET sopra: usa esattamente quei curricula e quei titoli di moduli
-- Per ogni modulo fornisci SOLO: titolo (esattamente come nella struttura target), summary dettagliata basata sul contenuto reale del playbook, track, rationale, fonti usate, e le sezioni rilevanti del documento sorgente
+- Organizza il contenuto in curricula tematici coerenti (es. uno per il processo di vendita, uno per il prodotto, uno per i tool)
+- Per ogni curriculum proponi 3-8 moduli granulari e specifici
+- Per ogni modulo fornisci: titolo (max 60 car), summary dettagliata, rationale, fonti usate
 - NON generare content_body, key_points o domande (verranno generati separatamente)
-- I moduli dentro ogni curriculum devono seguire l'ordine della struttura target
+- I moduli dentro ogni curriculum devono seguire un ordine logico progressivo
+- Basa la struttura ESCLUSIVAMENTE sui documenti e FAQ forniti — non inventare contenuto
 - Tutto in italiano`;
 
-    console.log("[process-curriculum] Calling Anthropic for outline with curricula, prompt length:", outlinePrompt.length);
+    console.log("[process-curriculum] Calling Anthropic for outline, collectionId:", collectionId, "prompt length:", outlinePrompt.length);
+
+    const toolSchema = collectionId
+      ? {
+          name: "propose_outline",
+          description: "Proponi moduli per questa collection specifica",
+          input_schema: {
+            type: "object",
+            properties: {
+              modules: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    summary: { type: "string" },
+                    ai_rationale: { type: "string" },
+                    source_document_ids: { type: "array", items: { type: "string" } },
+                    source_faq_ids: { type: "array", items: { type: "string" } },
+                    relevant_sections: { type: "string" },
+                  },
+                  required: ["title", "summary", "ai_rationale", "source_document_ids", "source_faq_ids"],
+                },
+              },
+            },
+            required: ["modules"],
+          },
+        }
+      : {
+          name: "propose_outline",
+          description: "Proponi l'outline del curriculum organizzato in percorsi",
+          input_schema: {
+            type: "object",
+            properties: {
+              curricula: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    title: { type: "string" },
+                    description: { type: "string" },
+                    track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
+                    modules: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          title: { type: "string" },
+                          summary: { type: "string" },
+                          ai_rationale: { type: "string" },
+                          source_document_ids: { type: "array", items: { type: "string" } },
+                          source_faq_ids: { type: "array", items: { type: "string" } },
+                          relevant_sections: { type: "string" },
+                        },
+                        required: ["title", "summary", "ai_rationale", "source_document_ids", "source_faq_ids"],
+                      },
+                    },
+                  },
+                  required: ["title", "description", "track", "modules"],
+                },
+              },
+            },
+            required: ["curricula"],
+          },
+        };
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -218,48 +242,9 @@ ISTRUZIONI:
         max_tokens: 8192,
         system: outlinePrompt,
         messages: [
-          { role: "user", content: "Proponi la struttura del curriculum organizzata in curricula (percorsi). Solo outline." },
+          { role: "user", content: collectionId ? "Proponi i moduli per questa collection." : "Proponi la struttura del curriculum organizzata in curricula (percorsi). Solo outline." },
         ],
-        tools: [
-          {
-            name: "propose_outline",
-            description: "Proponi l'outline del curriculum organizzato in percorsi",
-            input_schema: {
-              type: "object",
-              properties: {
-                curricula: {
-                  type: "array",
-                  description: "Lista di curricula (percorsi tematici)",
-                  items: {
-                    type: "object",
-                    properties: {
-                      title: { type: "string", description: "Titolo del curriculum/percorso (es. 'Essere Account Executive a Klaaryo')" },
-                      description: { type: "string", description: "Descrizione breve del percorso (1-2 frasi)" },
-                      track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
-                      modules: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          properties: {
-                            title: { type: "string", description: "Titolo modulo (max 60 car)" },
-                            summary: { type: "string", description: "1-2 frasi" },
-                            ai_rationale: { type: "string" },
-                            source_document_ids: { type: "array", items: { type: "string" } },
-                            source_faq_ids: { type: "array", items: { type: "string" } },
-                            relevant_sections: { type: "string", description: "Sezioni/capitoli specifici del documento sorgente rilevanti" },
-                          },
-                          required: ["title", "summary", "ai_rationale", "source_document_ids", "source_faq_ids"],
-                        },
-                      },
-                    },
-                    required: ["title", "description", "track", "modules"],
-                  },
-                },
-              },
-              required: ["curricula"],
-            },
-          },
-        ],
+        tools: [toolSchema],
         tool_choice: { type: "tool", name: "propose_outline" },
       }),
     });
@@ -273,10 +258,6 @@ ISTRUZIONI:
     const toolBlock = data.content?.find((c: any) => c.type === "tool_use");
     if (!toolBlock) throw new Error("L'AI non ha restituito un output strutturato");
 
-    const outlineCurricula = toolBlock.input.curricula || [];
-    const totalModules = outlineCurricula.reduce((sum: number, c: any) => sum + (c.modules?.length || 0), 0);
-    console.log("[process-curriculum] Outline curricula:", outlineCurricula.length, "total modules:", totalModules);
-
     // Get next order indices
     const { data: lastModule } = await supabase
       .from("modules")
@@ -285,30 +266,51 @@ ISTRUZIONI:
       .limit(1);
     let nextModuleOrder = lastModule && lastModule.length > 0 ? lastModule[0].order_index + 1 : 0;
 
-    const { data: lastCurriculum } = await supabase
-      .from("curricula")
-      .select("order_index")
-      .order("order_index", { ascending: false })
-      .limit(1);
-    let nextCurriculumOrder = lastCurriculum && lastCurriculum.length > 0 ? lastCurriculum[0].order_index + 1 : 0;
+    const savedModules: any[] = [];
 
-    // STEP 2: Save curricula and skeleton modules
-    const savedModules = [];
+    if (collectionId) {
+      // Collection-scoped: modules go directly into this curriculum
+      const outlineModules = toolBlock.input.modules || [];
+      console.log("[process-curriculum] Collection outline modules:", outlineModules.length);
 
-    for (const curr of outlineCurricula) {
-      let curriculumId: string;
+      for (const mod of outlineModules) {
+        const { data: saved, error } = await supabase
+          .from("modules")
+          .insert({
+            title: mod.title,
+            summary: mod.summary,
+            track: existingCurricula.find(c => c.id === collectionId)?.track || "Generale",
+            ai_rationale: mod.ai_rationale,
+            source_document_ids: mod.source_document_ids,
+            source_faq_ids: mod.source_faq_ids,
+            status: "proposed",
+            order_index: nextModuleOrder++,
+            key_points: [],
+            content_body: null,
+            curriculum_id: collectionId,
+          })
+          .select("id, title, source_document_ids, source_faq_ids")
+          .single();
 
-      if (enrichMode) {
-        // In enrich mode, find the existing curriculum by title
-        const match = existingCurricula.find(c => c.title === curr.title);
-        if (match) {
-          curriculumId = match.id;
-        } else {
-          console.warn("[process-curriculum] Enrich mode but curriculum not found:", curr.title);
+        if (error) {
+          console.error("[process-curriculum] Failed to save module:", error);
           continue;
         }
-      } else {
-        // Create new curriculum
+        savedModules.push({ ...saved, relevant_sections: mod.relevant_sections || null });
+      }
+    } else {
+      // Global generation: create curricula and modules
+      const outlineCurricula = toolBlock.input.curricula || [];
+      const { data: lastCurriculum } = await supabase
+        .from("curricula")
+        .select("order_index")
+        .order("order_index", { ascending: false })
+        .limit(1);
+      let nextCurriculumOrder = lastCurriculum && lastCurriculum.length > 0 ? lastCurriculum[0].order_index + 1 : 0;
+
+      console.log("[process-curriculum] Global outline curricula:", outlineCurricula.length);
+
+      for (const curr of outlineCurricula) {
         const { data: savedCurr, error: currError } = await supabase
           .from("curricula")
           .insert({
@@ -325,38 +327,36 @@ ISTRUZIONI:
           console.error("[process-curriculum] Failed to save curriculum:", currError);
           continue;
         }
-        curriculumId = savedCurr.id;
-      }
 
-      // Create modules for this curriculum
-      for (const mod of curr.modules || []) {
-        const { data: saved, error } = await supabase
-          .from("modules")
-          .insert({
-            title: mod.title,
-            summary: mod.summary,
-            track: curr.track,
-            ai_rationale: mod.ai_rationale,
-            source_document_ids: mod.source_document_ids,
-            source_faq_ids: mod.source_faq_ids,
-            status: "proposed",
-            order_index: nextModuleOrder++,
-            key_points: [],
-            content_body: null,
-            curriculum_id: curriculumId,
-          })
-          .select("id, title, source_document_ids, source_faq_ids")
-          .single();
+        for (const mod of curr.modules || []) {
+          const { data: saved, error } = await supabase
+            .from("modules")
+            .insert({
+              title: mod.title,
+              summary: mod.summary,
+              track: curr.track,
+              ai_rationale: mod.ai_rationale,
+              source_document_ids: mod.source_document_ids,
+              source_faq_ids: mod.source_faq_ids,
+              status: "proposed",
+              order_index: nextModuleOrder++,
+              key_points: [],
+              content_body: null,
+              curriculum_id: savedCurr.id,
+            })
+            .select("id, title, source_document_ids, source_faq_ids")
+            .single();
 
-        if (error) {
-          console.error("[process-curriculum] Failed to save module:", error);
-          continue;
+          if (error) {
+            console.error("[process-curriculum] Failed to save module:", error);
+            continue;
+          }
+          savedModules.push({ ...saved, relevant_sections: mod.relevant_sections || null });
         }
-        savedModules.push({ ...saved, relevant_sections: mod.relevant_sections || null });
       }
     }
 
-    console.log("[process-curriculum] Saved", outlineCurricula.length, "curricula and", savedModules.length, "skeleton modules");
+    console.log("[process-curriculum] Saved", savedModules.length, "skeleton modules");
 
     // Update parent job with total steps
     await supabase
@@ -394,7 +394,7 @@ ISTRUZIONI:
       }
     }
 
-    return new Response(JSON.stringify({ status: "outline_completed", curricula: outlineCurricula.length, modules: savedModules.length }), {
+    return new Response(JSON.stringify({ status: "outline_completed", modules: savedModules.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

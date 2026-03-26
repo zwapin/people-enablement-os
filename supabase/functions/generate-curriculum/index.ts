@@ -14,36 +14,43 @@ serve(async (req) => {
 
   try {
     let regenerateAll = false;
+    let collectionId: string | null = null;
     try {
       const body = await req.json();
       regenerateAll = body?.regenerate_all === true;
+      collectionId = body?.collection_id || null;
     } catch {
       // no body
     }
 
-    console.log("[generate-curriculum] Enqueuing job, regenerateAll:", regenerateAll);
+    console.log("[generate-curriculum] Enqueuing job, regenerateAll:", regenerateAll, "collectionId:", collectionId);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Quick validation: check KB is not empty
-    const { count: docsCount } = await supabase
-      .from("knowledge_documents")
-      .select("id", { count: "exact", head: true });
-    const { count: faqsCount } = await supabase
-      .from("knowledge_faqs")
-      .select("id", { count: "exact", head: true });
+    // Quick validation: check KB is not empty (scoped to collection if provided)
+    let docsQuery = supabase.from("knowledge_documents").select("id", { count: "exact", head: true });
+    let faqsQuery = supabase.from("knowledge_faqs").select("id", { count: "exact", head: true });
+    if (collectionId) {
+      docsQuery = docsQuery.eq("collection_id", collectionId);
+      faqsQuery = faqsQuery.eq("collection_id", collectionId);
+    }
+    const { count: docsCount } = await docsQuery;
+    const { count: faqsCount } = await faqsQuery;
 
     if ((docsCount ?? 0) === 0 && (faqsCount ?? 0) === 0) {
+      const msg = collectionId
+        ? "Questa collection non ha documenti né FAQ. Carica materiale prima di generare."
+        : "La Knowledge Base è vuota. Carica documenti o aggiungi FAQ prima di generare il curriculum.";
       return new Response(
-        JSON.stringify({ error: "La Knowledge Base è vuota. Carica documenti o aggiungi FAQ prima di generare il curriculum." }),
+        JSON.stringify({ error: msg }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // If regenerating all, also clean curricula
-    if (regenerateAll) {
+    if (regenerateAll && !collectionId) {
       console.log("[generate-curriculum] Cleaning existing curricula for full regen");
       await supabase.from("curricula").delete().neq("id", "00000000-0000-0000-0000-000000000000");
     }
@@ -53,7 +60,7 @@ serve(async (req) => {
       .from("generation_jobs")
       .insert({
         job_type: "curriculum",
-        input: { regenerate_all: regenerateAll },
+        input: { regenerate_all: regenerateAll, collection_id: collectionId },
         status: "pending",
       })
       .select("id")

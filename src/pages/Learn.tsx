@@ -186,13 +186,16 @@ export default function Learn() {
     };
   }, [refetch, refetchCurricula]);
 
-  const handleUpdateCurriculum = async (regenerateAll = false) => {
+  const handleUpdateCurriculum = async (regenerateAll = false, collectionId?: string) => {
     setGenerating(true);
     setProgress(2);
     setProgressLabel("Invio richiesta...");
     try {
+      const body: any = {};
+      if (regenerateAll) body.regenerate_all = true;
+      if (collectionId) body.collection_id = collectionId;
       const { data, error } = await supabase.functions.invoke("generate-curriculum", {
-        body: regenerateAll ? { regenerate_all: true } : {},
+        body,
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -569,6 +572,8 @@ export default function Learn() {
                 onRefresh={refreshAll}
                 onBulkGenerate={handleBulkGenerate}
                 isBulkGenerating={bulkGenerating}
+                onGenerateCurriculum={(collectionId) => handleUpdateCurriculum(false, collectionId)}
+                isGenerating={generating}
               />
             ))}
         </div>
