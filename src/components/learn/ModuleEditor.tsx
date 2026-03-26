@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import ModuleCanvas from "./ModuleCanvas";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -323,7 +324,7 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <Label>Contenuto (Markdown)</Label>
+            <Label>Contenuto</Label>
             {moduleId && (
               <Button
                 variant="outline"
@@ -336,11 +337,17 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
                 ) : (
                   <Sparkles className="h-3 w-3 mr-1" />
                 )}
-                {generating ? "Generazione..." : contentBody ? "Rigenera con AI" : "Genera con AI"}
+                {generating ? "Generazione..." : contentBody ? "Rigenera tutto con AI" : "Genera tutto con AI"}
               </Button>
             )}
           </div>
-          <Textarea value={contentBody} onChange={(e) => setContentBody(e.target.value)} placeholder="Contenuto completo del modulo..." className="min-h-[200px] font-mono text-sm" disabled={generating} />
+          <ModuleCanvas
+            content={contentBody}
+            onChange={setContentBody}
+            disabled={generating}
+            moduleTitle={title}
+            moduleId={moduleId || undefined}
+          />
         </div>
       </Card>
 
