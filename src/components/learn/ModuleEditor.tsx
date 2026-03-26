@@ -372,7 +372,7 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
       <hr className="border-border" />
 
       {/* TipTap Canvas — the main content area */}
-      <div className="space-y-2">
+      <div className="space-y-2 relative">
         {moduleId && (
           <div className="flex justify-end">
             <Button
@@ -391,6 +391,20 @@ export default function ModuleEditor({ moduleId, onClose, curricula = [] }: Modu
             </Button>
           </div>
         )}
+
+        {/* Generation progress overlay */}
+        {generating && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm rounded-lg">
+            <Sparkles className="h-8 w-8 text-primary animate-pulse" />
+            <div className="w-48 h-1.5 bg-secondary rounded-full overflow-hidden">
+              <div className="h-full w-1/3 bg-primary rounded-full animate-progress-indeterminate" />
+            </div>
+            <p className="text-sm text-muted-foreground animate-pulse">
+              {generationMessages[generatingStep]}
+            </p>
+          </div>
+        )}
+
         <ModuleCanvas
           content={contentBody}
           onChange={setContentBody}
