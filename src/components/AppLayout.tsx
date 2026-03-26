@@ -101,7 +101,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex w-full">
         <AppSidebarContent />
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-12 flex items-center border-b border-border px-4 shrink-0">
+          <header className="h-14 flex items-center border-b border-border px-4 shrink-0 bg-card">
             <SidebarTrigger />
           </header>
           <main className="flex-1 overflow-y-auto p-6">
