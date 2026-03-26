@@ -507,7 +507,7 @@ export default function CollectionDetail() {
       {/* Documenti & FAQ — solo admin */}
       {isAdmin && (
         <>
-          <div className="space-y-3">
+          <div className="space-y-3" data-documents-section>
             <h2 className="text-lg font-semibold text-foreground">Documenti</h2>
             <DocumentsList collectionId={curriculumId!} onUploadComplete={refreshAll} />
           </div>
