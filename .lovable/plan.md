@@ -1,45 +1,38 @@
 
 
-# Curriculum come pagina dedicata (no dropdown)
+# Tema Light (White shadcn)
 
-## Concetto
-
-Invece di collapsible/dropdown, ogni curriculum è una **card cliccabile** nella lista. Al click si entra in una **sotto-pagina dedicata** dove si trovano moduli, documenti, FAQ e azioni di generazione. Nessuna menzione di "collection" nell'UI — il termine resta "curriculum".
+Cambiare il tema da dark a light aggiornando le CSS custom properties in `src/index.css`. Tutti i componenti shadcn si adatteranno automaticamente.
 
 ## Modifiche
 
-### 1. Nuova route `/learn/:curriculumId`
-- In `App.tsx`, aggiungere route `<Route path="/learn/:curriculumId" element={<CurriculumDetail />} />`
-- Nuova pagina `src/pages/CurriculumDetail.tsx`
+### `src/index.css` — Nuove variabili colore light
+Sostituire i valori `:root` con il tema light standard shadcn, mantenendo il lime accent `--primary: 75 87% 67%` per coerenza brand:
 
-### 2. `CurriculumDetail.tsx` — Pagina dedicata al singolo curriculum
-- Prende `curriculumId` da `useParams()`
-- Header con titolo, descrizione, stato, bottoni admin (edit inline, pubblica/bozza, genera, genera contenuti)
-- Breadcrumb: Formazione > Nome Curriculum
-- Sezione **Moduli** (lista con CurriculumList)
-- Sezione **Documenti** (DocumentsList con `collectionId`)
-- Sezione **FAQ** (FaqList con `collectionId`)
-- Le tre sezioni sono visibili tutte nella stessa pagina (scroll) oppure con tabs — ma non dentro un collapsible
+| Variabile | Da (dark) | A (light) |
+|-----------|-----------|-----------|
+| `--background` | `0 0% 5.5%` | `0 0% 100%` |
+| `--foreground` | `40 20% 95%` | `0 0% 3.9%` |
+| `--card` | `0 0% 8.6%` | `0 0% 100%` |
+| `--card-foreground` | `40 20% 95%` | `0 0% 3.9%` |
+| `--popover` | `0 0% 8.6%` | `0 0% 100%` |
+| `--muted` | `0 0% 12%` | `0 0% 96.1%` |
+| `--muted-foreground` | `0 0% 40%` | `0 0% 45.1%` |
+| `--accent` | `0 0% 12%` | `0 0% 96.1%` |
+| `--secondary` | `0 0% 12%` | `0 0% 96.1%` |
+| `--border` | `0 0% 16.5%` | `0 0% 89.8%` |
+| `--input` | `0 0% 16.5%` | `0 0% 89.8%` |
+| `--primary` | mantieni lime | mantieni lime (foreground → dark) |
+| `--sidebar-*` | dark | valori light corrispondenti |
 
-### 3. `CurriculumCard.tsx` — Semplificato a card cliccabile
-- Rimuovere il Collapsible e i Tabs interni
-- Diventa una card con: titolo, descrizione, badge stato, conteggio moduli/documenti/FAQ
-- Al click → `navigate(/learn/${curriculum.id})`
-- I bottoni admin (edit, pubblica, archivia) restano sulla card per azioni rapide
-
-### 4. `Learn.tsx` — Lista di card
-- La sezione "Curricula" mostra le card semplificate
-- Nessun contenuto espanso inline
-
-### 5. Contatori KB sulla card
-- Query count di `knowledge_documents` e `knowledge_faqs` per `collection_id` da mostrare sulla card (es. "5 moduli · 3 documenti · 2 FAQ")
+### Controllo componenti
+- Verificare che `CurriculumCard`, `CurriculumDetail`, `AppLayout` non abbiano classi hardcoded dark (es. `bg-[#161616]`, `text-white`) che sovrascrivono le variabili CSS
+- Sostituire eventuali colori hardcoded con classi semantiche (`bg-card`, `text-foreground`, etc.)
 
 ## File coinvolti
 
 | File | Modifica |
 |------|----------|
-| `App.tsx` | Nuova route `/learn/:curriculumId` |
-| `CurriculumDetail.tsx` | Nuova pagina con moduli + documenti + FAQ |
-| `CurriculumCard.tsx` | Semplificare a card cliccabile, rimuovere Collapsible/Tabs |
-| `Learn.tsx` | Nessuna modifica sostanziale, le card navigano alla detail |
+| `src/index.css` | Variabili CSS `:root` → tema light |
+| Componenti vari | Rimuovere eventuali colori hardcoded dark |
 
