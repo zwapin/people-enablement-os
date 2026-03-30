@@ -57,7 +57,15 @@ interface Collection {
   status: string;
   created_at: string;
   updated_at: string;
+  category?: string | null;
 }
+
+const MACRO_CATEGORIES = [
+  { key: "sales", label: "Sales" },
+  { key: "customer_success", label: "Customer Success" },
+  { key: "operations", label: "Operations" },
+  { key: "common", label: "Common Knowledge" },
+];
 
 interface CollectionCardProps {
   collection: Collection;
