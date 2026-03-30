@@ -257,10 +257,29 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
         updated_at: new Date().toISOString(),
       };
 
-      // If all modules done, mark parent completed
+      // If all modules done, mark parent completed and generate FAQs
       if (completedSteps >= totalSteps) {
         updateData.status = "completed";
         updateData.result = { count: totalSteps };
+
+        // Find collection_id from the module to trigger FAQ generation
+        const { data: moduleData } = await supabase
+          .from("modules")
+          .select("curriculum_id")
+          .eq("id", module_id)
+          .single();
+
+        if (moduleData?.curriculum_id) {
+          console.log("[generate-module] All modules done, triggering FAQ generation for collection:", moduleData.curriculum_id);
+          fetch(`${supabaseUrl}/functions/v1/generate-faqs`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${serviceRoleKey}`,
+            },
+            body: JSON.stringify({ collection_id: moduleData.curriculum_id }),
+          }).catch(err => console.error("[generate-module] Fire FAQ generation error:", err));
+        }
       }
 
       await supabase
