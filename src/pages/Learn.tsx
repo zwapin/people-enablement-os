@@ -537,6 +537,12 @@ export default function Learn() {
             </Card>
           );
 
+          const renderEmptyCategory = () => (
+            <Card className="p-4 bg-card border-border text-sm text-muted-foreground">
+              Nessuna collection disponibile in questa macro area al momento.
+            </Card>
+          );
+
           return (
             <div className="space-y-6">
               {categorized.filter(cat => cat.collections.length > 0).map(cat => (
