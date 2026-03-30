@@ -57,7 +57,7 @@ export type Database = {
       }
       curricula: {
         Row: {
-          category: string | null
+          categories: Json | null
           created_at: string
           description: string | null
           id: string
@@ -68,7 +68,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          category?: string | null
+          categories?: Json | null
           created_at?: string
           description?: string | null
           id?: string
@@ -79,7 +79,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          category?: string | null
+          categories?: Json | null
           created_at?: string
           description?: string | null
           id?: string

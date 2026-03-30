@@ -474,11 +474,12 @@ export default function Learn() {
             { key: "operations", label: "Operations" },
             { key: "common", label: "Common Knowledge" },
           ];
+          const getCats = (c: any): string[] => Array.isArray(c.categories) ? c.categories : [];
           const categorized = MACRO_CATEGORIES.map(cat => ({
             ...cat,
-            collections: repCollections.filter(c => (c as any).category === cat.key),
+            collections: repCollections.filter(c => getCats(c).includes(cat.key)),
           }));
-          const uncategorized = repCollections.filter(c => !(c as any).category);
+          const uncategorized = repCollections.filter(c => getCats(c).length === 0);
           const hasCategories = categorized.some(cat => cat.collections.length > 0);
 
           const renderCard = (c: typeof repCollections[0]) => (
@@ -604,10 +605,11 @@ export default function Learn() {
           { key: "common", label: "Common Knowledge" },
         ];
         const activeCollections = allCollections.filter(c => c.status !== "archived");
-        const uncategorized = activeCollections.filter(c => !(c as any).category);
+        const getCats = (c: any): string[] => Array.isArray(c.categories) ? c.categories : [];
+        const uncategorized = activeCollections.filter(c => getCats(c).length === 0);
         const categorized = MACRO_CATEGORIES.map(cat => ({
           ...cat,
-          collections: activeCollections.filter(c => (c as any).category === cat.key),
+          collections: activeCollections.filter(c => getCats(c).includes(cat.key)),
         }));
 
         return (
