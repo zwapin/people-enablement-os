@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -8,6 +7,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Pencil,
   Eye,
@@ -19,12 +28,12 @@ import {
   FileText,
   HelpCircle,
   Trash2,
-  ChevronDown,
-  ChevronUp,
   Users,
   AlertTriangle,
   CheckCircle2,
   XCircle,
+  MoreVertical,
+  Tag,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -35,11 +44,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { Tables } from "@/integrations/supabase/types";
+import { MACRO_CATEGORIES, getCollectionCategories } from "@/lib/constants";
 
 type Module = Tables<"modules">;
+type Profile = Tables<"profiles">;
+type Completion = Tables<"module_completions">;
 
 interface Collection {
   id: string;
@@ -50,21 +61,24 @@ interface Collection {
   status: string;
   created_at: string;
   updated_at: string;
-  categories?: any;
+  categories?: string[] | null;
 }
-
-const MACRO_CATEGORIES = [
-  { key: "sales", label: "Sales" },
-  { key: "customer_success", label: "Customer Success" },
-  { key: "operations", label: "Operations" },
-  { key: "common", label: "Common Knowledge" },
-];
 
 interface CollectionCardProps {
   collection: Collection;
   modules: Module[];
   isAdmin: boolean;
   onRefresh: () => void;
+  /** Pre-fetched from page level */
+  repProfiles?: Profile[];
+  /** Pre-fetched from page level */
+  allCompletions?: Completion[];
+  /** Pre-fetched from page level: { [moduleId]: questionCount } */
+  assessmentCounts?: Record<string, number>;
+  /** Pre-fetched from page level */
+  docCount?: number;
+  /** Pre-fetched from page level */
+  faqCount?: number;
 }
 
 export default function CollectionCard({
@@ -72,94 +86,33 @@ export default function CollectionCard({
   modules,
   isAdmin,
   onRefresh,
+  repProfiles,
+  allCompletions,
+  assessmentCounts,
+  docCount,
+  faqCount,
 }: CollectionCardProps) {
   const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(collection.title);
   const [editDesc, setEditDesc] = useState(collection.description || "");
   const [showRepStats, setShowRepStats] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const publishedModuleIds = modules.filter(m => m.status === "published").map(m => m.id);
   const publishedCount = publishedModuleIds.length;
 
-  const { data: docCount } = useQuery({
-    queryKey: ["doc-count", collection.id],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("knowledge_documents")
-        .select("*", { count: "exact", head: true })
-        .eq("collection_id", collection.id);
-      return count ?? 0;
-    },
-  });
-
-  const { data: faqCount } = useQuery({
-    queryKey: ["faq-count", collection.id],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("knowledge_faqs")
-        .select("*", { count: "exact", head: true })
-        .eq("collection_id", collection.id);
-      return count ?? 0;
-    },
-  });
-
-  // Fetch rep profiles
-  const { data: repProfiles } = useQuery({
-    queryKey: ["rep-profiles"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("role", "rep")
-        .eq("is_active", true)
-        .order("full_name");
-      if (error) throw error;
-      return data;
-    },
-    enabled: isAdmin,
-  });
-
-  // Fetch all completions for published modules in this collection
-  const { data: allCompletions } = useQuery({
-    queryKey: ["collection-completions", collection.id, publishedModuleIds],
-    queryFn: async () => {
-      if (publishedModuleIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from("module_completions")
-        .select("*")
-        .in("module_id", publishedModuleIds);
-      if (error) throw error;
-      return data;
-    },
-    enabled: isAdmin && publishedModuleIds.length > 0,
-  });
-
-  // Fetch assessment questions count per module to know if assessment exists
-  const { data: assessmentCounts } = useQuery({
-    queryKey: ["assessment-counts", collection.id, publishedModuleIds],
-    queryFn: async () => {
-      if (publishedModuleIds.length === 0) return {};
-      const { data, error } = await supabase
-        .from("assessment_questions")
-        .select("module_id")
-        .in("module_id", publishedModuleIds);
-      if (error) throw error;
-      const counts: Record<string, number> = {};
-      (data ?? []).forEach(q => {
-        counts[q.module_id] = (counts[q.module_id] || 0) + 1;
-      });
-      return counts;
-    },
-    enabled: isAdmin && publishedModuleIds.length > 0,
-  });
-
+  const categories = getCollectionCategories(collection.categories);
   const PASS_THRESHOLD = 70;
 
   const getRepStats = () => {
     if (!repProfiles || !allCompletions || publishedCount === 0) return [];
-    const completionsByUser = new Map<string, typeof allCompletions>();
-    allCompletions.forEach(c => {
+    
+    // Filter completions relevant to this collection's modules
+    const relevantCompletions = allCompletions.filter(c => publishedModuleIds.includes(c.module_id));
+    
+    const completionsByUser = new Map<string, typeof relevantCompletions>();
+    relevantCompletions.forEach(c => {
       const arr = completionsByUser.get(c.user_id) ?? [];
       arr.push(c);
       completionsByUser.set(c.user_id, arr);
@@ -174,12 +127,10 @@ export default function CollectionCard({
       const completedModuleIds = new Set(userCompletions.map(c => c.module_id));
       const completedCount = publishedModuleIds.filter(id => completedModuleIds.has(id)).length;
 
-      // Check if any completed module has assessment but score < threshold
       const needsRetake = userCompletions.some(c =>
         modulesWithAssessment.has(c.module_id) && c.score < PASS_THRESHOLD
       );
 
-      // Modules with assessment that haven't been completed yet
       const pendingAssessments = publishedModuleIds.filter(
         id => modulesWithAssessment.has(id) && !completedModuleIds.has(id)
       ).length;
@@ -217,8 +168,7 @@ export default function CollectionCard({
     }
   };
 
-  const handleToggleStatus = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleToggleStatus = async () => {
     const newStatus = collection.status === "published" ? "draft" : "published";
     const { error } = await supabase
       .from("curricula")
@@ -235,8 +185,7 @@ export default function CollectionCard({
     }
   };
 
-  const handleArchive = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleArchive = async () => {
     const { error } = await supabase
       .from("curricula")
       .update({ status: "archived", updated_at: new Date().toISOString() })
@@ -250,8 +199,7 @@ export default function CollectionCard({
     }
   };
 
-  const handleDelete = async (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleDelete = async () => {
     const moduleIds = modules.map(m => m.id);
     for (const mId of moduleIds) {
       await supabase.from("assessment_questions").delete().eq("module_id", mId);
@@ -268,6 +216,22 @@ export default function CollectionCard({
     }
   };
 
+  const handleToggleCategory = async (catKey: string) => {
+    const current = [...categories];
+    const updated = current.includes(catKey)
+      ? current.filter(c => c !== catKey)
+      : [...current, catKey];
+    const { error } = await supabase
+      .from("curricula")
+      .update({ categories: updated, updated_at: new Date().toISOString() } as any)
+      .eq("id", collection.id);
+    if (error) {
+      toast.error("Aggiornamento fallito");
+    } else {
+      onRefresh();
+    }
+  };
+
   const handleCardClick = () => {
     if (!editing) {
       navigate(`/learn/${collection.id}`);
@@ -277,265 +241,250 @@ export default function CollectionCard({
   const repStats = isAdmin ? getRepStats() : [];
 
   return (
-    <Card
-      className="border-border bg-card overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
-      onClick={handleCardClick}
-    >
-      <div className="flex items-start sm:items-center gap-3 p-4 flex-wrap">
-        <div className="flex-1 min-w-0">
-          {editing ? (
-            <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
-              <Input
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="font-semibold"
-              />
-              <Textarea
-                value={editDesc}
-                onChange={(e) => setEditDesc(e.target.value)}
-                placeholder="Descrizione..."
-                className="min-h-[40px] text-sm"
-              />
-              <div className="flex gap-1">
-                <Button size="sm" onClick={handleSaveEdit}>
-                  <Check className="h-3 w-3 mr-1" />
-                  Salva
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditing(false);
-                  }}
-                >
-                  <X className="h-3 w-3 mr-1" />
-                  Annulla
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-primary shrink-0" />
-                <h3 className="font-semibold text-foreground truncate">
-                  {collection.title}
-                </h3>
-                <Badge
-                  variant={
-                    collection.status === "published" ? "default" : "secondary"
-                  }
-                  className="text-[10px] uppercase shrink-0"
-                >
-                  {collection.status === "published"
-                    ? "Pubblicato"
-                    : collection.status === "draft"
-                    ? "Bozza"
-                    : collection.status === "archived"
-                    ? "Archiviato"
-                    : collection.status}
-                </Badge>
-              </div>
-              {collection.description && (
-                <p className="text-sm text-muted-foreground mt-1 truncate">
-                  {collection.description}
-                </p>
-              )}
-              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <BookOpen className="h-3 w-3" />
-                  {modules.length} moduli
-                </span>
-                <span className="flex items-center gap-1">
-                  <FileText className="h-3 w-3" />
-                  {docCount ?? 0} documenti
-                </span>
-                <span className="flex items-center gap-1">
-                  <HelpCircle className="h-3 w-3" />
-                  {faqCount ?? 0} FAQ
-                </span>
-              </div>
-            </>
-          )}
-        </div>
-
-        {isAdmin && !editing && (
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Category multi-toggle */}
-            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-              {MACRO_CATEGORIES.map(cat => {
-                const cats: string[] = Array.isArray(collection.categories) ? collection.categories : [];
-                const isActive = cats.includes(cat.key);
-                return (
-                  <Badge
-                    key={cat.key}
-                    variant={isActive ? "default" : "outline"}
-                    className={`text-[10px] cursor-pointer select-none transition-colors ${
-                      isActive ? "" : "opacity-50 hover:opacity-80"
-                    }`}
-                    onClick={async () => {
-                      const current: string[] = Array.isArray(collection.categories) ? [...collection.categories] : [];
-                      const updated = isActive
-                        ? current.filter(c => c !== cat.key)
-                        : [...current, cat.key];
-                      const { error } = await supabase
-                        .from("curricula")
-                        .update({ categories: updated, updated_at: new Date().toISOString() } as any)
-                        .eq("id", collection.id);
-                      if (error) {
-                        toast.error("Aggiornamento fallito");
-                      } else {
-                        onRefresh();
-                      }
+    <>
+      <Card
+        className="border-border bg-card overflow-hidden cursor-pointer hover:border-primary/50 transition-colors"
+        onClick={handleCardClick}
+      >
+        <div className="flex items-start sm:items-center gap-3 p-4 flex-wrap">
+          <div className="flex-1 min-w-0">
+            {editing ? (
+              <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                <Input
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="font-semibold"
+                />
+                <Textarea
+                  value={editDesc}
+                  onChange={(e) => setEditDesc(e.target.value)}
+                  placeholder="Descrizione..."
+                  className="min-h-[40px] text-sm"
+                />
+                <div className="flex gap-1">
+                  <Button size="sm" onClick={handleSaveEdit}>
+                    <Check className="h-3 w-3 mr-1" />
+                    Salva
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditing(false);
                     }}
                   >
-                    {cat.label}
+                    <X className="h-3 w-3 mr-1" />
+                    Annulla
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                  <h3 className="font-semibold text-foreground break-words">
+                    {collection.title}
+                  </h3>
+                  <Badge
+                    variant={collection.status === "published" ? "default" : "secondary"}
+                    className="text-[10px] uppercase shrink-0"
+                  >
+                    {collection.status === "published"
+                      ? "Pubblicato"
+                      : collection.status === "draft"
+                      ? "Bozza"
+                      : collection.status === "archived"
+                      ? "Archiviato"
+                      : collection.status}
                   </Badge>
-                );
-              })}
-            </div>
-            {publishedCount > 0 && repStats.length > 0 && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowRepStats(!showRepStats);
-                }}
-                title="Stato Klaaryan"
-              >
-                <Users className="h-4 w-4" />
-              </Button>
+                  {/* Only show active category badges */}
+                  {categories.map(catKey => {
+                    const cat = MACRO_CATEGORIES.find(c => c.key === catKey);
+                    return cat ? (
+                      <Badge key={cat.key} variant="outline" className="text-[10px] shrink-0">
+                        {cat.label}
+                      </Badge>
+                    ) : null;
+                  })}
+                </div>
+                {collection.description && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {collection.description}
+                  </p>
+                )}
+                <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <BookOpen className="h-3 w-3" />
+                    {modules.length} moduli
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <FileText className="h-3 w-3" />
+                    {docCount ?? 0} documenti
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <HelpCircle className="h-3 w-3" />
+                    {faqCount ?? 0} FAQ
+                  </span>
+                </div>
+              </>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={handleToggleStatus}
-              title={
-                collection.status === "published"
-                  ? "Sposta in bozza"
-                  : "Pubblica"
-              }
-            >
-              {collection.status === "published" ? (
-                <EyeOff className="h-4 w-4" />
-              ) : (
-                <Eye className="h-4 w-4" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={(e) => {
-                e.stopPropagation();
-                setEditing(true);
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-foreground"
-              onClick={handleArchive}
-              title="Archivia"
-            >
-              <Archive className="h-4 w-4" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
+          </div>
+
+          {isAdmin && !editing && (
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              {publishedCount > 0 && repStats.length > 0 && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-7 w-7 text-destructive hover:text-destructive"
-                  onClick={(e) => e.stopPropagation()}
-                  title="Elimina"
+                  className="h-7 w-7"
+                  onClick={() => setShowRepStats(!showRepStats)}
+                  title="Stato Klaaryan"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Users className="h-4 w-4" />
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Eliminare questa collection?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    La collection "{collection.title}" e tutti i moduli, domande e documenti associati verranno eliminati permanentemente.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={() => setEditing(true)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Modifica
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleToggleStatus}>
+                    {collection.status === "published" ? (
+                      <>
+                        <EyeOff className="h-4 w-4 mr-2" />
+                        Sposta in bozza
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="h-4 w-4 mr-2" />
+                        Pubblica
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSub>
+                    <DropdownMenuSubTrigger>
+                      <Tag className="h-4 w-4 mr-2" />
+                      Categorie
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent>
+                      {MACRO_CATEGORIES.map(cat => (
+                        <DropdownMenuItem
+                          key={cat.key}
+                          onClick={() => handleToggleCategory(cat.key)}
+                        >
+                          <span className="flex items-center gap-2 w-full">
+                            <span className={`h-3 w-3 rounded-sm border flex items-center justify-center ${
+                              categories.includes(cat.key) ? "bg-primary border-primary" : "border-muted-foreground"
+                            }`}>
+                              {categories.includes(cat.key) && <Check className="h-2 w-2 text-primary-foreground" />}
+                            </span>
+                            {cat.label}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleArchive}>
+                    <Archive className="h-4 w-4 mr-2" />
+                    Archivia
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
                     Elimina
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
+        </div>
+
+        {/* Rep stats panel */}
+        {isAdmin && showRepStats && repStats.length > 0 && (
+          <div
+            className="border-t border-border px-4 py-3 space-y-2 bg-muted/30"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
+              <Users className="h-3.5 w-3.5" />
+              Stato Klaaryan ({repStats.length})
+            </div>
+            <div className="space-y-1.5">
+              {repStats.map((rep, i) => {
+                const allDone = rep.completedCount === rep.totalModules;
+                const hasIssue = rep.needsRetake;
+
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-3 text-xs py-1.5 px-2 rounded bg-card"
+                  >
+                    <span className="font-medium text-foreground truncate min-w-0">
+                      {rep.name}
+                    </span>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="text-muted-foreground font-mono">
+                        {rep.completedCount}/{rep.totalModules}
+                      </span>
+                      {allDone && !hasIssue && (
+                        <Badge variant="outline" className="text-[10px] border-primary/30 text-primary gap-1">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Completato
+                        </Badge>
+                      )}
+                      {hasIssue && (
+                        <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive gap-1">
+                          <AlertTriangle className="h-3 w-3" />
+                          Da rifare ({rep.failedModules.length})
+                        </Badge>
+                      )}
+                      {!allDone && !hasIssue && rep.pendingAssessments > 0 && (
+                        <Badge variant="outline" className="text-[10px] border-muted-foreground/30 text-muted-foreground gap-1">
+                          <XCircle className="h-3 w-3" />
+                          {rep.pendingAssessments} assessment
+                        </Badge>
+                      )}
+                      {!allDone && !hasIssue && rep.pendingAssessments === 0 && (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                          In corso
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
-      </div>
+      </Card>
 
-      {/* Rep stats panel */}
-      {isAdmin && showRepStats && repStats.length > 0 && (
-        <div
-          className="border-t border-border px-4 py-3 space-y-2 bg-muted/30"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
-            <Users className="h-3.5 w-3.5" />
-            Stato Klaaryan ({repStats.length})
-          </div>
-          <div className="space-y-1.5">
-            {repStats.map((rep, i) => {
-              const allDone = rep.completedCount === rep.totalModules;
-              const hasIssue = rep.needsRetake;
-
-              return (
-                <div
-                  key={i}
-                  className="flex items-center justify-between gap-3 text-xs py-1.5 px-2 rounded bg-card"
-                >
-                  <span className="font-medium text-foreground truncate min-w-0">
-                    {rep.name}
-                  </span>
-                  <div className="flex items-center gap-3 shrink-0">
-                    {/* Modules completed */}
-                    <span className="text-muted-foreground font-mono">
-                      {rep.completedCount}/{rep.totalModules}
-                    </span>
-
-                    {/* Status icon */}
-                    {allDone && !hasIssue && (
-                      <Badge variant="outline" className="text-[10px] border-primary/30 text-primary gap-1">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Completato
-                      </Badge>
-                    )}
-                    {hasIssue && (
-                      <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive gap-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        Da rifare ({rep.failedModules.length})
-                      </Badge>
-                    )}
-                    {!allDone && !hasIssue && rep.pendingAssessments > 0 && (
-                      <Badge variant="outline" className="text-[10px] border-muted-foreground/30 text-muted-foreground gap-1">
-                        <XCircle className="h-3 w-3" />
-                        {rep.pendingAssessments} assessment
-                      </Badge>
-                    )}
-                    {!allDone && !hasIssue && rep.pendingAssessments === 0 && (
-                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                        In corso
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-    </Card>
+      {/* Delete confirmation dialog — outside the card to avoid ref issues */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questa collection?</AlertDialogTitle>
+            <AlertDialogDescription>
+              La collection &ldquo;{collection.title}&rdquo; e tutti i moduli, domande e documenti associati verranno eliminati permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
