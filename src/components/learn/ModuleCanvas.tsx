@@ -194,7 +194,7 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
     { id: "quote", label: "Citazione", icon: Quote, desc: "Blockquote" },
     { id: "table", label: "Tabella", icon: TableIcon, desc: "Tabella 3×3" },
     { id: "divider", label: "Separatore", icon: Minus, desc: "Linea orizzontale" },
-    { id: "ai", label: "Genera con AI", icon: Sparkles, desc: "Genera contenuto con AI" },
+    { id: "ai", label: "Modifica con AI", icon: Sparkles, desc: "Modifica o genera contenuto con AI" },
   ];
 
   return (
