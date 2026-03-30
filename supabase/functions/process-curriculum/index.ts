@@ -48,6 +48,7 @@ serve(async (req) => {
 
     const regenerateAll = job?.input?.regenerate_all === true;
     const collectionId = job?.input?.collection_id || null;
+    const customInstructions = job?.input?.custom_instructions || null;
 
     let docsQuery = supabase.from("knowledge_documents").select("id, title, context, content").order("created_at");
     let faqsQuery = supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at");
