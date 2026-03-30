@@ -20,9 +20,10 @@ const emptyForm: FaqForm = { question: "", answer: "", category: "" };
 
 interface FaqListProps {
   collectionId?: string;
+  readOnly?: boolean;
 }
 
-export default function FaqList({ collectionId }: FaqListProps) {
+export default function FaqList({ collectionId, readOnly = false }: FaqListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FaqForm>(emptyForm);
