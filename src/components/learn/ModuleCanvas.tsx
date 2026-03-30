@@ -220,10 +220,18 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
         <ToolbarBtn active={false} onClick={() => editor.chain().focus().undo().run()} icon={Undo} tooltip="Annulla" />
         <ToolbarBtn active={false} onClick={() => editor.chain().focus().redo().run()} icon={Redo} tooltip="Ripeti" />
         <div className="flex-1" />
-        <Button variant="ghost" size="sm" onClick={() => setShowAI(true)} className="text-xs gap-1">
-          <Sparkles className="h-3 w-3" />
-          Modifica con AI
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={() => setShowAI(true)} className="text-xs gap-1 shrink-0">
+            <Sparkles className="h-3 w-3" />
+            Modifica con AI
+          </Button>
+          {renderToolbarExtra && (
+            <>
+              <div className="w-px h-5 bg-border mx-0.5" />
+              {renderToolbarExtra}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Editor content */}
