@@ -61,7 +61,7 @@ interface Collection {
   status: string;
   created_at: string;
   updated_at: string;
-  categories?: string[] | null;
+  categories?: unknown;
 }
 
 interface CollectionCardProps {
