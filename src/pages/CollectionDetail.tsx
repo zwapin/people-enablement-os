@@ -81,6 +81,7 @@ export default function CollectionDetail() {
   // Generate instructions dialog
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [customInstructions, setCustomInstructions] = useState("");
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
   // Fetch completions for rep (must be at top level before any early returns)
   const { data: repCompletions } = useQuery({
