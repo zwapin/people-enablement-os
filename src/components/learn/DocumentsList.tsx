@@ -272,7 +272,7 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleView(doc.file_path)}
+                  onClick={() => handleView(doc.file_path, doc.title, doc.content)}
                   title="Visualizza documento"
                   className="shrink-0"
                 >
