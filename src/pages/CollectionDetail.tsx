@@ -280,6 +280,7 @@ export default function CollectionDetail() {
       setNoDocsDialogOpen(true);
       return;
     }
+    setSelectedDocIds((collectionDocs ?? []).map(d => d.id));
     setGenerateDialogOpen(true);
   };
 
