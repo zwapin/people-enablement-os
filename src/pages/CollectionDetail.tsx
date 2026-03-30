@@ -294,6 +294,9 @@ export default function CollectionDetail() {
       if (customInstructions.trim()) {
         body.custom_instructions = customInstructions.trim();
       }
+      if (selectedDocIds.length < (collectionDocs ?? []).length) {
+        body.selected_document_ids = selectedDocIds;
+      }
       const { data, error } = await supabase.functions.invoke("generate-curriculum", {
         body,
       });
