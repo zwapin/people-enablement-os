@@ -7,14 +7,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const MODEL = "google/gemini-2.5-flash";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!ANTHROPIC_API_KEY) {
-    return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500 });
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), { status: 500 });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -37,7 +40,6 @@ serve(async (req) => {
     .eq("id", jobId);
 
   try {
-    // Fetch job input
     const { data: job } = await supabase
       .from("generation_jobs")
       .select("input")
@@ -47,7 +49,6 @@ serve(async (req) => {
     const regenerateAll = job?.input?.regenerate_all === true;
     const collectionId = job?.input?.collection_id || null;
 
-    // Fetch KB content — scoped to collection if provided
     let docsQuery = supabase.from("knowledge_documents").select("id, title, context, content").order("created_at");
     let faqsQuery = supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at");
     if (collectionId) {
@@ -67,7 +68,6 @@ serve(async (req) => {
     const existingModules = modulesResult.data || [];
     const existingCurricula = curriculaResult.data || [];
 
-    // When generating for a specific collection, only clean modules in that collection's curriculum
     if (collectionId) {
       const proposedInCollection = existingModules
         .filter(m => m.curriculum_id === collectionId && m.status === "proposed")
@@ -89,7 +89,6 @@ serve(async (req) => {
       await supabase.from("curricula").delete().eq("status", "proposed");
     }
 
-    // Build KB context
     let kbContext = "## DOCUMENTI DELLA KNOWLEDGE BASE\n\n";
     for (const doc of docs) {
       kbContext += `### Documento: ${doc.title} (ID: ${doc.id})\n`;
@@ -104,11 +103,8 @@ serve(async (req) => {
       kbContext += `D: ${faq.question}\nR: ${faq.answer}\n\n`;
     }
 
-    // Existing modules context and curricula enrichment mode
     let existingContext = "";
-
     if (collectionId) {
-      // Collection-scoped generation: show only modules in this collection
       const collectionModules = existingModules.filter(m => m.curriculum_id === collectionId && (m.status === "published" || m.status === "draft"));
       const targetCurriculum = existingCurricula.find(c => c.id === collectionId);
       if (collectionModules.length > 0) {
@@ -133,7 +129,6 @@ serve(async (req) => {
       }
     }
 
-    // STEP 1: Generate OUTLINE
     const outlinePrompt = collectionId
       ? `Sei un architetto di curriculum per la formazione commerciale.
 Analizza la Knowledge Base fornita e proponi moduli di formazione per questa SPECIFICA collection.
@@ -164,101 +159,108 @@ ISTRUZIONI:
 - Basa la struttura ESCLUSIVAMENTE sui documenti e FAQ forniti — non inventare contenuto
 - Tutto in italiano`;
 
-    console.log("[process-curriculum] Calling Anthropic for outline, collectionId:", collectionId, "prompt length:", outlinePrompt.length);
-
     const toolSchema = collectionId
       ? {
-          name: "propose_outline",
-          description: "Proponi moduli per questa collection specifica",
-          input_schema: {
-            type: "object",
-            properties: {
-              modules: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string" },
-                    summary: { type: "string" },
-                    ai_rationale: { type: "string" },
-                    source_document_ids: { type: "array", items: { type: "string" } },
-                    source_faq_ids: { type: "array", items: { type: "string" } },
-                    relevant_sections: { type: "string" },
+          type: "function" as const,
+          function: {
+            name: "propose_outline",
+            description: "Proponi moduli per questa collection specifica",
+            parameters: {
+              type: "object",
+              properties: {
+                modules: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      summary: { type: "string" },
+                      ai_rationale: { type: "string" },
+                      source_document_ids: { type: "array", items: { type: "string" } },
+                      source_faq_ids: { type: "array", items: { type: "string" } },
+                      relevant_sections: { type: "string" },
+                    },
+                    required: ["title", "summary", "ai_rationale", "source_document_ids", "source_faq_ids"],
                   },
-                  required: ["title", "summary", "ai_rationale", "source_document_ids", "source_faq_ids"],
                 },
               },
+              required: ["modules"],
             },
-            required: ["modules"],
           },
         }
       : {
-          name: "propose_outline",
-          description: "Proponi l'outline del curriculum organizzato in percorsi",
-          input_schema: {
-            type: "object",
-            properties: {
-              curricula: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string" },
-                    description: { type: "string" },
-                    track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
-                    modules: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          title: { type: "string" },
-                          summary: { type: "string" },
-                          ai_rationale: { type: "string" },
-                          source_document_ids: { type: "array", items: { type: "string" } },
-                          source_faq_ids: { type: "array", items: { type: "string" } },
-                          relevant_sections: { type: "string" },
+          type: "function" as const,
+          function: {
+            name: "propose_outline",
+            description: "Proponi l'outline del curriculum organizzato in percorsi",
+            parameters: {
+              type: "object",
+              properties: {
+                curricula: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      title: { type: "string" },
+                      description: { type: "string" },
+                      track: { type: "string", enum: ["Vendite", "CS", "Ops", "Generale"] },
+                      modules: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            title: { type: "string" },
+                            summary: { type: "string" },
+                            ai_rationale: { type: "string" },
+                            source_document_ids: { type: "array", items: { type: "string" } },
+                            source_faq_ids: { type: "array", items: { type: "string" } },
+                            relevant_sections: { type: "string" },
+                          },
+                          required: ["title", "summary", "ai_rationale", "source_document_ids", "source_faq_ids"],
                         },
-                        required: ["title", "summary", "ai_rationale", "source_document_ids", "source_faq_ids"],
                       },
                     },
+                    required: ["title", "description", "track", "modules"],
                   },
-                  required: ["title", "description", "track", "modules"],
                 },
               },
+              required: ["curricula"],
             },
-            required: ["curricula"],
           },
         };
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    console.log("[process-curriculum] Calling Lovable AI for outline, collectionId:", collectionId, "prompt length:", outlinePrompt.length);
+
+    const response = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 8192,
-        system: outlinePrompt,
+        model: MODEL,
         messages: [
+          { role: "system", content: outlinePrompt },
           { role: "user", content: collectionId ? "Proponi i moduli per questa collection." : "Proponi la struttura del curriculum organizzata in curricula (percorsi). Solo outline." },
         ],
         tools: [toolSchema],
-        tool_choice: { type: "tool", name: "propose_outline" },
+        tool_choice: { type: "function", function: { name: "propose_outline" } },
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Anthropic error (${response.status}): ${errText.substring(0, 200)}`);
+      throw new Error(`AI error (${response.status}): ${errText.substring(0, 200)}`);
     }
 
     const data = await response.json();
-    const toolBlock = data.content?.find((c: any) => c.type === "tool_use");
-    if (!toolBlock) throw new Error("L'AI non ha restituito un output strutturato");
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) throw new Error("L'AI non ha restituito un output strutturato");
 
-    // Get next order indices
+    const toolInput = typeof toolCall.function.arguments === "string"
+      ? JSON.parse(toolCall.function.arguments)
+      : toolCall.function.arguments;
+
     const { data: lastModule } = await supabase
       .from("modules")
       .select("order_index")
@@ -269,8 +271,7 @@ ISTRUZIONI:
     const savedModules: any[] = [];
 
     if (collectionId) {
-      // Collection-scoped: modules go directly into this curriculum
-      const outlineModules = toolBlock.input.modules || [];
+      const outlineModules = toolInput.modules || [];
       console.log("[process-curriculum] Collection outline modules:", outlineModules.length);
 
       for (const mod of outlineModules) {
@@ -299,8 +300,7 @@ ISTRUZIONI:
         savedModules.push({ ...saved, relevant_sections: mod.relevant_sections || null });
       }
     } else {
-      // Global generation: create curricula and modules
-      const outlineCurricula = toolBlock.input.curricula || [];
+      const outlineCurricula = toolInput.curricula || [];
       const { data: lastCurriculum } = await supabase
         .from("curricula")
         .select("order_index")
@@ -358,7 +358,6 @@ ISTRUZIONI:
 
     console.log("[process-curriculum] Saved", savedModules.length, "skeleton modules");
 
-    // Update parent job with total steps
     await supabase
       .from("generation_jobs")
       .update({
@@ -369,7 +368,6 @@ ISTRUZIONI:
       })
       .eq("id", jobId);
 
-    // STEP 3: Fire child jobs for each module
     for (const mod of savedModules) {
       const { data: childJob } = await supabase
         .from("generation_jobs")
