@@ -555,6 +555,30 @@ export default function Learn() {
         </div>
       )}
 
+      {/* Collections */}
+      {allCollections.filter(c => c.status !== "archived").length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-foreground">Collections</h2>
+            <Button variant="outline" size="sm" onClick={handleCreateCollection}>
+              <Plus className="h-4 w-4 mr-1" />
+              Nuova
+            </Button>
+          </div>
+          {allCollections
+            .filter(c => c.status !== "archived")
+            .map(c => (
+              <CollectionCard
+                key={c.id}
+                collection={c}
+                modules={getModulesForCollection(c.id)}
+                isAdmin={true}
+                onRefresh={refreshAll}
+              />
+            ))}
+        </div>
+      )}
+
       {/* Proposals Section */}
       {proposedModules.length > 0 && (
         <div className="space-y-4">
@@ -575,24 +599,6 @@ export default function Learn() {
             onEdit={handleEdit}
             onRefresh={refreshAll}
           />
-        </div>
-      )}
-
-      {/* Collections */}
-      {allCollections.filter(c => c.status !== "archived").length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">Collections</h2>
-          {allCollections
-            .filter(c => c.status !== "archived")
-            .map(c => (
-              <CollectionCard
-                key={c.id}
-                collection={c}
-                modules={getModulesForCollection(c.id)}
-                isAdmin={true}
-                onRefresh={refreshAll}
-              />
-            ))}
         </div>
       )}
 
