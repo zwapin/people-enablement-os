@@ -38,9 +38,9 @@ function AppSidebarContent() {
     <Sidebar collapsible="icon" className="border-r border-border">
       <div className="px-4 py-5 flex items-center gap-2">
         {!collapsed ? (
-          <img src={klaaryoLogo} alt="Klaaryo" className="h-6 w-auto" />
+          <img src={klaaryoLogo} alt="Klaaryo" className="h-6 w-auto brightness-0 invert" />
         ) : (
-          <img src={klaaryoLogo} alt="Klaaryo" className="h-5 w-5 object-contain object-left" />
+          <img src={klaaryoLogo} alt="Klaaryo" className="h-5 w-5 object-contain object-left brightness-0 invert" />
         )}
       </div>
 
