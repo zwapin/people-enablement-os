@@ -554,6 +554,28 @@ export default function CollectionDetail() {
                 Genera contenuti
               </Button>
             )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina Collection
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminare questa collection?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    La collection "{collection.title}" e tutti i moduli, domande e documenti associati verranno eliminati permanentemente. Questa azione non è reversibile.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteCollection} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Elimina tutto
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </div>
