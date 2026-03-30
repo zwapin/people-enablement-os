@@ -129,7 +129,14 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
       toast.error("Impossibile generare il link");
       return;
     }
-    window.open(data.signedUrl, "_blank");
+    // Use anchor element to avoid popup blockers in iframes
+    const a = document.createElement("a");
+    a.href = data.signedUrl;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   const handleDelete = async (id: string, filePath: string | null) => {
