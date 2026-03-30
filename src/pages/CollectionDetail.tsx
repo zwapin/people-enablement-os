@@ -359,6 +359,28 @@ export default function CollectionDetail() {
     }
   };
 
+  const handleDeleteCollection = async () => {
+    const moduleIds = (modules ?? []).map(m => m.id);
+    // Delete assessment questions for all modules
+    for (const mId of moduleIds) {
+      await supabase.from("assessment_questions").delete().eq("module_id", mId);
+    }
+    // Delete modules
+    await supabase.from("modules").delete().eq("curriculum_id", curriculumId!);
+    // Delete knowledge documents & faqs
+    await supabase.from("knowledge_documents").delete().eq("collection_id", curriculumId!);
+    await supabase.from("knowledge_faqs").delete().eq("collection_id", curriculumId!);
+    // Delete the collection itself
+    const { error } = await supabase.from("curricula").delete().eq("id", curriculumId!);
+    if (error) {
+      toast.error("Eliminazione fallita");
+    } else {
+      toast.success("Collection eliminata");
+      queryClient.invalidateQueries({ queryKey: ["curricula"] });
+      navigate("/learn");
+    }
+  };
+
   const handleEdit = (moduleId: string) => {
     setEditingModuleId(moduleId);
     setEditorOpen(true);
