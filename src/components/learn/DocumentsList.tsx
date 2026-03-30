@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FileText, Trash2, Loader2, Upload, RefreshCw } from "lucide-react";
+import { Plus, FileText, Trash2, Loader2, Upload, RefreshCw, Eye } from "lucide-react";
 import { format } from "date-fns";
 
 interface DocumentsListProps {
@@ -115,6 +115,21 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
     } finally {
       setReExtracting(null);
     }
+  };
+
+  const handleView = async (filePath: string | null) => {
+    if (!filePath) {
+      toast.error("Nessun file associato");
+      return;
+    }
+    const { data, error } = await supabase.storage
+      .from("knowledge-files")
+      .createSignedUrl(filePath, 300);
+    if (error || !data?.signedUrl) {
+      toast.error("Impossibile generare il link");
+      return;
+    }
+    window.open(data.signedUrl, "_blank");
   };
 
   const handleDelete = async (id: string, filePath: string | null) => {
@@ -232,6 +247,17 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
                     <RefreshCw className="h-4 w-4 mr-1" />
                   )}
                   Ri-estrai
+                </Button>
+              )}
+              {doc.file_path && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleView(doc.file_path)}
+                  title="Visualizza documento"
+                  className="shrink-0"
+                >
+                  <Eye className="h-4 w-4" />
                 </Button>
               )}
               <Button
