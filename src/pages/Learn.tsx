@@ -537,15 +537,23 @@ export default function Learn() {
             </Card>
           );
 
+          const renderEmptyCategory = () => (
+            <Card className="p-4 bg-card border-border text-sm text-muted-foreground">
+              Nessuna collection disponibile in questa macro area al momento.
+            </Card>
+          );
+
           return (
             <div className="space-y-6">
-              {categorized.filter(cat => cat.collections.length > 0).map(cat => (
+              {categorized.map(cat => (
                 <div key={cat.key} className="space-y-3">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                     {cat.label}
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {cat.collections.map(renderCard)}
+                    {cat.collections.length > 0
+                      ? cat.collections.map(renderCard)
+                      : renderEmptyCategory()}
                   </div>
                 </div>
               ))}
