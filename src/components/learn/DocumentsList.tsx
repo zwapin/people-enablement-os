@@ -294,18 +294,25 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
       )}
 
       {/* Document viewer dialog */}
-      <Dialog open={viewerOpen} onOpenChange={(open) => { setViewerOpen(open); if (!open) setViewerUrl(null); }}>
-        <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle>Visualizza documento</DialogTitle>
+      <Dialog open={viewerOpen} onOpenChange={(open) => { setViewerOpen(open); if (!open) { setViewerUrl(null); setViewerContent(null); } }}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+            <DialogTitle>{viewerTitle || "Visualizza documento"}</DialogTitle>
+            <DialogDescription>Anteprima del documento caricato</DialogDescription>
           </DialogHeader>
-          {viewerUrl && (
+          {viewerType === "pdf" && viewerUrl && (
             <iframe
               src={viewerUrl}
               className="w-full flex-1 border-0"
-              style={{ height: "calc(80vh - 80px)" }}
               title="Document viewer"
             />
+          )}
+          {viewerType === "text" && viewerContent && (
+            <ScrollArea className="flex-1 px-6 pb-6">
+              <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed font-mono">
+                {viewerContent}
+              </div>
+            </ScrollArea>
           )}
         </DialogContent>
       </Dialog>
