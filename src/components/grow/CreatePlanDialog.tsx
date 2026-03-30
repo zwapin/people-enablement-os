@@ -111,7 +111,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
             <Label>Membro del team</Label>
             <Select value={repId} onValueChange={setRepId}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleziona un rep..." />
+                <SelectValue placeholder="Seleziona un Klaaryan..." />
               </SelectTrigger>
               <SelectContent>
                 {(reps || []).map((r) => (
