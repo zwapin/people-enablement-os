@@ -121,7 +121,7 @@ ${sourceContext}
 ISTRUZIONI:
 - Genera content_body RICCO e DETTAGLIATO in markdown (800-1500 parole)
 - Genera esattamente 4 key_points
-- Genera 3 domande di valutazione
+- Genera 3 domande di valutazione con correct_index DIVERSO per ogni domanda (varia tra 0, 1, 2, 3 — NON usare sempre lo stesso indice)
 - PRESERVA le tabelle originali trovate nei documenti sorgente in formato markdown
 - Tutto in italiano
 
