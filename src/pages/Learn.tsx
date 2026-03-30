@@ -518,57 +518,6 @@ export default function Learn() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleBulkGenerate()}
-            disabled={bulkGenerating || generating}
-          >
-            {bulkGenerating ? (
-              <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4 sm:mr-2" />
-            )}
-            <span className="hidden sm:inline">
-              {bulkGenerating ? `Generazione ${bulkProgress.current}/${bulkProgress.total}...` : "Genera tutti"}
-            </span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleCreateCollection}>
-            <Plus className="h-4 w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Nuova Collection</span>
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm" disabled={generating}>
-                <RotateCcw className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Rigenera tutto</span>
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Rigenerare tutte le collection?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Questo cancellerà tutti i moduli e collection esistenti e li rigenererà da zero dalla Knowledge Base. L'operazione non è reversibile.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annulla</AlertDialogCancel>
-                <AlertDialogAction onClick={() => handleUpdateCurriculum(true)}>
-                  Rigenera tutto
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <Button size="sm" onClick={() => handleUpdateCurriculum(false)} disabled={generating}>
-            {generating ? (
-              <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 sm:mr-2" />
-            )}
-            <span className="hidden sm:inline">
-              {generating ? "Generazione..." : "Aggiorna Collection"}
-            </span>
-          </Button>
         </div>
       </div>
 
