@@ -1,4 +1,4 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,7 +54,9 @@ export default function CollectionDetail() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
   const navigate = useNavigate();
   const { profile, user } = useAuth();
-  const isAdmin = profile?.role === "admin";
+  const [searchParams] = useSearchParams();
+  const viewAsRep = searchParams.get("view") === "rep";
+  const isAdmin = profile?.role === "admin" && !viewAsRep;
   const queryClient = useQueryClient();
 
   const [editorOpen, setEditorOpen] = useState(false);

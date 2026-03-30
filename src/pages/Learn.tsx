@@ -465,7 +465,7 @@ export default function Learn() {
             <Card
               key={c.id}
               className="flex flex-col h-full p-5 bg-card border-border cursor-pointer hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 transition-all"
-              onClick={() => navigate(`/learn/${c.id}`)}
+              onClick={() => navigate(`/learn/${c.id}${viewAsRep ? "?view=rep" : ""}`)}
             >
               <div className="flex items-start gap-3 flex-1">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
