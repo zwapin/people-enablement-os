@@ -359,23 +359,23 @@ export default function CollectionDetail() {
   const currentModules = modules ?? [];
   const hasEmptyModules = currentModules.some(m => !m.content_body);
 
+  // Fetch completions for rep (must be at top level, not conditional)
+  const { data: repCompletions } = useQuery({
+    queryKey: ["module_completions", user?.id, curriculumId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("module_completions")
+        .select("*")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !isAdmin,
+  });
+
   // Rep view: show roadmap with stats
   if (!isAdmin) {
     const publishedModules = currentModules.filter(m => m.status === "published");
-
-    // Fetch completions for rep
-    const { data: repCompletions } = useQuery({
-      queryKey: ["module_completions", user?.id, curriculumId],
-      queryFn: async () => {
-        const { data, error } = await supabase
-          .from("module_completions")
-          .select("*")
-          .eq("user_id", user!.id);
-        if (error) throw error;
-        return data;
-      },
-      enabled: !!user,
-    });
 
     const collectionCompletions = (repCompletions ?? []).filter(c =>
       publishedModules.some(m => m.id === c.module_id)
