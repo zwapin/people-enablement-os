@@ -62,6 +62,20 @@ export default function CollectionDetail() {
   // No-docs dialog
   const [noDocsDialogOpen, setNoDocsDialogOpen] = useState(false);
 
+  // Fetch completions for rep (must be at top level before any early returns)
+  const { data: repCompletions } = useQuery({
+    queryKey: ["module_completions", user?.id, curriculumId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("module_completions")
+        .select("*")
+        .eq("user_id", user!.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user && !isAdmin,
+  });
+
   const { data: collection } = useQuery({
     queryKey: ["collection", curriculumId],
     queryFn: async () => {
@@ -359,19 +373,7 @@ export default function CollectionDetail() {
   const currentModules = modules ?? [];
   const hasEmptyModules = currentModules.some(m => !m.content_body);
 
-  // Fetch completions for rep (must be at top level, not conditional)
-  const { data: repCompletions } = useQuery({
-    queryKey: ["module_completions", user?.id, curriculumId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("module_completions")
-        .select("*")
-        .eq("user_id", user!.id);
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user && !isAdmin,
-  });
+  // repCompletions is fetched at top level (before early returns)
 
   // Rep view: show roadmap with stats
   if (!isAdmin) {
