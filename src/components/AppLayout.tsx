@@ -57,7 +57,14 @@ function AppSidebarContent() {
                       activeClassName="!text-sidebar-primary-foreground bg-sidebar-primary"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {!collapsed && (
+                        <span className="flex items-center gap-2">
+                          {item.title}
+                          {item.comingSoon && (
+                            <Badge variant="outline" className="text-[8px] px-1 py-0 leading-tight opacity-60">Soon</Badge>
+                          )}
+                        </span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
