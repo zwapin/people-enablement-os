@@ -24,7 +24,7 @@ const navItems = [
 ];
 
 const adminItems = [
-  { title: "Team", url: "/people", icon: Users },
+  { title: "Team", url: "/people", icon: Users, comingSoon: false },
 ];
 
 function AppSidebarContent() {
