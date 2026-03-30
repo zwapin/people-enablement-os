@@ -35,7 +35,7 @@ function AppSidebarContent() {
   const allItems = isAdmin ? [...navItems, ...adminItems] : navItems;
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border">
+    <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <div className="px-4 py-5 flex items-center gap-2">
         {!collapsed ? (
           <img src={klaaryoLogo} alt="Klaaryo" className="h-6 w-auto brightness-0 invert" />
