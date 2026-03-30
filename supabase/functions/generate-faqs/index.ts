@@ -7,14 +7,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const MODEL = "google/gemini-2.5-flash";
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!ANTHROPIC_API_KEY) {
-    return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500 });
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), { status: 500 });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -33,7 +36,6 @@ serve(async (req) => {
   console.log("[generate-faqs] Starting for collection:", collectionId);
 
   try {
-    // Fetch collection info
     const { data: collection } = await supabase
       .from("curricula")
       .select("title, description")
@@ -44,7 +46,6 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Collection not found" }), { status: 404 });
     }
 
-    // Fetch all modules with content for this collection
     const { data: modules } = await supabase
       .from("modules")
       .select("title, summary, content_body, key_points")
@@ -59,10 +60,8 @@ serve(async (req) => {
       });
     }
 
-    // Delete existing auto-generated FAQs for this collection before regenerating
     await supabase.from("knowledge_faqs").delete().eq("collection_id", collectionId).eq("category", "auto-generated");
 
-    // Build context from all modules
     let modulesContext = "";
     for (const mod of modules) {
       modulesContext += `### Modulo: ${mod.title}\n`;
@@ -96,62 +95,66 @@ ISTRUZIONI:
 - Tutto in italiano
 - NON inventare informazioni non presenti nei moduli`;
 
-    console.log("[generate-faqs] Calling Anthropic, modules:", modules.length);
+    console.log("[generate-faqs] Calling Lovable AI, modules:", modules.length);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
+    const response = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
-        system: systemPrompt,
+        model: MODEL,
         messages: [
+          { role: "system", content: systemPrompt },
           { role: "user", content: `Genera le FAQ per la collection "${collection.title}".` },
         ],
         tools: [
           {
-            name: "generate_faqs",
-            description: "Genera FAQ per una collection formativa",
-            input_schema: {
-              type: "object",
-              properties: {
-                faqs: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      question: { type: "string" },
-                      answer: { type: "string" },
+            type: "function",
+            function: {
+              name: "generate_faqs",
+              description: "Genera FAQ per una collection formativa",
+              parameters: {
+                type: "object",
+                properties: {
+                  faqs: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        question: { type: "string" },
+                        answer: { type: "string" },
+                      },
+                      required: ["question", "answer"],
                     },
-                    required: ["question", "answer"],
                   },
                 },
+                required: ["faqs"],
               },
-              required: ["faqs"],
             },
           },
         ],
-        tool_choice: { type: "tool", name: "generate_faqs" },
+        tool_choice: { type: "function", function: { name: "generate_faqs" } },
       }),
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Anthropic error (${response.status}): ${errText.substring(0, 200)}`);
+      throw new Error(`AI error (${response.status}): ${errText.substring(0, 200)}`);
     }
 
     const data = await response.json();
-    const toolBlock = data.content?.find((c: any) => c.type === "tool_use");
-    if (!toolBlock) throw new Error("L'AI non ha restituito un output strutturato");
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall) throw new Error("L'AI non ha restituito un output strutturato");
 
-    const generatedFaqs = toolBlock.input.faqs || [];
+    const toolInput = typeof toolCall.function.arguments === "string"
+      ? JSON.parse(toolCall.function.arguments)
+      : toolCall.function.arguments;
+
+    const generatedFaqs = toolInput.faqs || [];
     console.log("[generate-faqs] Generated", generatedFaqs.length, "FAQs");
 
-    // Insert FAQs
     if (generatedFaqs.length > 0) {
       const faqRows = generatedFaqs.map((faq: any) => ({
         collection_id: collectionId,
