@@ -15,10 +15,12 @@ serve(async (req) => {
   try {
     let regenerateAll = false;
     let collectionId: string | null = null;
+    let customInstructions: string | null = null;
     try {
       const body = await req.json();
       regenerateAll = body?.regenerate_all === true;
       collectionId = body?.collection_id || null;
+      customInstructions = body?.custom_instructions || null;
     } catch {
       // no body
     }
@@ -60,7 +62,7 @@ serve(async (req) => {
       .from("generation_jobs")
       .insert({
         job_type: "curriculum",
-        input: { regenerate_all: regenerateAll, collection_id: collectionId },
+        input: { regenerate_all: regenerateAll, collection_id: collectionId, custom_instructions: customInstructions },
         status: "pending",
       })
       .select("id")

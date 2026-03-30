@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
   Breadcrumb,
@@ -75,6 +77,10 @@ export default function CollectionDetail() {
 
   // No-docs dialog
   const [noDocsDialogOpen, setNoDocsDialogOpen] = useState(false);
+
+  // Generate instructions dialog
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [customInstructions, setCustomInstructions] = useState("");
 
   // Fetch completions for rep (must be at top level before any early returns)
   const { data: repCompletions } = useQuery({
@@ -266,25 +272,30 @@ export default function CollectionDetail() {
   }, [curriculumId]);
 
   const handleGenerate = async () => {
-    // Check if there are documents first
     if ((docCount ?? 0) === 0) {
       setNoDocsDialogOpen(true);
       return;
     }
-    doGenerate();
+    setGenerateDialogOpen(true);
   };
 
   const doGenerate = async () => {
+    setGenerateDialogOpen(false);
     setGenerating(true);
     setProgress(2);
     setProgressLabel("Invio richiesta...");
     try {
+      const body: any = { collection_id: curriculumId };
+      if (customInstructions.trim()) {
+        body.custom_instructions = customInstructions.trim();
+      }
       const { data, error } = await supabase.functions.invoke("generate-curriculum", {
-        body: { collection_id: curriculumId },
+        body,
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       if (data?.jobId) subscribeToJob(data.jobId);
+      setCustomInstructions("");
     } catch (err: any) {
       stopGeneration(false);
       toast.error(err.message || "Generazione fallita");
@@ -662,6 +673,38 @@ export default function CollectionDetail() {
         <FaqList collectionId={curriculumId!} readOnly={!isAdmin} />
       </div>
 
+      {/* Generate instructions dialog */}
+      <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Genera moduli</DialogTitle>
+            <DialogDescription>
+              L'AI analizzerà i documenti e le FAQ per creare i moduli formativi. Puoi fornire istruzioni personalizzate per guidare la generazione.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Istruzioni personalizzate (opzionale)</Label>
+              <Textarea
+                value={customInstructions}
+                onChange={(e) => setCustomInstructions(e.target.value)}
+                placeholder="Es. 'Concentrati sulle tecniche di cold calling', 'Crea moduli brevi e pratici', 'Includi scenari di role-play per ogni modulo'..."
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>
+              Annulla
+            </Button>
+            <Button onClick={doGenerate}>
+              <Sparkles className="h-4 w-4 mr-2" />
+              Genera
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* No documents dialog */}
       <Dialog open={noDocsDialogOpen} onOpenChange={setNoDocsDialogOpen}>
         <DialogContent>
@@ -677,7 +720,6 @@ export default function CollectionDetail() {
             </Button>
             <Button onClick={() => {
               setNoDocsDialogOpen(false);
-              // Scroll to documents section
               setTimeout(() => {
                 document.querySelector('[data-documents-section]')?.scrollIntoView({ behavior: 'smooth' });
               }, 100);
