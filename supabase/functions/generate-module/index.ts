@@ -7,14 +7,49 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const MODEL = "google/gemini-2.5-flash";
+
+const moduleToolSchema = {
+  type: "function" as const,
+  function: {
+    name: "generate_module",
+    description: "Genera il contenuto di un modulo formativo",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        summary: { type: "string" },
+        key_points: { type: "array", items: { type: "string" }, description: "4 punti chiave" },
+        content_body: { type: "string", description: "Contenuto formativo in markdown (800-1500 parole)" },
+        questions: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              question: { type: "string" },
+              options: { type: "array", items: { type: "string" } },
+              correct_index: { type: "integer" },
+              feedback_correct: { type: "string" },
+              feedback_wrong: { type: "string" },
+            },
+            required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
+          },
+        },
+      },
+      required: ["key_points", "content_body", "questions"],
+    },
+  },
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-  if (!ANTHROPIC_API_KEY) {
-    return new Response(JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }), { status: 500 });
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), { status: 500 });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -28,18 +63,70 @@ serve(async (req) => {
     return new Response(JSON.stringify({ error: "Invalid body" }), { status: 400 });
   }
 
-  // Mode 1: Child job from process-curriculum (has job_id)
   if (body.job_id) {
-    return handleChildJob(body.job_id, supabase, supabaseUrl, serviceRoleKey, ANTHROPIC_API_KEY);
+    return handleChildJob(body.job_id, supabase, supabaseUrl, serviceRoleKey, LOVABLE_API_KEY);
   }
 
-  // Mode 2: Direct call from frontend (legacy - has text field)
   if (body.text) {
-    return handleDirectGeneration(body, ANTHROPIC_API_KEY);
+    return handleDirectGeneration(body, LOVABLE_API_KEY);
   }
 
   return new Response(JSON.stringify({ error: "job_id or text required" }), { status: 400 });
 });
+
+async function callAI(systemPrompt: string, userPrompt: string, apiKey: string, toolSchema: any) {
+  const response = await fetch(GATEWAY_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [toolSchema],
+      tool_choice: { type: "function", function: { name: toolSchema.function.name } },
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    if (response.status === 429) {
+      throw new Error("Rate limit exceeded. Riprova tra qualche istante.");
+    }
+    if (response.status === 402) {
+      throw new Error("Crediti AI esauriti. Aggiungi fondi al workspace.");
+    }
+    throw new Error(`AI error (${response.status}): ${errText.substring(0, 200)}`);
+  }
+
+  const data = await response.json();
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall) throw new Error("L'AI non ha restituito un output strutturato");
+
+  const parsed = typeof toolCall.function.arguments === "string"
+    ? JSON.parse(toolCall.function.arguments)
+    : toolCall.function.arguments;
+
+  return parsed;
+}
+
+function shuffleQuestions(questions: any[]) {
+  if (!questions?.length) return;
+  for (const q of questions) {
+    const opts = q.options as string[];
+    const correctAnswer = opts[q.correct_index];
+    for (let i = opts.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [opts[i], opts[j]] = [opts[j], opts[i]];
+    }
+    q.correct_index = opts.indexOf(correctAnswer);
+    q.options = opts;
+  }
+}
 
 async function handleChildJob(
   jobId: string,
@@ -50,7 +137,6 @@ async function handleChildJob(
 ) {
   console.log("[generate-module] Child job:", jobId);
 
-  // Get job details
   const { data: job } = await supabase
     .from("generation_jobs")
     .select("input, parent_job_id")
@@ -63,14 +149,12 @@ async function handleChildJob(
 
   const { module_id, module_title, source_document_ids, source_faq_ids, relevant_sections } = job.input;
 
-  // Update child job to processing
   await supabase
     .from("generation_jobs")
     .update({ status: "processing", updated_at: new Date().toISOString() })
     .eq("id", jobId);
 
   try {
-    // Fetch only the relevant source documents and FAQs
     let sourceContext = "";
 
     if (source_document_ids?.length > 0) {
@@ -84,7 +168,6 @@ async function handleChildJob(
         for (const doc of docs) {
           sourceContext += `### ${doc.title}\n`;
           if (doc.context) sourceContext += `Contesto: ${doc.context}\n`;
-          // Pass up to 25000 chars per doc for detailed module generation
           const content = doc.content?.length > 25000
             ? doc.content.substring(0, 25000) + "\n[... troncato ...]"
             : doc.content;
@@ -107,7 +190,6 @@ async function handleChildJob(
       }
     }
 
-    // Build section hints if available
     const sectionHint = relevant_sections
       ? `\nSEZIONI RILEVANTI DEL DOCUMENTO SORGENTE DA CUI ESTRARRE IL CONTENUTO:\n${relevant_sections}\nConcentrati su queste sezioni ma includi anche contesto utile dalle altre parti.\n`
       : "";
@@ -143,78 +225,26 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
 - Alterna paragrafi brevi, elenchi e tabelle per creare varietà visiva
 - Ogni sezione h3 deve contenere almeno un elemento visivo (lista, tabella o blockquote)`;
 
-    console.log("[generate-module] Calling Anthropic, prompt length:", systemPrompt.length);
+    console.log("[generate-module] Calling Lovable AI, prompt length:", systemPrompt.length);
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    // Child job tool schema doesn't need title/summary
+    const childToolSchema = { ...moduleToolSchema };
+    childToolSchema.function = {
+      ...moduleToolSchema.function,
+      parameters: {
+        ...moduleToolSchema.function.parameters,
+        required: ["key_points", "content_body", "questions"],
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 8192,
-        system: systemPrompt,
-        messages: [
-          { role: "user", content: `Genera il contenuto completo per il modulo "${module_title}".` },
-        ],
-        tools: [
-          {
-            name: "generate_module",
-            description: "Genera il contenuto di un modulo formativo",
-            input_schema: {
-              type: "object",
-              properties: {
-                key_points: { type: "array", items: { type: "string" }, description: "4 punti chiave" },
-                content_body: { type: "string", description: "Contenuto formativo in markdown (800-1500 parole)" },
-                questions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      question: { type: "string" },
-                      options: { type: "array", items: { type: "string" } },
-                      correct_index: { type: "integer" },
-                      feedback_correct: { type: "string" },
-                      feedback_wrong: { type: "string" },
-                    },
-                    required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
-                  },
-                },
-              },
-              required: ["key_points", "content_body", "questions"],
-            },
-          },
-        ],
-        tool_choice: { type: "tool", name: "generate_module" },
-      }),
-    });
+    };
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Anthropic error (${response.status}): ${errText.substring(0, 200)}`);
-    }
+    const moduleContent = await callAI(
+      systemPrompt,
+      `Genera il contenuto completo per il modulo "${module_title}".`,
+      apiKey,
+      childToolSchema
+    );
 
-    const data = await response.json();
-    const toolBlock = data.content?.find((c: any) => c.type === "tool_use");
-    if (!toolBlock) throw new Error("L'AI non ha restituito un output strutturato");
-
-    const moduleContent = toolBlock.input;
-
-    // Shuffle options for each question to ensure correct_index varies
-    if (moduleContent.questions?.length > 0) {
-      for (const q of moduleContent.questions) {
-        const opts = q.options as string[];
-        const correctAnswer = opts[q.correct_index];
-        for (let i = opts.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [opts[i], opts[j]] = [opts[j], opts[i]];
-        }
-        q.correct_index = opts.indexOf(correctAnswer);
-        q.options = opts;
-      }
-    }
+    shuffleQuestions(moduleContent.questions);
 
     await supabase
       .from("modules")
@@ -225,7 +255,6 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
       })
       .eq("id", module_id);
 
-    // Delete old questions then insert new ones
     await supabase.from("assessment_questions").delete().eq("module_id", module_id);
     if (moduleContent.questions?.length > 0) {
       const qRows = moduleContent.questions.map((q: any, i: number) => ({
@@ -240,15 +269,12 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
       await supabase.from("assessment_questions").insert(qRows);
     }
 
-    // Mark child job completed
     await supabase
       .from("generation_jobs")
       .update({ status: "completed", updated_at: new Date().toISOString() })
       .eq("id", jobId);
 
-    // Update parent job progress
     if (job.parent_job_id) {
-      // Count completed child jobs
       const { count } = await supabase
         .from("generation_jobs")
         .select("id", { count: "exact", head: true })
@@ -270,12 +296,10 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
         updated_at: new Date().toISOString(),
       };
 
-      // If all modules done, mark parent completed and generate FAQs
       if (completedSteps >= totalSteps) {
         updateData.status = "completed";
         updateData.result = { count: totalSteps };
 
-        // Find collection_id from the module to trigger FAQ generation
         const { data: moduleData } = await supabase
           .from("modules")
           .select("curriculum_id")
@@ -317,7 +341,6 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
       })
       .eq("id", jobId);
 
-    // Check if parent should be marked failed
     if (job.parent_job_id) {
       const { count: failedCount } = await supabase
         .from("generation_jobs")
@@ -387,81 +410,17 @@ Restituisci usando il tool generate_module.`;
     : `Materiale sorgente:\n\n${text}`;
 
   try {
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
+    const fullToolSchema = { ...moduleToolSchema };
+    fullToolSchema.function = {
+      ...moduleToolSchema.function,
+      parameters: {
+        ...moduleToolSchema.function.parameters,
+        required: ["title", "summary", "key_points", "content_body", "questions"],
       },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 8192,
-        system: systemPrompt,
-        messages: [{ role: "user", content: userPrompt }],
-        tools: [
-          {
-            name: "generate_module",
-            description: "Genera un modulo formativo strutturato",
-            input_schema: {
-              type: "object",
-              properties: {
-                title: { type: "string" },
-                summary: { type: "string" },
-                key_points: { type: "array", items: { type: "string" } },
-                content_body: { type: "string" },
-                questions: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      question: { type: "string" },
-                      options: { type: "array", items: { type: "string" } },
-                      correct_index: { type: "integer" },
-                      feedback_correct: { type: "string" },
-                      feedback_wrong: { type: "string" },
-                    },
-                    required: ["question", "options", "correct_index", "feedback_correct", "feedback_wrong"],
-                  },
-                },
-              },
-              required: ["title", "summary", "key_points", "content_body", "questions"],
-            },
-          },
-        ],
-        tool_choice: { type: "tool", name: "generate_module" },
-      }),
-    });
+    };
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Limite di richieste superato. Riprova tra qualche istante." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errText = await response.text();
-      throw new Error(`Generazione AI fallita (${response.status})`);
-    }
-
-    const data = await response.json();
-    const toolBlock = data.content?.find((c: any) => c.type === "tool_use");
-    if (!toolBlock) throw new Error("L'AI non ha restituito un output strutturato");
-
-    const result = toolBlock.input;
-    // Shuffle options for each question to ensure correct_index varies
-    if (result.questions?.length > 0) {
-      for (const q of result.questions) {
-        const opts = q.options as string[];
-        const correctAnswer = opts[q.correct_index];
-        for (let i = opts.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [opts[i], opts[j]] = [opts[j], opts[i]];
-        }
-        q.correct_index = opts.indexOf(correctAnswer);
-        q.options = opts;
-      }
-    }
+    const result = await callAI(systemPrompt, userPrompt, apiKey, fullToolSchema);
+    shuffleQuestions(result.questions);
 
     return new Response(JSON.stringify(result), {
       status: 200,
