@@ -25,6 +25,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   RefreshCw,
   Sparkles,
@@ -32,6 +43,7 @@ import {
   BookOpen,
   Upload,
   Pencil,
+  Trash2,
 } from "lucide-react";
 import CollectionModuleList from "@/components/learn/CollectionModuleList";
 import DocumentsList from "@/components/learn/DocumentsList";
@@ -347,6 +359,28 @@ export default function CollectionDetail() {
     }
   };
 
+  const handleDeleteCollection = async () => {
+    const moduleIds = (modules ?? []).map(m => m.id);
+    // Delete assessment questions for all modules
+    for (const mId of moduleIds) {
+      await supabase.from("assessment_questions").delete().eq("module_id", mId);
+    }
+    // Delete modules
+    await supabase.from("modules").delete().eq("curriculum_id", curriculumId!);
+    // Delete knowledge documents & faqs
+    await supabase.from("knowledge_documents").delete().eq("collection_id", curriculumId!);
+    await supabase.from("knowledge_faqs").delete().eq("collection_id", curriculumId!);
+    // Delete the collection itself
+    const { error } = await supabase.from("curricula").delete().eq("id", curriculumId!);
+    if (error) {
+      toast.error("Eliminazione fallita");
+    } else {
+      toast.success("Collection eliminata");
+      queryClient.invalidateQueries({ queryKey: ["curricula"] });
+      navigate("/learn");
+    }
+  };
+
   const handleEdit = (moduleId: string) => {
     setEditingModuleId(moduleId);
     setEditorOpen(true);
@@ -542,6 +576,28 @@ export default function CollectionDetail() {
                 Genera contenuti
               </Button>
             )}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Elimina Collection
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminare questa collection?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    La collection "{collection.title}" e tutti i moduli, domande e documenti associati verranno eliminati permanentemente. Questa azione non è reversibile.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteCollection} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Elimina tutto
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </div>
