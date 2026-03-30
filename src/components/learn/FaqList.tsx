@@ -196,19 +196,21 @@ export default function FaqList({ collectionId, readOnly = false }: FaqListProps
                   </div>
                   <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{faq.answer}</p>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(faq)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(faq.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(faq)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(faq.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}
