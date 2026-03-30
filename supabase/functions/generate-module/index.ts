@@ -202,7 +202,20 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
 
     const moduleContent = toolBlock.input;
 
-    // Update module with content
+    // Shuffle options for each question to ensure correct_index varies
+    if (moduleContent.questions?.length > 0) {
+      for (const q of moduleContent.questions) {
+        const opts = q.options as string[];
+        const correctAnswer = opts[q.correct_index];
+        for (let i = opts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [opts[i], opts[j]] = [opts[j], opts[i]];
+        }
+        q.correct_index = opts.indexOf(correctAnswer);
+        q.options = opts;
+      }
+    }
+
     await supabase
       .from("modules")
       .update({
