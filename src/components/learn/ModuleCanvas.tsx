@@ -55,9 +55,10 @@ interface ModuleCanvasProps {
   disabled?: boolean;
   moduleTitle?: string;
   moduleId?: string;
+  renderToolbarExtra?: React.ReactNode;
 }
 
-export default function ModuleCanvas({ content, onChange, disabled, moduleTitle, moduleId }: ModuleCanvasProps) {
+export default function ModuleCanvas({ content, onChange, disabled, moduleTitle, moduleId, renderToolbarExtra }: ModuleCanvasProps) {
   const [showAI, setShowAI] = useState(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number } | null>(null);
