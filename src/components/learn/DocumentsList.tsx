@@ -277,6 +277,23 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
           })}
         </div>
       )}
+
+      {/* Document viewer dialog */}
+      <Dialog open={viewerOpen} onOpenChange={(open) => { setViewerOpen(open); if (!open) setViewerUrl(null); }}>
+        <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle>Visualizza documento</DialogTitle>
+          </DialogHeader>
+          {viewerUrl && (
+            <iframe
+              src={viewerUrl}
+              className="w-full flex-1 border-0"
+              style={{ height: "calc(80vh - 80px)" }}
+              title="Document viewer"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
