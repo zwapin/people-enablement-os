@@ -64,7 +64,7 @@ serve(async (req) => {
       .from("generation_jobs")
       .insert({
         job_type: "curriculum",
-        input: { regenerate_all: regenerateAll, collection_id: collectionId, custom_instructions: customInstructions },
+        input: { regenerate_all: regenerateAll, collection_id: collectionId, custom_instructions: customInstructions, selected_document_ids: selectedDocumentIds },
         status: "pending",
       })
       .select("id")

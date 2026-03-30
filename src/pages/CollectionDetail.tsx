@@ -745,7 +745,7 @@ export default function CollectionDetail() {
             <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>
               Annulla
             </Button>
-            <Button onClick={doGenerate}>
+            <Button onClick={doGenerate} disabled={selectedDocIds.length === 0}>
               <Sparkles className="h-4 w-4 mr-2" />
               Genera
             </Button>
