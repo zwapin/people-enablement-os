@@ -466,9 +466,22 @@ export default function Learn() {
           <Progress value={globalPct} className="h-2" />
         </Card>
 
-        {/* Collection cards grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {repCollections.map(c => (
+        {/* Collection cards grouped by macro category */}
+        {(() => {
+          const MACRO_CATEGORIES = [
+            { key: "sales", label: "Sales" },
+            { key: "customer_success", label: "Customer Success" },
+            { key: "operations", label: "Operations" },
+            { key: "common", label: "Common Knowledge" },
+          ];
+          const categorized = MACRO_CATEGORIES.map(cat => ({
+            ...cat,
+            collections: repCollections.filter(c => (c as any).category === cat.key),
+          }));
+          const uncategorized = repCollections.filter(c => !(c as any).category);
+          const hasCategories = categorized.some(cat => cat.collections.length > 0);
+
+          const renderCard = (c: typeof repCollections[0]) => (
             <Card
               key={c.id}
               className="flex flex-col h-full p-5 bg-card border-border cursor-pointer hover:border-primary/40 hover:shadow-md hover:shadow-primary/5 transition-all"
@@ -498,8 +511,35 @@ export default function Learn() {
                 </Badge>
               )}
             </Card>
-          ))}
-        </div>
+          );
+
+          return (
+            <div className="space-y-6">
+              {categorized.filter(cat => cat.collections.length > 0).map(cat => (
+                <div key={cat.key} className="space-y-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                    {cat.label}
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {cat.collections.map(renderCard)}
+                  </div>
+                </div>
+              ))}
+              {uncategorized.length > 0 && (
+                <div className="space-y-3">
+                  {hasCategories && (
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      Altro
+                    </h3>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {uncategorized.map(renderCard)}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
     );
   }
