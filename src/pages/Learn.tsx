@@ -413,7 +413,7 @@ export default function Learn() {
           {isAdmin && (
             <div className="flex items-center gap-3">
               <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={setViewAsRep} />
-              <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">Vista Rep</Label>
+              <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">New Klaaryan</Label>
             </div>
           )}
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
@@ -434,7 +434,7 @@ export default function Learn() {
         {isAdmin && (
           <div className="flex items-center gap-3">
             <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={setViewAsRep} />
-            <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">Vista Rep</Label>
+            <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">New Klaaryan</Label>
           </div>
         )}
 
@@ -514,7 +514,7 @@ export default function Learn() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <Switch id="view-toggle-admin" checked={viewAsRep} onCheckedChange={setViewAsRep} />
-            <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">Vista Rep</Label>
+            <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">New Klaaryan</Label>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">

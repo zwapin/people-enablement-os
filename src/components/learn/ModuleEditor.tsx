@@ -572,7 +572,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
           <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b border-border bg-background">
             <div className="flex items-center gap-2">
               <Eye className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">Anteprima Vista Rep</span>
+              <span className="text-sm font-semibold text-foreground">Anteprima New Klaaryan</span>
             </div>
           </div>
           <ModulePreview
