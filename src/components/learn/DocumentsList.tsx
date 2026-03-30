@@ -131,8 +131,7 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
       toast.error("Impossibile generare il link");
       return;
     }
-    const fullUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1${data.signedUrl}`;
-    setViewerUrl(fullUrl);
+    setViewerUrl(data.signedUrl);
     setViewerOpen(true);
   };
 
