@@ -3,7 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Pencil, Archive, EyeOff, Eye } from "lucide-react";
+import { Pencil, Archive, EyeOff, Eye, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Module = Tables<"modules">;
@@ -41,6 +52,18 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
       toast.error("Archiviazione fallita");
     } else {
       toast.success("Modulo archiviato");
+      onRefresh();
+    }
+  };
+
+  const handleDelete = async (mod: Module) => {
+    await supabase.from("assessment_questions").delete().eq("module_id", mod.id);
+    const { error } = await supabase.from("modules").delete().eq("id", mod.id);
+
+    if (error) {
+      toast.error("Eliminazione fallita");
+    } else {
+      toast.success("Modulo eliminato");
       onRefresh();
     }
   };
@@ -96,6 +119,32 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
               >
                 <Archive className="h-4 w-4" />
               </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Elimina"
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Eliminare questo modulo?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Il modulo "{mod.title}" e tutte le domande associate verranno eliminati permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => handleDelete(mod)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Elimina
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           )}
         </Card>
