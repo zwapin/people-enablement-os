@@ -53,8 +53,8 @@ function AppSidebarContent() {
                   <SidebarMenuButton asChild>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-3 px-3 py-2 rounded text-muted-foreground transition-colors duration-150 hover:text-foreground hover:bg-accent"
-                      activeClassName="!text-primary bg-accent"
+                      className="flex items-center gap-3 px-3 py-2 rounded text-sidebar-foreground/70 transition-colors duration-150 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                      activeClassName="!text-sidebar-primary-foreground bg-sidebar-primary"
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
