@@ -345,7 +345,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
             className="text-xs gap-1.5"
           >
             <Eye className="h-3 w-3" />
-            Anteprima Rep
+            Vista New Klaaryan
           </Button>
         </div>
 
