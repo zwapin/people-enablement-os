@@ -139,6 +139,25 @@ export default function CollectionCard({
     }
   };
 
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Delete related data first
+    const moduleIds = modules.map(m => m.id);
+    for (const mId of moduleIds) {
+      await supabase.from("assessment_questions").delete().eq("module_id", mId);
+    }
+    await supabase.from("modules").delete().eq("curriculum_id", collection.id);
+    await supabase.from("knowledge_documents").delete().eq("collection_id", collection.id);
+    await supabase.from("knowledge_faqs").delete().eq("collection_id", collection.id);
+    const { error } = await supabase.from("curricula").delete().eq("id", collection.id);
+    if (error) {
+      toast.error("Eliminazione fallita");
+    } else {
+      toast.success("Collection eliminata");
+      onRefresh();
+    }
+  };
+
   const handleCardClick = () => {
     if (!editing) {
       navigate(`/learn/${collection.id}`);
