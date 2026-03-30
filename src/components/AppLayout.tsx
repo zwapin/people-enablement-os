@@ -18,9 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 
 const navItems = [
-  { title: "Formazione", url: "/learn", icon: BookOpen },
-  { title: "Crescita", url: "/grow", icon: TrendingUp },
-  { title: "Performance", url: "/perform", icon: BarChart3 },
+  { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
+  { title: "Crescita", url: "/grow", icon: TrendingUp, comingSoon: true },
+  { title: "Performance", url: "/perform", icon: BarChart3, comingSoon: true },
 ];
 
 const adminItems = [
