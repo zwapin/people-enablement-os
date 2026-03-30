@@ -19,7 +19,7 @@ import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 
 const navItems = [
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
-  { title: "Crescita", url: "/grow", icon: TrendingUp, comingSoon: true },
+  { title: "Crescita", url: "/grow", icon: TrendingUp, comingSoon: false },
   { title: "Performance", url: "/perform", icon: BarChart3, comingSoon: true },
 ];
 
