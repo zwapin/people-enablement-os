@@ -119,14 +119,16 @@ export default function FaqList({ collectionId, readOnly = false }: FaqListProps
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        {!showForm && (
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Aggiungi FAQ
-          </Button>
-        )}
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          {!showForm && (
+            <Button size="sm" onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Aggiungi FAQ
+            </Button>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <Card className="p-4 bg-card border-border space-y-3">
