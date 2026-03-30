@@ -57,7 +57,7 @@ interface Collection {
   status: string;
   created_at: string;
   updated_at: string;
-  category?: string | null;
+  categories?: string[] | null;
 }
 
 const MACRO_CATEGORIES = [
