@@ -123,19 +123,31 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
     }
   };
 
-  const handleView = async (filePath: string | null) => {
+  const handleView = async (filePath: string | null, docTitle: string, docContent: string | null) => {
     if (!filePath) {
       toast.error("Nessun file associato");
       return;
     }
-    const { data, error } = await supabase.storage
-      .from("knowledge-files")
-      .createSignedUrl(filePath, 300);
-    if (error || !data?.signedUrl) {
-      toast.error("Impossibile generare il link");
-      return;
+    const isPdf = filePath.toLowerCase().endsWith(".pdf") || filePath.includes(".pdf");
+    setViewerTitle(docTitle);
+
+    if (isPdf) {
+      const { data, error } = await supabase.storage
+        .from("knowledge-files")
+        .createSignedUrl(filePath, 300);
+      if (error || !data?.signedUrl) {
+        toast.error("Impossibile generare il link");
+        return;
+      }
+      setViewerUrl(data.signedUrl);
+      setViewerContent(null);
+      setViewerType("pdf");
+    } else {
+      // For DOCX/TXT, show the extracted text content
+      setViewerUrl(null);
+      setViewerContent(docContent || "Nessun contenuto estratto disponibile.");
+      setViewerType("text");
     }
-    setViewerUrl(data.signedUrl);
     setViewerOpen(true);
   };
 
