@@ -20,9 +20,10 @@ const emptyForm: FaqForm = { question: "", answer: "", category: "" };
 
 interface FaqListProps {
   collectionId?: string;
+  readOnly?: boolean;
 }
 
-export default function FaqList({ collectionId }: FaqListProps) {
+export default function FaqList({ collectionId, readOnly = false }: FaqListProps) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FaqForm>(emptyForm);
@@ -118,16 +119,18 @@ export default function FaqList({ collectionId }: FaqListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
-        {!showForm && (
-          <Button size="sm" onClick={() => setShowForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Aggiungi FAQ
-          </Button>
-        )}
-      </div>
+      {!readOnly && (
+        <div className="flex justify-end">
+          {!showForm && (
+            <Button size="sm" onClick={() => setShowForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Aggiungi FAQ
+            </Button>
+          )}
+        </div>
+      )}
 
-      {showForm && (
+      {!readOnly && showForm && (
         <Card className="p-4 bg-card border-border space-y-3">
           <h3 className="font-medium text-foreground">
             {editingId ? "Modifica FAQ" : "Nuova FAQ"}
@@ -193,19 +196,21 @@ export default function FaqList({ collectionId }: FaqListProps) {
                   </div>
                   <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{faq.answer}</p>
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
-                  <Button variant="ghost" size="icon" onClick={() => handleEdit(faq)}>
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(faq.id)}
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+                {!readOnly && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(faq)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(faq.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           ))}

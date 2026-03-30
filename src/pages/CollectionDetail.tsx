@@ -648,20 +648,19 @@ export default function CollectionDetail() {
         )}
       </div>
 
-      {/* Documenti & FAQ — solo admin */}
+      {/* Documenti — solo admin */}
       {isAdmin && (
-        <>
-          <div className="space-y-3" data-documents-section>
-            <h2 className="text-lg font-semibold text-foreground">Documenti</h2>
-            <DocumentsList collectionId={curriculumId!} onUploadComplete={refreshAll} />
-          </div>
-
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-foreground">FAQ</h2>
-            <FaqList collectionId={curriculumId!} />
-          </div>
-        </>
+        <div className="space-y-3" data-documents-section>
+          <h2 className="text-lg font-semibold text-foreground">Documenti</h2>
+          <DocumentsList collectionId={curriculumId!} onUploadComplete={refreshAll} />
+        </div>
       )}
+
+      {/* FAQ — visibile a tutti, editabile solo admin */}
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold text-foreground">FAQ</h2>
+        <FaqList collectionId={curriculumId!} readOnly={!isAdmin} />
+      </div>
 
       {/* No documents dialog */}
       <Dialog open={noDocsDialogOpen} onOpenChange={setNoDocsDialogOpen}>
