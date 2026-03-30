@@ -38,7 +38,14 @@ export default function Learn() {
   const [progressLabel, setProgressLabel] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
-  const [viewAsRep, setViewAsRep] = useState(false);
+  const [viewAsRep, setViewAsRep] = useState(() => {
+    return localStorage.getItem("viewAsRep") === "true";
+  });
+
+  const handleViewAsRepChange = (val: boolean) => {
+    setViewAsRep(val);
+    localStorage.setItem("viewAsRep", String(val));
+  };
   const activeJobId = useRef<string | null>(null);
 
   const { data: modules, isLoading, refetch } = useQuery({
