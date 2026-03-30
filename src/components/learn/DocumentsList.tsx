@@ -25,6 +25,9 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
   const [file, setFile] = useState<File | null>(null);
   const [reExtracting, setReExtracting] = useState<string | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerContent, setViewerContent] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState<string>("");
+  const [viewerType, setViewerType] = useState<"pdf" | "text">("pdf");
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data: documents, isLoading, refetch } = useQuery({
