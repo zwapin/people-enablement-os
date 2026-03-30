@@ -221,7 +221,7 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
         <div className="flex-1" />
         <Button variant="ghost" size="sm" onClick={() => setShowAI(true)} className="text-xs gap-1">
           <Sparkles className="h-3 w-3" />
-          AI
+          Modifica con AI
         </Button>
       </div>
 
