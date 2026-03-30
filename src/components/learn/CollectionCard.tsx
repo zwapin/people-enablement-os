@@ -368,35 +368,38 @@ export default function CollectionCard({
 
         {isAdmin && !editing && (
           <div className="flex items-center gap-2 shrink-0">
-            {/* Category selector */}
-            <div onClick={(e) => e.stopPropagation()}>
-              <Select
-                value={(collection as any).category || "none"}
-                onValueChange={async (val) => {
-                  const newCat = val === "none" ? null : val;
-                  const { error } = await supabase
-                    .from("curricula")
-                    .update({ category: newCat, updated_at: new Date().toISOString() })
-                    .eq("id", collection.id);
-                  if (error) {
-                    toast.error("Aggiornamento fallito");
-                  } else {
-                    onRefresh();
-                  }
-                }}
-              >
-                <SelectTrigger className="h-7 w-[130px] text-[11px]">
-                  <SelectValue placeholder="Categoria..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none" className="text-xs">Nessuna</SelectItem>
-                  {MACRO_CATEGORIES.map(cat => (
-                    <SelectItem key={cat.key} value={cat.key} className="text-xs">
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            {/* Category multi-toggle */}
+            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+              {MACRO_CATEGORIES.map(cat => {
+                const cats: string[] = Array.isArray(collection.categories) ? collection.categories : [];
+                const isActive = cats.includes(cat.key);
+                return (
+                  <Badge
+                    key={cat.key}
+                    variant={isActive ? "default" : "outline"}
+                    className={`text-[10px] cursor-pointer select-none transition-colors ${
+                      isActive ? "" : "opacity-50 hover:opacity-80"
+                    }`}
+                    onClick={async () => {
+                      const current: string[] = Array.isArray(collection.categories) ? [...collection.categories] : [];
+                      const updated = isActive
+                        ? current.filter(c => c !== cat.key)
+                        : [...current, cat.key];
+                      const { error } = await supabase
+                        .from("curricula")
+                        .update({ categories: updated, updated_at: new Date().toISOString() } as any)
+                        .eq("id", collection.id);
+                      if (error) {
+                        toast.error("Aggiornamento fallito");
+                      } else {
+                        onRefresh();
+                      }
+                    }}
+                  >
+                    {cat.label}
+                  </Badge>
+                );
+              })}
             </div>
             {publishedCount > 0 && repStats.length > 0 && (
               <Button
