@@ -120,46 +120,26 @@ async function extractTextWithAI(fileData: Blob, fileName: string): Promise<stri
     bytes.reduce((data, byte) => data + String.fromCharCode(byte), "")
   );
 
-  const mimeType = fileName.endsWith(".pdf")
-    ? "application/pdf"
-    : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
-  console.log("[extract-document] Calling Anthropic API, base64 length:", base64.length);
+  console.log("[extract-document] Calling Anthropic API for PDF, base64 length:", base64.length);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 50000);
 
   try {
-    // Anthropic supports PDF natively via document type
-    const userContent = fileName.endsWith(".pdf")
-      ? [
-          {
-            type: "document",
-            source: {
-              type: "base64",
-              media_type: "application/pdf",
-              data: base64,
-            },
-          },
-          {
-            type: "text",
-            text: "Estrai tutto il testo da questo documento. Preserva la formattazione, la struttura, le tabelle in formato markdown e descrivi le immagini con placeholder markdown.",
-          },
-        ]
-      : [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mimeType,
-              data: base64,
-            },
-          },
-          {
-            type: "text",
-            text: "Estrai tutto il testo da questo documento. Preserva la formattazione, la struttura, le tabelle in formato markdown e descrivi le immagini con placeholder markdown.",
-          },
-        ];
+    const userContent = [
+      {
+        type: "document",
+        source: {
+          type: "base64",
+          media_type: "application/pdf",
+          data: base64,
+        },
+      },
+      {
+        type: "text",
+        text: "Estrai tutto il testo da questo documento. Preserva la formattazione, la struttura, le tabelle in formato markdown e descrivi le immagini con placeholder markdown.",
+      },
+    ];
 
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
