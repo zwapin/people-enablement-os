@@ -19,6 +19,12 @@ import {
   FileText,
   HelpCircle,
   Trash2,
+  ChevronDown,
+  ChevronUp,
+  Users,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -63,6 +69,10 @@ export default function CollectionCard({
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(collection.title);
   const [editDesc, setEditDesc] = useState(collection.description || "");
+  const [showRepStats, setShowRepStats] = useState(false);
+
+  const publishedModuleIds = modules.filter(m => m.status === "published").map(m => m.id);
+  const publishedCount = publishedModuleIds.length;
 
   const { data: docCount } = useQuery({
     queryKey: ["doc-count", collection.id],
@@ -85,6 +95,99 @@ export default function CollectionCard({
       return count ?? 0;
     },
   });
+
+  // Fetch rep profiles
+  const { data: repProfiles } = useQuery({
+    queryKey: ["rep-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("role", "rep")
+        .eq("is_active", true)
+        .order("full_name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isAdmin,
+  });
+
+  // Fetch all completions for published modules in this collection
+  const { data: allCompletions } = useQuery({
+    queryKey: ["collection-completions", collection.id, publishedModuleIds],
+    queryFn: async () => {
+      if (publishedModuleIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from("module_completions")
+        .select("*")
+        .in("module_id", publishedModuleIds);
+      if (error) throw error;
+      return data;
+    },
+    enabled: isAdmin && publishedModuleIds.length > 0,
+  });
+
+  // Fetch assessment questions count per module to know if assessment exists
+  const { data: assessmentCounts } = useQuery({
+    queryKey: ["assessment-counts", collection.id, publishedModuleIds],
+    queryFn: async () => {
+      if (publishedModuleIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from("assessment_questions")
+        .select("module_id")
+        .in("module_id", publishedModuleIds);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach(q => {
+        counts[q.module_id] = (counts[q.module_id] || 0) + 1;
+      });
+      return counts;
+    },
+    enabled: isAdmin && publishedModuleIds.length > 0,
+  });
+
+  const PASS_THRESHOLD = 70;
+
+  const getRepStats = () => {
+    if (!repProfiles || !allCompletions || publishedCount === 0) return [];
+    const completionsByUser = new Map<string, typeof allCompletions>();
+    allCompletions.forEach(c => {
+      const arr = completionsByUser.get(c.user_id) ?? [];
+      arr.push(c);
+      completionsByUser.set(c.user_id, arr);
+    });
+
+    const modulesWithAssessment = new Set(
+      Object.keys(assessmentCounts ?? {}).filter(id => (assessmentCounts![id] || 0) > 0)
+    );
+
+    return repProfiles.map(rep => {
+      const userCompletions = completionsByUser.get(rep.user_id) ?? [];
+      const completedModuleIds = new Set(userCompletions.map(c => c.module_id));
+      const completedCount = publishedModuleIds.filter(id => completedModuleIds.has(id)).length;
+
+      // Check if any completed module has assessment but score < threshold
+      const needsRetake = userCompletions.some(c =>
+        modulesWithAssessment.has(c.module_id) && c.score < PASS_THRESHOLD
+      );
+
+      // Modules with assessment that haven't been completed yet
+      const pendingAssessments = publishedModuleIds.filter(
+        id => modulesWithAssessment.has(id) && !completedModuleIds.has(id)
+      ).length;
+
+      return {
+        name: rep.full_name,
+        completedCount,
+        totalModules: publishedCount,
+        needsRetake,
+        pendingAssessments,
+        failedModules: userCompletions.filter(
+          c => modulesWithAssessment.has(c.module_id) && c.score < PASS_THRESHOLD
+        ),
+      };
+    });
+  };
 
   const handleSaveEdit = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -141,7 +244,6 @@ export default function CollectionCard({
 
   const handleDelete = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Delete related data first
     const moduleIds = modules.map(m => m.id);
     for (const mId of moduleIds) {
       await supabase.from("assessment_questions").delete().eq("module_id", mId);
@@ -163,6 +265,8 @@ export default function CollectionCard({
       navigate(`/learn/${collection.id}`);
     }
   };
+
+  const repStats = isAdmin ? getRepStats() : [];
 
   return (
     <Card
@@ -249,6 +353,20 @@ export default function CollectionCard({
 
         {isAdmin && !editing && (
           <div className="flex items-center gap-1 shrink-0">
+            {publishedCount > 0 && repStats.length > 0 && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRepStats(!showRepStats);
+                }}
+                title="Stato Klaaryan"
+              >
+                <Users className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -316,6 +434,67 @@ export default function CollectionCard({
           </div>
         )}
       </div>
+
+      {/* Rep stats panel */}
+      {isAdmin && showRepStats && repStats.length > 0 && (
+        <div
+          className="border-t border-border px-4 py-3 space-y-2 bg-muted/30"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
+            <Users className="h-3.5 w-3.5" />
+            Stato Klaaryan ({repStats.length})
+          </div>
+          <div className="space-y-1.5">
+            {repStats.map((rep, i) => {
+              const allDone = rep.completedCount === rep.totalModules;
+              const hasIssue = rep.needsRetake;
+
+              return (
+                <div
+                  key={i}
+                  className="flex items-center justify-between gap-3 text-xs py-1.5 px-2 rounded bg-card"
+                >
+                  <span className="font-medium text-foreground truncate min-w-0">
+                    {rep.name}
+                  </span>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {/* Modules completed */}
+                    <span className="text-muted-foreground font-mono">
+                      {rep.completedCount}/{rep.totalModules}
+                    </span>
+
+                    {/* Status icon */}
+                    {allDone && !hasIssue && (
+                      <Badge variant="outline" className="text-[10px] border-primary/30 text-primary gap-1">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Completato
+                      </Badge>
+                    )}
+                    {hasIssue && (
+                      <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        Da rifare ({rep.failedModules.length})
+                      </Badge>
+                    )}
+                    {!allDone && !hasIssue && rep.pendingAssessments > 0 && (
+                      <Badge variant="outline" className="text-[10px] border-muted-foreground/30 text-muted-foreground gap-1">
+                        <XCircle className="h-3 w-3" />
+                        {rep.pendingAssessments} assessment
+                      </Badge>
+                    )}
+                    {!allDone && !hasIssue && rep.pendingAssessments === 0 && (
+                      <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                        In corso
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
