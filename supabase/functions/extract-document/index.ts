@@ -43,7 +43,9 @@ serve(async (req) => {
 
     if (lowerName.endsWith(".txt")) {
       extractedText = await fileData.text();
-    } else if (lowerName.endsWith(".pdf") || lowerName.endsWith(".docx")) {
+    } else if (lowerName.endsWith(".docx")) {
+      extractedText = await extractDocx(fileData);
+    } else if (lowerName.endsWith(".pdf")) {
       extractedText = await extractTextWithAI(fileData, lowerName);
     } else {
       extractedText = "[Unsupported file type]";
@@ -63,6 +65,42 @@ serve(async (req) => {
     );
   }
 });
+
+async function extractDocx(fileData: Blob): Promise<string> {
+  // DOCX is a ZIP containing XML. We import fflate to unzip, then parse the XML.
+  const { unzipSync } = await import("https://esm.sh/fflate@0.8.2");
+  const buffer = new Uint8Array(await fileData.arrayBuffer());
+  const unzipped = unzipSync(buffer);
+
+  const documentXml = unzipped["word/document.xml"];
+  if (!documentXml) {
+    return "[Could not find word/document.xml in DOCX]";
+  }
+
+  const xmlText = new TextDecoder().decode(documentXml);
+
+  // Extract text from <w:t> tags, preserving paragraph breaks
+  const paragraphs: string[] = [];
+  // Split by paragraph tags
+  const pMatches = xmlText.match(/<w:p[ >][\s\S]*?<\/w:p>/g) || [];
+  for (const p of pMatches) {
+    const texts: string[] = [];
+    const tMatches = p.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+    for (const t of tMatches) {
+      const content = t.replace(/<w:t[^>]*>/, "").replace(/<\/w:t>/, "");
+      texts.push(content);
+    }
+    if (texts.length > 0) {
+      paragraphs.push(texts.join(""));
+    }
+  }
+
+  const result = paragraphs.join("\n\n");
+  if (!result.trim()) {
+    return "[No text content found in DOCX]";
+  }
+  return result;
+}
 
 async function extractTextWithAI(fileData: Blob, fileName: string): Promise<string> {
   const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
