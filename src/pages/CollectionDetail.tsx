@@ -137,19 +137,22 @@ export default function CollectionDetail() {
     enabled: !!curriculumId,
   });
 
-  // Count documents for this collection
-  const { data: docCount, refetch: refetchDocCount } = useQuery({
-    queryKey: ["doc-count", curriculumId],
+  // Documents for this collection
+  const { data: collectionDocs, refetch: refetchDocCount } = useQuery({
+    queryKey: ["collection-docs", curriculumId],
     queryFn: async () => {
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from("knowledge_documents")
-        .select("*", { count: "exact", head: true })
-        .eq("collection_id", curriculumId!);
+        .select("id, title")
+        .eq("collection_id", curriculumId!)
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return count ?? 0;
+      return data ?? [];
     },
     enabled: !!curriculumId,
   });
+
+  const docCount = collectionDocs?.length ?? 0;
 
   // Auto-enter title edit mode for new collections
   useEffect(() => {
