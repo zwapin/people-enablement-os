@@ -372,26 +372,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
       <hr className="border-border" />
 
       {/* TipTap Canvas — the main content area */}
-      <div className="space-y-2 relative">
-        {moduleId && (
-          <div className="flex justify-end">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerate}
-              disabled={generating || saving}
-              className="text-xs gap-1.5"
-            >
-              {generating ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Sparkles className="h-3 w-3" />
-              )}
-              {generating ? "Generazione..." : contentBody ? "Rigenera tutto" : "Genera con AI"}
-            </Button>
-          </div>
-        )}
-
+      <div className="space-y-0 relative">
         {/* Generation progress overlay */}
         {generating && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-background/80 backdrop-blur-sm rounded-lg">
@@ -411,6 +392,22 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
           disabled={generating}
           moduleTitle={title}
           moduleId={moduleId || undefined}
+          renderToolbarExtra={moduleId ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGenerate}
+              disabled={generating || saving}
+              className="text-xs gap-1.5 shrink-0"
+            >
+              {generating ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Sparkles className="h-3 w-3" />
+              )}
+              {generating ? "Generazione..." : contentBody ? "Rigenera tutto" : "Genera con AI"}
+            </Button>
+          ) : undefined}
         />
       </div>
 
