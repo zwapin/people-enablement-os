@@ -206,21 +206,27 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>File (PDF, DOCX o TXT — max 10MB)</Label>
+                <Label>File (PDF, DOCX o TXT — max 10MB, selezione multipla)</Label>
                 <Input
                   type="file"
+                  multiple
                   accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])}
                 />
+                {files.length > 1 && (
+                  <p className="text-xs text-muted-foreground">{files.length} file selezionati</p>
+                )}
               </div>
-              <div className="space-y-2">
-                <Label>Titolo (opzionale)</Label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Titolo personalizzato (default: nome file)"
-                />
-              </div>
+              {files.length <= 1 && (
+                <div className="space-y-2">
+                  <Label>Titolo (opzionale)</Label>
+                  <Input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Titolo personalizzato (default: nome file)"
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <Label>Contesto (opzionale)</Label>
                 <Textarea
@@ -230,13 +236,13 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
                   className="min-h-[80px]"
                 />
               </div>
-              <Button onClick={handleUpload} disabled={uploading || !file} className="w-full">
+              <Button onClick={handleUpload} disabled={uploading || files.length === 0} className="w-full">
                 {uploading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <Upload className="h-4 w-4 mr-2" />
                 )}
-                {uploading ? "Elaborazione..." : "Carica ed Estrai"}
+                {uploading ? "Elaborazione..." : `Carica ed Estrai${files.length > 1 ? ` (${files.length})` : ""}`}
               </Button>
             </div>
           </DialogContent>
