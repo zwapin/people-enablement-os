@@ -1,0 +1,1 @@
+ALTER TABLE public.curricula ADD COLUMN category text DEFAULT NULL;

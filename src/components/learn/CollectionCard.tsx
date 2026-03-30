@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Pencil,
   Eye,
   EyeOff,
@@ -50,7 +57,15 @@ interface Collection {
   status: string;
   created_at: string;
   updated_at: string;
+  category?: string | null;
 }
+
+const MACRO_CATEGORIES = [
+  { key: "sales", label: "Sales" },
+  { key: "customer_success", label: "Customer Success" },
+  { key: "operations", label: "Operations" },
+  { key: "common", label: "Common Knowledge" },
+];
 
 interface CollectionCardProps {
   collection: Collection;
@@ -352,7 +367,37 @@ export default function CollectionCard({
         </div>
 
         {isAdmin && !editing && (
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Category selector */}
+            <div onClick={(e) => e.stopPropagation()}>
+              <Select
+                value={(collection as any).category || "none"}
+                onValueChange={async (val) => {
+                  const newCat = val === "none" ? null : val;
+                  const { error } = await supabase
+                    .from("curricula")
+                    .update({ category: newCat, updated_at: new Date().toISOString() })
+                    .eq("id", collection.id);
+                  if (error) {
+                    toast.error("Aggiornamento fallito");
+                  } else {
+                    onRefresh();
+                  }
+                }}
+              >
+                <SelectTrigger className="h-7 w-[130px] text-[11px]">
+                  <SelectValue placeholder="Categoria..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none" className="text-xs">Nessuna</SelectItem>
+                  {MACRO_CATEGORIES.map(cat => (
+                    <SelectItem key={cat.key} value={cat.key} className="text-xs">
+                      {cat.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             {publishedCount > 0 && repStats.length > 0 && (
               <Button
                 variant="ghost"
