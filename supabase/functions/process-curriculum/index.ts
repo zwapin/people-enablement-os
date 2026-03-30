@@ -48,6 +48,7 @@ serve(async (req) => {
 
     const regenerateAll = job?.input?.regenerate_all === true;
     const collectionId = job?.input?.collection_id || null;
+    const customInstructions = job?.input?.custom_instructions || null;
 
     let docsQuery = supabase.from("knowledge_documents").select("id, title, context, content").order("created_at");
     let faqsQuery = supabase.from("knowledge_faqs").select("id, question, answer, category").order("created_at");
@@ -129,13 +130,17 @@ serve(async (req) => {
       }
     }
 
+    const customInstructionsBlock = customInstructions
+      ? `\n\nISTRUZIONI PERSONALIZZATE DALL'UTENTE (PRIORITÀ ALTA):\n${customInstructions}\n`
+      : "";
+
     const outlinePrompt = collectionId
       ? `Sei un architetto di curriculum per la formazione commerciale.
 Analizza la Knowledge Base fornita e proponi moduli di formazione per questa SPECIFICA collection.
 
 ${kbContext}
 ${existingContext}
-
+${customInstructionsBlock}
 ISTRUZIONI:
 - Genera 3-8 moduli che coprano in modo progressivo e dettagliato gli argomenti presenti nei documenti e FAQ forniti
 - Ogni modulo deve essere granulare e specifico (es. non "Introduzione generale" ma "Cold Call: Script e Tecniche di Apertura")
@@ -149,7 +154,7 @@ Analizza la Knowledge Base e proponi la STRUTTURA del curriculum organizzata in 
 
 ${kbContext}
 ${existingContext}
-
+${customInstructionsBlock}
 ISTRUZIONI:
 - Organizza il contenuto in curricula tematici coerenti (es. uno per il processo di vendita, uno per il prodotto, uno per i tool)
 - Per ogni curriculum proponi 3-8 moduli granulari e specifici
