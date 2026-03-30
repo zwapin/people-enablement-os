@@ -18,7 +18,19 @@ import {
   BookOpen,
   FileText,
   HelpCircle,
+  Trash2,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Module = Tables<"modules">;
@@ -123,6 +135,25 @@ export default function CollectionCard({
       toast.error("Archiviazione fallita");
     } else {
       toast.success("Collection archiviata");
+      onRefresh();
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Delete related data first
+    const moduleIds = modules.map(m => m.id);
+    for (const mId of moduleIds) {
+      await supabase.from("assessment_questions").delete().eq("module_id", mId);
+    }
+    await supabase.from("modules").delete().eq("curriculum_id", collection.id);
+    await supabase.from("knowledge_documents").delete().eq("collection_id", collection.id);
+    await supabase.from("knowledge_faqs").delete().eq("collection_id", collection.id);
+    const { error } = await supabase.from("curricula").delete().eq("id", collection.id);
+    if (error) {
+      toast.error("Eliminazione fallita");
+    } else {
+      toast.success("Collection eliminata");
       onRefresh();
     }
   };
@@ -255,6 +286,33 @@ export default function CollectionCard({
             >
               <Archive className="h-4 w-4" />
             </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-destructive hover:text-destructive"
+                  onClick={(e) => e.stopPropagation()}
+                  title="Elimina"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminare questa collection?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    La collection "{collection.title}" e tutti i moduli, domande e documenti associati verranno eliminati permanentemente.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Elimina
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         )}
       </div>
