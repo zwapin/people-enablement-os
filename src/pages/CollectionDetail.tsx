@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
 import {
   Breadcrumb,
@@ -81,6 +82,7 @@ export default function CollectionDetail() {
   // Generate instructions dialog
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [customInstructions, setCustomInstructions] = useState("");
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
   // Fetch completions for rep (must be at top level before any early returns)
   const { data: repCompletions } = useQuery({
@@ -136,19 +138,22 @@ export default function CollectionDetail() {
     enabled: !!curriculumId,
   });
 
-  // Count documents for this collection
-  const { data: docCount, refetch: refetchDocCount } = useQuery({
-    queryKey: ["doc-count", curriculumId],
+  // Documents for this collection
+  const { data: collectionDocs, refetch: refetchDocCount } = useQuery({
+    queryKey: ["collection-docs", curriculumId],
     queryFn: async () => {
-      const { count, error } = await supabase
+      const { data, error } = await supabase
         .from("knowledge_documents")
-        .select("*", { count: "exact", head: true })
-        .eq("collection_id", curriculumId!);
+        .select("id, title")
+        .eq("collection_id", curriculumId!)
+        .order("created_at", { ascending: false });
       if (error) throw error;
-      return count ?? 0;
+      return data ?? [];
     },
     enabled: !!curriculumId,
   });
+
+  const docCount = collectionDocs?.length ?? 0;
 
   // Auto-enter title edit mode for new collections
   useEffect(() => {
@@ -276,6 +281,7 @@ export default function CollectionDetail() {
       setNoDocsDialogOpen(true);
       return;
     }
+    setSelectedDocIds((collectionDocs ?? []).map(d => d.id));
     setGenerateDialogOpen(true);
   };
 
@@ -288,6 +294,9 @@ export default function CollectionDetail() {
       const body: any = { collection_id: curriculumId };
       if (customInstructions.trim()) {
         body.custom_instructions = customInstructions.trim();
+      }
+      if (selectedDocIds.length < (collectionDocs ?? []).length) {
+        body.selected_document_ids = selectedDocIds;
       }
       const { data, error } = await supabase.functions.invoke("generate-curriculum", {
         body,
@@ -682,7 +691,46 @@ export default function CollectionDetail() {
               L'AI analizzerà i documenti e le FAQ per creare i moduli formativi. Puoi fornire istruzioni personalizzate per guidare la generazione.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
+          <div className="space-y-4">
+            {/* Document selection */}
+            {(collectionDocs ?? []).length > 0 && (
+              <div className="space-y-2">
+                <Label>Documenti da utilizzare</Label>
+                <div className="border border-border rounded-md p-3 space-y-2 max-h-[200px] overflow-y-auto">
+                  <div className="flex items-center gap-2 pb-2 border-b border-border">
+                    <Checkbox
+                      id="select-all-docs"
+                      checked={selectedDocIds.length === (collectionDocs ?? []).length}
+                      onCheckedChange={(checked) => {
+                        setSelectedDocIds(checked ? (collectionDocs ?? []).map(d => d.id) : []);
+                      }}
+                    />
+                    <label htmlFor="select-all-docs" className="text-sm font-medium cursor-pointer">
+                      Seleziona tutti ({(collectionDocs ?? []).length})
+                    </label>
+                  </div>
+                  {(collectionDocs ?? []).map(doc => (
+                    <div key={doc.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`doc-${doc.id}`}
+                        checked={selectedDocIds.includes(doc.id)}
+                        onCheckedChange={(checked) => {
+                          setSelectedDocIds(prev =>
+                            checked
+                              ? [...prev, doc.id]
+                              : prev.filter(id => id !== doc.id)
+                          );
+                        }}
+                      />
+                      <label htmlFor={`doc-${doc.id}`} className="text-sm cursor-pointer truncate">
+                        {doc.title}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Istruzioni personalizzate (opzionale)</Label>
               <Textarea
@@ -697,7 +745,7 @@ export default function CollectionDetail() {
             <Button variant="outline" onClick={() => setGenerateDialogOpen(false)}>
               Annulla
             </Button>
-            <Button onClick={doGenerate}>
+            <Button onClick={doGenerate} disabled={selectedDocIds.length === 0}>
               <Sparkles className="h-4 w-4 mr-2" />
               Genera
             </Button>

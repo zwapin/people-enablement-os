@@ -16,11 +16,13 @@ serve(async (req) => {
     let regenerateAll = false;
     let collectionId: string | null = null;
     let customInstructions: string | null = null;
+    let selectedDocumentIds: string[] | null = null;
     try {
       const body = await req.json();
       regenerateAll = body?.regenerate_all === true;
       collectionId = body?.collection_id || null;
       customInstructions = body?.custom_instructions || null;
+      selectedDocumentIds = body?.selected_document_ids || null;
     } catch {
       // no body
     }
@@ -62,7 +64,7 @@ serve(async (req) => {
       .from("generation_jobs")
       .insert({
         job_type: "curriculum",
-        input: { regenerate_all: regenerateAll, collection_id: collectionId, custom_instructions: customInstructions },
+        input: { regenerate_all: regenerateAll, collection_id: collectionId, custom_instructions: customInstructions, selected_document_ids: selectedDocumentIds },
         status: "pending",
       })
       .select("id")
