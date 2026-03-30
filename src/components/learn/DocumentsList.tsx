@@ -7,8 +7,9 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, FileText, Trash2, Loader2, Upload, RefreshCw, Eye } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, FileText, Trash2, Loader2, Upload, RefreshCw, Eye, ExternalLink } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { format } from "date-fns";
 
 interface DocumentsListProps {
@@ -24,6 +25,9 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
   const [file, setFile] = useState<File | null>(null);
   const [reExtracting, setReExtracting] = useState<string | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerContent, setViewerContent] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState<string>("");
+  const [viewerType, setViewerType] = useState<"pdf" | "text">("pdf");
   const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data: documents, isLoading, refetch } = useQuery({
@@ -119,19 +123,31 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
     }
   };
 
-  const handleView = async (filePath: string | null) => {
+  const handleView = async (filePath: string | null, docTitle: string, docContent: string | null) => {
     if (!filePath) {
       toast.error("Nessun file associato");
       return;
     }
-    const { data, error } = await supabase.storage
-      .from("knowledge-files")
-      .createSignedUrl(filePath, 300);
-    if (error || !data?.signedUrl) {
-      toast.error("Impossibile generare il link");
-      return;
+    const isPdf = filePath.toLowerCase().endsWith(".pdf") || filePath.includes(".pdf");
+    setViewerTitle(docTitle);
+
+    if (isPdf) {
+      const { data, error } = await supabase.storage
+        .from("knowledge-files")
+        .createSignedUrl(filePath, 300);
+      if (error || !data?.signedUrl) {
+        toast.error("Impossibile generare il link");
+        return;
+      }
+      setViewerUrl(data.signedUrl);
+      setViewerContent(null);
+      setViewerType("pdf");
+    } else {
+      // For DOCX/TXT, show the extracted text content
+      setViewerUrl(null);
+      setViewerContent(docContent || "Nessun contenuto estratto disponibile.");
+      setViewerType("text");
     }
-    setViewerUrl(data.signedUrl);
     setViewerOpen(true);
   };
 
@@ -256,7 +272,7 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => handleView(doc.file_path)}
+                  onClick={() => handleView(doc.file_path, doc.title, doc.content)}
                   title="Visualizza documento"
                   className="shrink-0"
                 >
@@ -278,18 +294,25 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
       )}
 
       {/* Document viewer dialog */}
-      <Dialog open={viewerOpen} onOpenChange={(open) => { setViewerOpen(open); if (!open) setViewerUrl(null); }}>
-        <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
-          <DialogHeader className="px-6 pt-6 pb-2">
-            <DialogTitle>Visualizza documento</DialogTitle>
+      <Dialog open={viewerOpen} onOpenChange={(open) => { setViewerOpen(open); if (!open) { setViewerUrl(null); setViewerContent(null); } }}>
+        <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2 shrink-0">
+            <DialogTitle>{viewerTitle || "Visualizza documento"}</DialogTitle>
+            <DialogDescription>Anteprima del documento caricato</DialogDescription>
           </DialogHeader>
-          {viewerUrl && (
+          {viewerType === "pdf" && viewerUrl && (
             <iframe
               src={viewerUrl}
               className="w-full flex-1 border-0"
-              style={{ height: "calc(80vh - 80px)" }}
               title="Document viewer"
             />
+          )}
+          {viewerType === "text" && viewerContent && (
+            <ScrollArea className="flex-1 px-6 pb-6">
+              <div className="whitespace-pre-wrap text-sm text-foreground leading-relaxed font-mono">
+                {viewerContent}
+              </div>
+            </ScrollArea>
           )}
         </DialogContent>
       </Dialog>
