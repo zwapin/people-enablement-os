@@ -419,7 +419,7 @@ export default function Learn() {
         <div className="space-y-6">
           {isAdmin && (
             <div className="flex items-center gap-3">
-              <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={setViewAsRep} />
+              <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
               <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">New Klaaryan</Label>
             </div>
           )}
@@ -440,7 +440,7 @@ export default function Learn() {
       <div className="space-y-8 max-w-3xl mx-auto">
         {isAdmin && (
           <div className="flex items-center gap-3">
-            <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={setViewAsRep} />
+            <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
             <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">New Klaaryan</Label>
           </div>
         )}
@@ -520,7 +520,7 @@ export default function Learn() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Switch id="view-toggle-admin" checked={viewAsRep} onCheckedChange={setViewAsRep} />
+            <Switch id="view-toggle-admin" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
             <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">New Klaaryan</Label>
           </div>
         </div>
