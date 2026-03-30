@@ -22,7 +22,7 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
   const [uploading, setUploading] = useState(false);
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [reExtracting, setReExtracting] = useState<string | null>(null);
   const [viewerUrl, setViewerUrl] = useState<string | null>(null);
   const [viewerContent, setViewerContent] = useState<string | null>(null);
