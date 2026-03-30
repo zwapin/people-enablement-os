@@ -67,15 +67,15 @@ function AppSidebarContent() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border p-4">
         {!collapsed && profile && (
           <div className="mb-3 space-y-1">
-            <p className="text-sm font-medium text-foreground truncate">
+            <p className="text-sm font-medium text-sidebar-foreground truncate">
               {profile.full_name || profile.email}
             </p>
             <Badge
               variant="outline"
-              className="font-mono text-[10px] uppercase tracking-wider border-border text-muted-foreground"
+              className="font-mono text-[10px] uppercase tracking-wider border-sidebar-border text-sidebar-muted"
             >
               {profile.role}
             </Badge>
@@ -83,7 +83,7 @@ function AppSidebarContent() {
         )}
         <button
           onClick={signOut}
-          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-150 w-full"
+          className="flex items-center gap-2 text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors duration-150 w-full"
         >
           <LogOut className="h-4 w-4 shrink-0" />
           {!collapsed && <span>Esci</span>}
