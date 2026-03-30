@@ -116,11 +116,7 @@ export default function ModulePreview({ title, summary, track, contentBody, keyP
                 {q.options.map((opt, oi) => (
                   <div
                     key={oi}
-                    className={`flex items-center gap-2 text-sm px-3 py-2 rounded-md ${
-                      oi === q.correct_index
-                        ? "bg-green-500/10 border border-green-500/30 text-foreground"
-                        : "text-foreground/60"
-                    }`}
+                    className="flex items-center gap-2 text-sm px-3 py-2 rounded-md text-foreground/60"
                   >
                     <span className="font-mono text-xs opacity-60">{String.fromCharCode(65 + oi)}</span>
                     {opt}

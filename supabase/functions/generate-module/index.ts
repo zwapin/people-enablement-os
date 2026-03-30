@@ -121,7 +121,7 @@ ${sourceContext}
 ISTRUZIONI:
 - Genera content_body RICCO e DETTAGLIATO in markdown (800-1500 parole)
 - Genera esattamente 4 key_points
-- Genera 3 domande di valutazione
+- Genera 3 domande di valutazione con correct_index DIVERSO per ogni domanda (varia tra 0, 1, 2, 3 — NON usare sempre lo stesso indice)
 - PRESERVA le tabelle originali trovate nei documenti sorgente in formato markdown
 - Tutto in italiano
 
@@ -202,7 +202,20 @@ REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
 
     const moduleContent = toolBlock.input;
 
-    // Update module with content
+    // Shuffle options for each question to ensure correct_index varies
+    if (moduleContent.questions?.length > 0) {
+      for (const q of moduleContent.questions) {
+        const opts = q.options as string[];
+        const correctAnswer = opts[q.correct_index];
+        for (let i = opts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [opts[i], opts[j]] = [opts[j], opts[i]];
+        }
+        q.correct_index = opts.indexOf(correctAnswer);
+        q.options = opts;
+      }
+    }
+
     await supabase
       .from("modules")
       .update({
@@ -435,7 +448,22 @@ Restituisci usando il tool generate_module.`;
     const toolBlock = data.content?.find((c: any) => c.type === "tool_use");
     if (!toolBlock) throw new Error("L'AI non ha restituito un output strutturato");
 
-    return new Response(JSON.stringify(toolBlock.input), {
+    const result = toolBlock.input;
+    // Shuffle options for each question to ensure correct_index varies
+    if (result.questions?.length > 0) {
+      for (const q of result.questions) {
+        const opts = q.options as string[];
+        const correctAnswer = opts[q.correct_index];
+        for (let i = opts.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [opts[i], opts[j]] = [opts[j], opts[i]];
+        }
+        q.correct_index = opts.indexOf(correctAnswer);
+        q.options = opts;
+      }
+    }
+
+    return new Response(JSON.stringify(result), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
