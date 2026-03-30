@@ -47,50 +47,66 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
   });
 
   const handleUpload = async () => {
-    if (!file) {
-      toast.error("Seleziona un file");
+    if (files.length === 0) {
+      toast.error("Seleziona almeno un file");
       return;
     }
 
     setUploading(true);
+    let successCount = 0;
+    let failCount = 0;
+
     try {
-      const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const fileName = `${Date.now()}-${sanitized}`;
-      const { error: uploadError } = await supabase.storage
-        .from("knowledge-files")
-        .upload(fileName, file);
+      for (const file of files) {
+        try {
+          const sanitized = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const fileName = `${Date.now()}-${sanitized}`;
+          const { error: uploadError } = await supabase.storage
+            .from("knowledge-files")
+            .upload(fileName, file);
 
-      if (uploadError) throw uploadError;
+          if (uploadError) throw uploadError;
 
-      const { data, error } = await supabase.functions.invoke("extract-document", {
-        body: { file_path: fileName, file_name: file.name },
-      });
+          const { data, error } = await supabase.functions.invoke("extract-document", {
+            body: { file_path: fileName, file_name: file.name },
+          });
 
-      if (error) throw error;
+          if (error) throw error;
 
-      const insertPayload: any = {
-        title: title.trim() || file.name,
-        context: context.trim() || null,
-        content: data?.content || "",
-        file_path: fileName,
-      };
-      if (collectionId) insertPayload.collection_id = collectionId;
+          const insertPayload: any = {
+            title: files.length === 1 && title.trim() ? title.trim() : file.name,
+            context: context.trim() || null,
+            content: data?.content || "",
+            file_path: fileName,
+          };
+          if (collectionId) insertPayload.collection_id = collectionId;
 
-      const { error: insertError } = await supabase
-        .from("knowledge_documents")
-        .insert(insertPayload);
+          const { error: insertError } = await supabase
+            .from("knowledge_documents")
+            .insert(insertPayload);
 
-      if (insertError) throw insertError;
+          if (insertError) throw insertError;
+          successCount++;
+        } catch (err: any) {
+          console.error(`Failed to upload ${file.name}:`, err);
+          failCount++;
+        }
+      }
 
-      toast.success("Documento caricato ed elaborato");
+      if (failCount === 0) {
+        toast.success(`${successCount} documento/i caricato/i ed elaborato/i`);
+      } else {
+        toast.warning(`${successCount} caricati, ${failCount} falliti`);
+      }
+
       setDialogOpen(false);
       setTitle("");
       setContext("");
-      setFile(null);
+      setFiles([]);
       refetch();
       onUploadComplete?.();
     } catch (err: any) {
-      toast.error(err.message || "Errore nel caricamento del documento");
+      toast.error(err.message || "Errore nel caricamento");
     } finally {
       setUploading(false);
     }
