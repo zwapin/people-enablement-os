@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "./pages/Login";
 import ResetPassword from "./pages/ResetPassword";
 import Learn from "./pages/Learn";
@@ -26,69 +27,71 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <AppLayout>
-                    <Navigate to="/learn" replace />
-                  </AppLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/learn"
-              element={
-                <ProtectedRoute>
-                  <AppLayout><Learn /></AppLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/learn/:curriculumId"
-              element={
-                <ProtectedRoute>
-                  <AppLayout><CollectionDetail /></AppLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/learn/:moduleId/view"
-              element={
-                <ProtectedRoute>
-                  <AppLayout><ModuleView /></AppLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/grow"
-              element={
-                <ProtectedRoute>
-                  <AppLayout><Grow /></AppLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/perform"
-              element={
-                <ProtectedRoute>
-                  <AppLayout><Perform /></AppLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/people"
-              element={
-                <ProtectedRoute>
-                  <AppLayout><People /></AppLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout>
+                      <Navigate to="/learn" replace />
+                    </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/learn"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Learn /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/learn/:curriculumId"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><CollectionDetail /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/learn/:moduleId/view"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><ModuleView /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/grow"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Grow /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/perform"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Perform /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/people"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><People /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
