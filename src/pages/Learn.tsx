@@ -16,6 +16,7 @@ import CollectionModuleList from "@/components/learn/CollectionModuleList";
 import CollectionCard from "@/components/learn/CollectionCard";
 import ProposalsList from "@/components/learn/ProposalsList";
 import RepRoadmap from "@/components/learn/RepRoadmap";
+import { MACRO_CATEGORIES, getCollectionCategories } from "@/lib/constants";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,13 +39,14 @@ export default function Learn() {
   const [progressLabel, setProgressLabel] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  // viewAsRep in sessionStorage (not localStorage) — resets on tab close
   const [viewAsRep, setViewAsRep] = useState(() => {
-    return localStorage.getItem("viewAsRep") === "true";
+    return sessionStorage.getItem("viewAsRep") === "true";
   });
 
   const handleViewAsRepChange = (val: boolean) => {
     setViewAsRep(val);
-    localStorage.setItem("viewAsRep", String(val));
+    sessionStorage.setItem("viewAsRep", String(val));
   };
   const activeJobId = useRef<string | null>(null);
 
@@ -85,6 +87,82 @@ export default function Learn() {
     enabled: !!user && (!isAdmin || viewAsRep),
   });
 
+  // ── Page-level queries for admin (shared across all CollectionCards) ──
+  const { data: repProfiles } = useQuery({
+    queryKey: ["rep-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("role", "rep")
+        .eq("is_active", true)
+        .order("full_name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isAdmin && !viewAsRep,
+  });
+
+  const { data: allCompletions } = useQuery({
+    queryKey: ["all-completions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("module_completions")
+        .select("*");
+      if (error) throw error;
+      return data;
+    },
+    enabled: isAdmin && !viewAsRep,
+  });
+
+  const { data: allAssessmentQuestions } = useQuery({
+    queryKey: ["all-assessment-questions"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("assessment_questions")
+        .select("module_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach(q => {
+        counts[q.module_id] = (counts[q.module_id] || 0) + 1;
+      });
+      return counts;
+    },
+    enabled: isAdmin && !viewAsRep,
+  });
+
+  const { data: allDocCounts } = useQuery({
+    queryKey: ["all-doc-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("knowledge_documents")
+        .select("collection_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach(d => {
+        if (d.collection_id) counts[d.collection_id] = (counts[d.collection_id] || 0) + 1;
+      });
+      return counts;
+    },
+    enabled: isAdmin && !viewAsRep,
+  });
+
+  const { data: allFaqCounts } = useQuery({
+    queryKey: ["all-faq-counts"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("knowledge_faqs")
+        .select("collection_id");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach(f => {
+        if (f.collection_id) counts[f.collection_id] = (counts[f.collection_id] || 0) + 1;
+      });
+      return counts;
+    },
+    enabled: isAdmin && !viewAsRep,
+  });
+
   const refreshAll = () => {
     refetch();
     refetchCurricula();
@@ -94,7 +172,6 @@ export default function Learn() {
   const draftModules = modules?.filter((m) => m.status === "draft") ?? [];
   const proposedModules = modules?.filter((m) => m.status === "proposed") ?? [];
 
-  // Group modules by curriculum
   const publishedCollections = curricula?.filter(c => c.status === "published") ?? [];
   const allCollections = curricula ?? [];
 
@@ -221,7 +298,6 @@ export default function Learn() {
     const ids = proposedModules.map((m) => m.id);
     if (ids.length === 0) return;
 
-    // Also publish any proposed curricula that contain these modules
     const proposedCurriculaIds = new Set(
       proposedModules.filter(m => m.curriculum_id).map(m => m.curriculum_id!)
     );
@@ -236,7 +312,6 @@ export default function Learn() {
       return;
     }
 
-    // Publish related curricula
     if (proposedCurriculaIds.size > 0) {
       await supabase
         .from("curricula")
@@ -261,46 +336,6 @@ export default function Learn() {
     }
   };
 
-  const handleMigrateToCollections = async () => {
-    const orphans = modules?.filter(m => !m.curriculum_id && (m.status === "published" || m.status === "draft")) ?? [];
-    if (orphans.length === 0) {
-      toast.info("Nessun modulo orfano da convertire");
-      return;
-    }
-
-    let converted = 0;
-    for (const mod of orphans) {
-      const { data: newColl, error: collErr } = await supabase
-        .from("curricula")
-        .insert({
-          title: mod.title,
-          description: mod.summary || null,
-          track: mod.track || "Generale",
-          status: mod.status as any,
-          order_index: mod.order_index,
-        })
-        .select("id")
-        .single();
-
-      if (collErr || !newColl) {
-        console.error("Failed to create collection from module:", collErr);
-        continue;
-      }
-
-      await supabase
-        .from("modules")
-        .update({ curriculum_id: newColl.id, updated_at: new Date().toISOString() })
-        .eq("id", mod.id);
-
-      converted++;
-    }
-
-    toast.success(`${converted} moduli convertiti in collection. Ora clicca "Aggiorna Collection" per generare i sotto-moduli.`);
-    refreshAll();
-  };
-
-  // Auto-migration removed — curricula structure is now pre-populated
-
   const [bulkGenerating, setBulkGenerating] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ current: 0, total: 0, label: "" });
 
@@ -318,57 +353,55 @@ export default function Learn() {
     setBulkGenerating(true);
     setBulkProgress({ current: 0, total: targetModules.length, label: "Avvio generazione bulk..." });
 
-    let completed = 0;
-    let failed = 0;
-
+    // Fire all jobs in parallel, then poll
+    const jobEntries: { mod: typeof targetModules[0]; jobId: string }[] = [];
+    
     for (const mod of targetModules) {
-      setBulkProgress({
-        current: completed + 1,
-        total: targetModules.length,
-        label: `Generazione: ${mod.title.substring(0, 50)}...`,
-      });
-
       try {
-        // Create job
         const { data: job, error: jobErr } = await supabase
           .from("generation_jobs")
           .insert({ job_type: "generate-module", status: "pending", input: { module_id: mod.id } })
           .select("id")
           .single();
 
-        if (jobErr || !job) throw new Error("Job creation failed");
-
-        // Invoke edge function
-        const { error: fnErr } = await supabase.functions.invoke("generate-module", {
+        if (jobErr || !job) continue;
+        
+        await supabase.functions.invoke("generate-module", {
           body: { jobId: job.id },
         });
-
-        if (fnErr) throw fnErr;
-
-        // Poll for completion
-        let attempts = 0;
-        while (attempts < 60) {
-          await new Promise(r => setTimeout(r, 3000));
-          const { data: jobStatus } = await supabase
-            .from("generation_jobs")
-            .select("status, error")
-            .eq("id", job.id)
-            .single();
-
-          if (jobStatus?.status === "completed") break;
-          if (jobStatus?.status === "failed") throw new Error(jobStatus.error || "Generation failed");
-          attempts++;
-        }
-
-        completed++;
-      } catch (err: any) {
-        console.error(`Failed to generate module ${mod.title}:`, err);
-        failed++;
+        
+        jobEntries.push({ mod, jobId: job.id });
+      } catch {
+        // skip failed job creation
       }
+    }
 
-      // Small delay between modules
-      if (completed + failed < targetModules.length) {
-        await new Promise(r => setTimeout(r, 2000));
+    // Poll all jobs
+    let completed = 0;
+    let failed = 0;
+    const pending = new Set(jobEntries.map(j => j.jobId));
+
+    while (pending.size > 0) {
+      await new Promise(r => setTimeout(r, 3000));
+      
+      const { data: statuses } = await supabase
+        .from("generation_jobs")
+        .select("id, status, error")
+        .in("id", Array.from(pending));
+
+      for (const s of statuses ?? []) {
+        if (s.status === "completed") {
+          completed++;
+          pending.delete(s.id);
+          setBulkProgress({
+            current: completed + failed,
+            total: jobEntries.length,
+            label: `${completed} completati, ${failed} falliti`,
+          });
+        } else if (s.status === "failed") {
+          failed++;
+          pending.delete(s.id);
+        }
       }
     }
 
@@ -402,11 +435,9 @@ export default function Learn() {
   if (!isAdmin || viewAsRep) {
     const firstName = profile?.full_name?.split(" ")[0] || "utente";
 
-    // Calculate global progress
     const globalCompleted = publishedModules.filter(m => completions?.some(c => c.module_id === m.id)).length;
     const globalPct = publishedModules.length > 0 ? Math.round((globalCompleted / publishedModules.length) * 100) : 0;
 
-    // Build collection cards data
     const repCollections = publishedCollections.map(c => {
       const cModules = publishedModules.filter(m => m.curriculum_id === c.id);
       const cCompleted = cModules.filter(m => completions?.some(comp => comp.module_id === m.id)).length;
@@ -445,7 +476,6 @@ export default function Learn() {
           </div>
         )}
 
-        {/* Greeting */}
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Ciao {firstName}! 👋
@@ -455,7 +485,6 @@ export default function Learn() {
           </p>
         </div>
 
-        {/* Global progress */}
         <Card className="p-4 bg-card border-border space-y-2">
           <div className="flex items-center justify-between text-sm flex-wrap gap-1">
             <span className="text-muted-foreground">Progresso totale</span>
@@ -468,13 +497,7 @@ export default function Learn() {
 
         {/* Collection cards grouped by macro category */}
         {(() => {
-          const MACRO_CATEGORIES = [
-            { key: "sales", label: "Sales" },
-            { key: "customer_success", label: "Customer Success" },
-            { key: "operations", label: "Operations" },
-            { key: "common", label: "Common Knowledge" },
-          ];
-          const getCats = (c: any): string[] => Array.isArray(c.categories) ? c.categories : [];
+          const getCats = (c: any): string[] => getCollectionCategories(c.categories);
           const categorized = MACRO_CATEGORIES.map(cat => ({
             ...cat,
             collections: repCollections.filter(c => getCats(c).includes(cat.key)),
@@ -565,8 +588,6 @@ export default function Learn() {
             <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">New Klaaryan</Label>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-        </div>
       </div>
 
       {/* Bulk generation progress */}
@@ -596,21 +617,30 @@ export default function Learn() {
         </div>
       )}
 
-      {/* Macro Collections */}
+      {/* Collections grouped by macro category */}
       {(() => {
-        const MACRO_CATEGORIES = [
-          { key: "sales", label: "Sales" },
-          { key: "customer_success", label: "Customer Success" },
-          { key: "operations", label: "Operations" },
-          { key: "common", label: "Common Knowledge" },
-        ];
-        const activeCollections = allCollections.filter(c => c.status !== "archived");
-        const getCats = (c: any): string[] => Array.isArray(c.categories) ? c.categories : [];
-        const uncategorized = activeCollections.filter(c => getCats(c).length === 0);
+        const activeCollectionsFiltered = allCollections.filter(c => c.status !== "archived");
+        const getCats = (c: any): string[] => getCollectionCategories(c.categories);
+        const uncategorized = activeCollectionsFiltered.filter(c => getCats(c).length === 0);
         const categorized = MACRO_CATEGORIES.map(cat => ({
           ...cat,
-          collections: activeCollections.filter(c => getCats(c).includes(cat.key)),
+          collections: activeCollectionsFiltered.filter(c => getCats(c).includes(cat.key)),
         }));
+
+        const renderCollectionCard = (c: typeof allCollections[0]) => (
+          <CollectionCard
+            key={c.id}
+            collection={c}
+            modules={getModulesForCollection(c.id)}
+            isAdmin={true}
+            onRefresh={refreshAll}
+            repProfiles={repProfiles ?? undefined}
+            allCompletions={allCompletions ?? undefined}
+            assessmentCounts={allAssessmentQuestions ?? undefined}
+            docCount={allDocCounts?.[c.id] ?? 0}
+            faqCount={allFaqCounts?.[c.id] ?? 0}
+          />
+        );
 
         return (
           <div className="space-y-6">
@@ -627,15 +657,7 @@ export default function Learn() {
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   {cat.label}
                 </h3>
-                {cat.collections.map(c => (
-                  <CollectionCard
-                    key={c.id}
-                    collection={c}
-                    modules={getModulesForCollection(c.id)}
-                    isAdmin={true}
-                    onRefresh={refreshAll}
-                  />
-                ))}
+                {cat.collections.map(renderCollectionCard)}
               </div>
             ))}
 
@@ -646,15 +668,7 @@ export default function Learn() {
                     Non categorizzate
                   </h3>
                 )}
-                {uncategorized.map(c => (
-                  <CollectionCard
-                    key={c.id}
-                    collection={c}
-                    modules={getModulesForCollection(c.id)}
-                    isAdmin={true}
-                    onRefresh={refreshAll}
-                  />
-                ))}
+                {uncategorized.map(renderCollectionCard)}
               </div>
             )}
           </div>
