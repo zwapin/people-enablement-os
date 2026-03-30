@@ -23,6 +23,8 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
   const [context, setContext] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [reExtracting, setReExtracting] = useState<string | null>(null);
+  const [viewerUrl, setViewerUrl] = useState<string | null>(null);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const { data: documents, isLoading, refetch } = useQuery({
     queryKey: ["knowledge-documents", collectionId],
@@ -129,9 +131,9 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
       toast.error("Impossibile generare il link");
       return;
     }
-    // Build full URL from signed path
     const fullUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1${data.signedUrl}`;
-    window.open(fullUrl, "_blank", "noopener,noreferrer");
+    setViewerUrl(fullUrl);
+    setViewerOpen(true);
   };
 
   const handleDelete = async (id: string, filePath: string | null) => {
@@ -275,6 +277,23 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
           })}
         </div>
       )}
+
+      {/* Document viewer dialog */}
+      <Dialog open={viewerOpen} onOpenChange={(open) => { setViewerOpen(open); if (!open) setViewerUrl(null); }}>
+        <DialogContent className="max-w-4xl h-[80vh] p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2">
+            <DialogTitle>Visualizza documento</DialogTitle>
+          </DialogHeader>
+          {viewerUrl && (
+            <iframe
+              src={viewerUrl}
+              className="w-full flex-1 border-0"
+              style={{ height: "calc(80vh - 80px)" }}
+              title="Document viewer"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
