@@ -130,7 +130,7 @@ export default function FaqList({ collectionId, readOnly = false }: FaqListProps
         </div>
       )}
 
-      {showForm && (
+      {!readOnly && showForm && (
         <Card className="p-4 bg-card border-border space-y-3">
           <h3 className="font-medium text-foreground">
             {editingId ? "Modifica FAQ" : "Nuova FAQ"}
