@@ -59,7 +59,7 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
   if (profiles.length === 0) {
     return (
       <div className="rounded-md border border-border p-8 text-center text-muted-foreground">
-        Nessun membro del team. Invita il tuo primo rep per iniziare.
+        Nessun membro del team. Invita il tuo primo New Klaaryan per iniziare.
       </div>
     );
   }
@@ -97,7 +97,7 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="rep">Rep</SelectItem>
+                  <SelectItem value="rep">New Klaaryan</SelectItem>
                 </SelectContent>
               </Select>
               <span className="text-xs text-muted-foreground">
@@ -151,7 +151,7 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="rep">Rep</SelectItem>
+                    <SelectItem value="rep">New Klaaryan</SelectItem>
                   </SelectContent>
                 </Select>
               </TableCell>
