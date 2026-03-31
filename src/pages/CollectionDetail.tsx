@@ -600,12 +600,14 @@ export default function CollectionDetail() {
             >
               {generating ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
+              ) : hasExistingModules ? (
                 <RefreshCw className="h-4 w-4 mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
               )}
-              Genera moduli
+              {moduliButtonLabel}
             </Button>
-            {hasEmptyModules && (
+            {showContenutiButton && (
               <Button
                 variant="outline"
                 size="sm"
@@ -617,7 +619,7 @@ export default function CollectionDetail() {
                 ) : (
                   <Sparkles className="h-4 w-4 mr-2" />
                 )}
-                Genera contenuti
+                {contenutiButtonLabel}
               </Button>
             )}
             <AlertDialog>
