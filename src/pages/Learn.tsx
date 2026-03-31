@@ -495,7 +495,7 @@ export default function Learn() {
           <div className="flex items-center justify-between text-sm flex-wrap gap-1">
             <span className="text-muted-foreground">Progresso totale</span>
             <span className="font-mono text-foreground">
-              {globalCompleted}/{publishedModules.length} moduli · {globalPct}%
+              {globalCompleted}/{visibleModules.length} moduli · {globalPct}%
             </span>
           </div>
           <Progress value={globalPct} className="h-2" />
