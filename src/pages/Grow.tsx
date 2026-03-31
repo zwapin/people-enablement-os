@@ -107,7 +107,7 @@ export default function Grow() {
   if (selectedPlan) {
     return (
       <div className="space-y-6">
-        {isAdmin && (
+        {effectiveAdmin && (
           <div className="flex justify-end">
             <AddTaskDialog milestones={selectedPlan.milestones} />
           </div>
@@ -115,7 +115,7 @@ export default function Grow() {
         <PlanDetail
           plan={selectedPlan}
           repName={isAdmin ? profileMap.get(selectedPlan.rep_id) : undefined}
-          canToggleTasks={!isAdmin}
+          canToggleTasks={!effectiveAdmin}
           onBack={() => setSelectedPlanId(null)}
         />
       </div>
