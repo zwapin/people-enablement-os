@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -90,6 +90,16 @@ export default function Grow() {
     enabled: !!user,
   });
 
+  // Auto-select plan when impersonating
+  useEffect(() => {
+    if (isImpersonating && plans?.length) {
+      setSelectedPlanId(plans[0].id);
+    }
+    if (!isImpersonating) {
+      setSelectedPlanId(null);
+    }
+  }, [isImpersonating, plans]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
@@ -113,7 +123,7 @@ export default function Grow() {
           plan={selectedPlan}
           repName={isAdmin ? profileMap.get(selectedPlan.rep_id) : undefined}
           canToggleTasks={!effectiveAdmin}
-          onBack={() => setSelectedPlanId(null)}
+          onBack={isImpersonating ? undefined : () => setSelectedPlanId(null)}
         />
       </div>
     );
