@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
