@@ -29,8 +29,8 @@ export default function Settings() {
   const [editingRoleName, setEditingRoleName] = useState("");
   const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
 
-  // Fetch all distinct roles from templates
-  const { data: roles = DEFAULT_ROLES } = useQuery({
+  // Fetch all distinct roles from templates (DB is source of truth)
+  const { data: roles = [] } = useQuery({
     queryKey: ["template-roles"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -38,9 +38,7 @@ export default function Settings() {
         .select("role");
       if (error) throw error;
       const dbRoles = [...new Set((data || []).map((r) => r.role))].sort();
-      // Merge with defaults to ensure all show up
-      const allRoles = [...new Set([...DEFAULT_ROLES, ...dbRoles])];
-      return allRoles;
+      return dbRoles.length > 0 ? dbRoles : DEFAULT_ROLES;
     },
   });
 
