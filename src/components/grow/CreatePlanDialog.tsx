@@ -13,6 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -21,7 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Loader2, X } from "lucide-react";
+import { Plus, Loader2, X, BookOpen, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 const MILESTONE_CONFIG = [
@@ -30,22 +32,35 @@ const MILESTONE_CONFIG = [
   { label: "90d" as const, title: "Fase 3 — Giorni 60–90" },
 ];
 
+const ROLE_OPTIONS = ["AE", "SDR", "CSM", "SE", "Manager"];
+
 type MilestoneData = {
   obiettivo: string;
   focus: string[];
   kpis: string[];
 };
 
+type KeyActivityDraft = {
+  tempId: string;
+  title: string;
+  collection_id: string | null;
+  collection_title?: string;
+};
+
 export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [step, setStep] = useState(0); // 0=basics, 1=milestones, 2=output
+  const [step, setStep] = useState(0);
 
   // Step 0: Basics
   const [repId, setRepId] = useState("");
   const [roleTemplate, setRoleTemplate] = useState("");
   const [premessa, setPremessa] = useState("");
+
+  // Key activities
+  const [keyActivities, setKeyActivities] = useState<KeyActivityDraft[]>([]);
+  const [newActivityTitle, setNewActivityTitle] = useState("");
 
   // Step 1: Milestones
   const [milestones, setMilestones] = useState<Record<string, MilestoneData>>({
@@ -78,6 +93,71 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     enabled: open,
   });
 
+  // Fetch collections for linking
+  const { data: collections } = useQuery({
+    queryKey: ["collections-for-linking"],
+    queryFn: async () => {
+      const { data } = await supabase.from("curricula").select("id, title").order("title");
+      return data || [];
+    },
+    enabled: open,
+  });
+
+  // Fetch key activity templates when role changes
+  const { data: activityTemplates } = useQuery({
+    queryKey: ["key-activity-templates", roleTemplate],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("onboarding_key_activity_templates")
+        .select("*")
+        .eq("role", roleTemplate)
+        .order("order_index");
+      return data || [];
+    },
+    enabled: open && !!roleTemplate && ROLE_OPTIONS.includes(roleTemplate),
+  });
+
+  // When role changes, pre-populate key activities from templates
+  const handleRoleChange = (role: string) => {
+    setRoleTemplate(role);
+    // Templates will load via the query above; we populate in a separate handler
+  };
+
+  // Apply templates when they load
+  const applyTemplates = () => {
+    if (!activityTemplates?.length) return;
+    const fromTemplates: KeyActivityDraft[] = activityTemplates.map((t) => ({
+      tempId: crypto.randomUUID(),
+      title: t.title,
+      collection_id: t.collection_id,
+      collection_title: collections?.find((c) => c.id === t.collection_id)?.title,
+    }));
+    setKeyActivities(fromTemplates);
+  };
+
+  const addKeyActivity = () => {
+    if (!newActivityTitle.trim()) return;
+    setKeyActivities((prev) => [
+      ...prev,
+      { tempId: crypto.randomUUID(), title: newActivityTitle.trim(), collection_id: null },
+    ]);
+    setNewActivityTitle("");
+  };
+
+  const removeKeyActivity = (tempId: string) => {
+    setKeyActivities((prev) => prev.filter((a) => a.tempId !== tempId));
+  };
+
+  const updateKeyActivityCollection = (tempId: string, collectionId: string | null) => {
+    setKeyActivities((prev) =>
+      prev.map((a) =>
+        a.tempId === tempId
+          ? { ...a, collection_id: collectionId, collection_title: collections?.find((c) => c.id === collectionId)?.title }
+          : a
+      )
+    );
+  };
+
   const createPlan = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Non autenticato");
@@ -95,7 +175,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
         .single();
       if (planError) throw planError;
 
-      // Create milestones with rich data
+      // Create milestones
       const milestoneRows = MILESTONE_CONFIG.map((mc) => {
         const data = milestones[mc.label];
         return {
@@ -104,13 +184,10 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
           obiettivo: data.obiettivo || null,
           focus: data.focus.length > 0 ? data.focus : [],
           kpis: data.kpis.length > 0 ? data.kpis : [],
-          
         };
       });
 
-      const { error: msError } = await supabase
-        .from("onboarding_milestones")
-        .insert(milestoneRows);
+      const { error: msError } = await supabase.from("onboarding_milestones").insert(milestoneRows);
       if (msError) throw msError;
 
       // Copy template tasks into milestones
@@ -127,7 +204,13 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
 
         if (createdMilestones) {
           const milestoneMap = new Map(createdMilestones.map((m) => [m.label, m.id]));
-          const taskRows = templates
+          // Filter by role if template has role set, otherwise include all
+          const filteredTemplates = templates.filter((t) => {
+            const tRole = (t as any).role;
+            if (!tRole) return true; // no role = universal
+            return tRole === roleTemplate;
+          });
+          const taskRows = filteredTemplates
             .filter((t) => milestoneMap.has(t.milestone_label))
             .map((t) => ({
               milestone_id: milestoneMap.get(t.milestone_label)!,
@@ -142,6 +225,18 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
             await supabase.from("onboarding_tasks").insert(taskRows);
           }
         }
+      }
+
+      // Insert key activities
+      if (keyActivities.length > 0) {
+        const kaRows = keyActivities.map((a, i) => ({
+          plan_id: plan.id,
+          title: a.title,
+          collection_id: a.collection_id || null,
+          order_index: i,
+        }));
+        const { error: kaErr } = await supabase.from("onboarding_key_activities").insert(kaRows);
+        if (kaErr) throw kaErr;
       }
 
       return plan;
@@ -165,10 +260,12 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     setRoleTemplate("");
     setPremessa("");
     setOutputAtteso("");
+    setKeyActivities([]);
+    setNewActivityTitle("");
     setMilestones({
-    "30d": { obiettivo: "", focus: [], kpis: [] },
-    "60d": { obiettivo: "", focus: [], kpis: [] },
-    "90d": { obiettivo: "", focus: [], kpis: [] },
+      "30d": { obiettivo: "", focus: [], kpis: [] },
+      "60d": { obiettivo: "", focus: [], kpis: [] },
+      "90d": { obiettivo: "", focus: [], kpis: [] },
     });
   };
 
@@ -209,8 +306,9 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
         <DialogHeader>
           <DialogTitle>
             {step === 0 && "Crea Piano di Onboarding"}
-            {step === 1 && "Configura Milestone"}
-            {step === 2 && "Output Atteso"}
+            {step === 1 && "Attività Chiave"}
+            {step === 2 && "Configura Milestone"}
+            {step === 3 && "Output Atteso"}
           </DialogTitle>
         </DialogHeader>
 
@@ -239,12 +337,17 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
             </div>
 
             <div className="space-y-2">
-              <Label>Ruolo / Template</Label>
-              <Input
-                placeholder="es. Account Executive Enterprise, SDR..."
-                value={roleTemplate}
-                onChange={(e) => setRoleTemplate(e.target.value)}
-              />
+              <Label>Ruolo</Label>
+              <Select value={roleTemplate} onValueChange={handleRoleChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona il ruolo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -258,13 +361,86 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
             </div>
 
             <Button className="w-full" disabled={!repId} onClick={() => setStep(1)}>
-              Avanti — Configura Milestone
+              Avanti — Attività Chiave
             </Button>
           </div>
         )}
 
-        {/* Step 1: Milestones */}
+        {/* Step 1: Key Activities */}
         {step === 1 && (
+          <div className="space-y-4 pt-2">
+            <p className="text-sm text-muted-foreground">
+              Attività evergreen che il nuovo hire deve completare, indipendenti dalla timeline 30-60-90.
+            </p>
+
+            {/* Load from template button */}
+            {roleTemplate && ROLE_OPTIONS.includes(roleTemplate) && activityTemplates && activityTemplates.length > 0 && keyActivities.length === 0 && (
+              <Button variant="outline" size="sm" className="gap-1.5" onClick={applyTemplates}>
+                <BookOpen className="h-3.5 w-3.5" />
+                Carica template {roleTemplate}
+              </Button>
+            )}
+
+            {/* Activity list */}
+            <div className="space-y-2">
+              {keyActivities.map((activity) => (
+                <div key={activity.tempId} className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
+                  <Checkbox checked={false} disabled className="opacity-50" />
+                  <span className="flex-1 text-sm">{activity.title}</span>
+                  {activity.collection_id && activity.collection_title && (
+                    <Badge variant="secondary" className="gap-1 text-[10px]">
+                      <BookOpen className="h-3 w-3" />
+                      {activity.collection_title}
+                    </Badge>
+                  )}
+                  <Select
+                    value={activity.collection_id || "none"}
+                    onValueChange={(v) => updateKeyActivityCollection(activity.tempId, v === "none" ? null : v)}
+                  >
+                    <SelectTrigger className="h-7 w-[140px] text-xs">
+                      <SelectValue placeholder="Link collection..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nessuna</SelectItem>
+                      {(collections || []).map((c) => (
+                        <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeKeyActivity(activity.tempId)}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add new */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Aggiungi attività chiave..."
+                value={newActivityTitle}
+                onChange={(e) => setNewActivityTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyActivity(); } }}
+                className="text-sm"
+              />
+              <Button variant="outline" size="sm" onClick={addKeyActivity} disabled={!newActivityTitle.trim()}>
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setStep(0)}>
+                Indietro
+              </Button>
+              <Button className="flex-1" onClick={() => setStep(2)}>
+                Avanti — Milestone
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 2: Milestones */}
+        {step === 2 && (
           <div className="space-y-4 pt-2">
             <Tabs defaultValue="30d">
               <TabsList className="w-full">
@@ -302,24 +478,23 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
                     onAdd={(v) => addListItem(mc.label, "kpis", v)}
                     onRemove={(i) => removeListItem(mc.label, "kpis", i)}
                   />
-
                 </TabsContent>
               ))}
             </Tabs>
 
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setStep(0)}>
+              <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
                 Indietro
               </Button>
-              <Button className="flex-1" onClick={() => setStep(2)}>
+              <Button className="flex-1" onClick={() => setStep(3)}>
                 Avanti — Output Atteso
               </Button>
             </div>
           </div>
         )}
 
-        {/* Step 2: Output */}
-        {step === 2 && (
+        {/* Step 3: Output */}
+        {step === 3 && (
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label>Output atteso a 90 giorni</Label>
@@ -332,7 +507,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
             </div>
 
             <div className="flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+              <Button variant="outline" className="flex-1" onClick={() => setStep(2)}>
                 Indietro
               </Button>
               <Button
