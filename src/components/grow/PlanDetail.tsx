@@ -374,16 +374,30 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
 
       for (const m of editedPlan.milestones) {
         for (const t of m.tasks) {
-          const { error: tErr } = await supabase
-            .from("onboarding_tasks")
-            .update({
+          const isNew = t.id.startsWith("temp-");
+          if (isNew) {
+            const { error: iErr } = await supabase.from("onboarding_tasks").insert({
+              milestone_id: m.id,
               title: t.title,
+              type: t.type,
               section: t.section,
               order_index: t.order_index,
-              parent_task_id: (t as Task).parent_task_id || null,
-            })
-            .eq("id", t.id);
-          if (tErr) throw tErr;
+              parent_task_id: (t as Task).parent_task_id?.startsWith("temp-") ? null : (t as Task).parent_task_id || null,
+            });
+            if (iErr) throw iErr;
+          } else {
+            const parentId = (t as Task).parent_task_id;
+            const { error: tErr } = await supabase
+              .from("onboarding_tasks")
+              .update({
+                title: t.title,
+                section: t.section,
+                order_index: t.order_index,
+                parent_task_id: parentId?.startsWith("temp-") ? null : parentId || null,
+              })
+              .eq("id", t.id);
+            if (tErr) throw tErr;
+          }
         }
       }
 
