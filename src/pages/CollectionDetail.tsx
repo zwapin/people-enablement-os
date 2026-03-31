@@ -678,13 +678,24 @@ export default function CollectionDetail() {
           Moduli
           <span className="text-sm font-normal text-muted-foreground">({currentModules.length})</span>
         </h2>
-        {currentModules.length === 0 ? (
+        {hasProposedModules && (
+          <div className="flex items-center gap-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm text-foreground flex-1">
+              {currentModules.filter(m => m.status === "proposed").length} moduli proposti dall'AI in attesa di revisione.
+            </span>
+            <Button size="sm" onClick={() => setOutlineReviewOpen(true)}>
+              Rivedi outline
+            </Button>
+          </div>
+        )}
+        {currentModules.filter(m => m.status !== "proposed").length === 0 && !hasProposedModules ? (
           <p className="text-sm text-muted-foreground py-4">
-            Nessun modulo. Clicca "Genera moduli" per crearli dalla Knowledge Base.
+            Nessun modulo. Clicca "{moduliButtonLabel}" per crearli dalla Knowledge Base.
           </p>
         ) : (
           <CollectionModuleList
-            modules={currentModules}
+            modules={currentModules.filter(m => m.status !== "proposed")}
             isAdmin={isAdmin}
             onEdit={handleEdit}
             onRefresh={refreshAll}
