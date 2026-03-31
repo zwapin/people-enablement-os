@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrendingUp, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import PlanCard from "@/components/grow/PlanCard";
 import PlanDetail from "@/components/grow/PlanDetail";
 import CreatePlanDialog from "@/components/grow/CreatePlanDialog";
@@ -17,6 +19,16 @@ export default function Grow() {
   const { profile, user } = useAuth();
   const isAdmin = profile?.role === "admin";
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [viewAsRep, setViewAsRep] = useState(() => {
+    return sessionStorage.getItem("growViewAsRep") === "true";
+  });
+
+  const handleToggleView = (checked: boolean) => {
+    setViewAsRep(checked);
+    sessionStorage.setItem("growViewAsRep", checked ? "true" : "false");
+  };
+
+  const effectiveAdmin = isAdmin && !viewAsRep;
 
   // Fetch profiles for rep names (admin only)
   const { data: profiles } = useQuery({
