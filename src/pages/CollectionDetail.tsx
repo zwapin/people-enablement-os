@@ -53,7 +53,6 @@ import DocumentsList from "@/components/learn/DocumentsList";
 import FaqList from "@/components/learn/FaqList";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 import OutlineReviewDialog from "@/components/learn/OutlineReviewDialog";
-import ModuleEditor from "@/components/learn/ModuleEditor";
 
 export default function CollectionDetail() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
