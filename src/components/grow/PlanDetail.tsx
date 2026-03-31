@@ -277,31 +277,34 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     markChanged();
   }, [markChanged]);
 
-  // --- Inline add task ---
-  const addTaskInline = useMutation({
-    mutationFn: async ({ milestoneId, title, parentTaskId }: { milestoneId: string; title: string; parentTaskId?: string }) => {
-      const { data, error } = await supabase.from("onboarding_tasks").insert({
-        milestone_id: milestoneId,
-        title,
-        type: "activity" as const,
-        parent_task_id: parentTaskId || null,
-      }).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["onboarding-plans"] });
-    },
-    onError: () => toast.error("Errore nell'aggiunta del task"),
-  });
-
+  // --- Inline add task (local-first) ---
   const handleAddTask = useCallback((milestoneId: string, parentTaskId?: string) => {
     const key = parentTaskId || milestoneId;
     const title = newTaskInputs[key]?.trim();
     if (!title) return;
-    addTaskInline.mutate({ milestoneId, title, parentTaskId });
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const newTask: Task = {
+      id: tempId,
+      milestone_id: milestoneId,
+      title,
+      type: "activity",
+      parent_task_id: parentTaskId || null,
+      completed: false,
+      completed_at: null,
+      order_index: 999,
+      is_common: false,
+      section: null,
+      module_id: null,
+    };
+    setEditedPlan(prev => ({
+      ...prev,
+      milestones: prev.milestones.map(m =>
+        m.id === milestoneId ? { ...m, tasks: [...m.tasks, newTask] } : m
+      ),
+    }));
     setNewTaskInputs(prev => ({ ...prev, [key]: "" }));
-  }, [newTaskInputs, addTaskInline]);
+    markChanged();
+  }, [newTaskInputs, markChanged]);
 
   // --- Subtask prompt state ---
   const [subtaskPromptParentId, setSubtaskPromptParentId] = useState<string | null>(null);
