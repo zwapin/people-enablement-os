@@ -179,7 +179,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     }));
   };
 
-  const addListItem = (label: string, field: "focus" | "kpis" | "early_warnings", value: string) => {
+  const addListItem = (label: string, field: "focus" | "kpis", value: string) => {
     if (!value.trim()) return;
     setMilestones((prev) => ({
       ...prev,
