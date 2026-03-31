@@ -124,19 +124,26 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     enabled: open && !!roleTemplate && ROLE_OPTIONS.includes(roleTemplate),
   });
 
+  const prevRoleRef = useRef(roleTemplate);
+
+  // Auto-populate key activities when templates load for the selected role
+  useEffect(() => {
+    if (!activityTemplates?.length || !roleTemplate) return;
+    // Only auto-populate if role just changed or activities are empty
+    if (prevRoleRef.current !== roleTemplate || keyActivities.length === 0) {
+      const fromTemplates: KeyActivityDraft[] = activityTemplates.map((t) => ({
+        tempId: crypto.randomUUID(),
+        title: t.title,
+        collection_id: t.collection_id,
+        collection_title: collections?.find((c) => c.id === t.collection_id)?.title,
+      }));
+      setKeyActivities(fromTemplates);
+      prevRoleRef.current = roleTemplate;
+    }
+  }, [activityTemplates, roleTemplate, collections]);
+
   const handleRoleChange = (role: string) => {
     setRoleTemplate(role);
-  };
-
-  const applyTemplates = () => {
-    if (!activityTemplates?.length) return;
-    const fromTemplates: KeyActivityDraft[] = activityTemplates.map((t) => ({
-      tempId: crypto.randomUUID(),
-      title: t.title,
-      collection_id: t.collection_id,
-      collection_title: collections?.find((c) => c.id === t.collection_id)?.title,
-    }));
-    setKeyActivities(fromTemplates);
   };
 
   const addKeyActivity = () => {
