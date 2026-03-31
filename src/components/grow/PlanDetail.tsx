@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,13 @@ import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Collapsible,
   CollapsibleContent,
@@ -43,6 +51,8 @@ import {
   Save,
   Trash2,
   GripVertical,
+  ClipboardList,
+  ExternalLink,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
@@ -51,6 +61,17 @@ import PlanCanvas from "./PlanCanvas";
 type Task = Tables<"onboarding_tasks"> & { parent_task_id?: string | null };
 type Milestone = Tables<"onboarding_milestones"> & { tasks: Task[] };
 type Plan = Tables<"onboarding_plans"> & { milestones: Milestone[] };
+
+type KeyActivity = {
+  id: string;
+  plan_id: string;
+  title: string;
+  collection_id: string | null;
+  completed: boolean;
+  completed_at: string | null;
+  order_index: number;
+  created_at: string;
+};
 
 const MILESTONE_LABELS: Record<string, string> = {
   "30d": "Fase 1 — Giorni 1–30",
@@ -175,6 +196,7 @@ const SortableTaskRow = React.forwardRef<HTMLDivElement, {
 
 export default function PlanDetail({ plan, repName, canToggleTasks = false, isEditable = false, onBack }: PlanDetailProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [openMilestones, setOpenMilestones] = useState<Record<string, boolean>>({
     "30d": true, "60d": true, "90d": true,
   });
@@ -187,15 +209,51 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
+  // Key activities state
+  const [editedKeyActivities, setEditedKeyActivities] = useState<KeyActivity[]>([]);
+  const [deletedKeyActivityIds, setDeletedKeyActivityIds] = useState<string[]>([]);
+  const [newKeyActivityTitle, setNewKeyActivityTitle] = useState("");
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  // Fetch key activities for this plan
+  const { data: keyActivities } = useQuery({
+    queryKey: ["key-activities", plan.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("onboarding_key_activities")
+        .select("*")
+        .eq("plan_id", plan.id)
+        .order("order_index");
+      return (data || []) as KeyActivity[];
+    },
+  });
+
+  // Fetch collections for display/linking
+  const { data: collections } = useQuery({
+    queryKey: ["collections-for-plan"],
+    queryFn: async () => {
+      const { data } = await supabase.from("curricula").select("id, title").order("title");
+      return data || [];
+    },
+  });
+
+  const collectionMap = new Map((collections || []).map((c) => [c.id, c.title]));
 
   useEffect(() => {
     setEditedPlan(clonePlan(plan));
     setHasChanges(false);
     setDeletedTaskIds([]);
+    setDeletedKeyActivityIds([]);
   }, [plan]);
+
+  useEffect(() => {
+    if (keyActivities) {
+      setEditedKeyActivities(JSON.parse(JSON.stringify(keyActivities)));
+    }
+  }, [keyActivities]);
 
   const markChanged = useCallback(() => setHasChanges(true), []);
 
@@ -259,7 +317,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         tasks: m.tasks.filter(t => t.id !== taskId && (t as Task).parent_task_id !== taskId),
       })),
     }));
-    // Also mark children for deletion
     const allTasks = editedPlan.milestones.flatMap(m => m.tasks);
     const childIds = allTasks.filter(t => (t as Task).parent_task_id === taskId).map(t => t.id);
     setDeletedTaskIds(prev => [...prev, taskId, ...childIds]);
@@ -313,6 +370,54 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     setSubtaskPromptParentId(parentTaskId);
   }, []);
 
+  // --- Key activity helpers ---
+  const toggleKeyActivity = useMutation({
+    mutationFn: async ({ id, completed }: { id: string; completed: boolean }) => {
+      const { error } = await supabase
+        .from("onboarding_key_activities")
+        .update({ completed, completed_at: completed ? new Date().toISOString() : null })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["key-activities", plan.id] }),
+    onError: () => toast.error("Errore nell'aggiornamento"),
+  });
+
+  const addKeyActivity = useCallback(() => {
+    if (!newKeyActivityTitle.trim()) return;
+    const tempId = `temp-${crypto.randomUUID()}`;
+    setEditedKeyActivities(prev => [...prev, {
+      id: tempId,
+      plan_id: plan.id,
+      title: newKeyActivityTitle.trim(),
+      collection_id: null,
+      completed: false,
+      completed_at: null,
+      order_index: prev.length,
+      created_at: new Date().toISOString(),
+    }]);
+    setNewKeyActivityTitle("");
+    markChanged();
+  }, [newKeyActivityTitle, plan.id, markChanged]);
+
+  const deleteKeyActivity = useCallback((id: string) => {
+    setEditedKeyActivities(prev => prev.filter(a => a.id !== id));
+    if (!id.startsWith("temp-")) {
+      setDeletedKeyActivityIds(prev => [...prev, id]);
+    }
+    markChanged();
+  }, [markChanged]);
+
+  const updateKeyActivityTitle = useCallback((id: string, title: string) => {
+    setEditedKeyActivities(prev => prev.map(a => a.id === id ? { ...a, title } : a));
+    markChanged();
+  }, [markChanged]);
+
+  const updateKeyActivityCollection = useCallback((id: string, collectionId: string | null) => {
+    setEditedKeyActivities(prev => prev.map(a => a.id === id ? { ...a, collection_id: collectionId } : a));
+    markChanged();
+  }, [markChanged]);
+
   // --- Toggle task ---
   const toggleTask = useMutation({
     mutationFn: async ({ taskId, completed }: { taskId: string; completed: boolean }) => {
@@ -339,17 +444,14 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    // Find active task
     const allTasks = editedPlan.milestones.flatMap(m => m.tasks);
     const activeTask = allTasks.find(t => t.id === activeId);
     const overTask = allTasks.find(t => t.id === overId);
 
     if (!activeTask || !overTask) return;
 
-    // Don't nest a subtask under another subtask
     if ((overTask as Task).parent_task_id) return;
 
-    // If dropping on a root task, make it a subtask
     if (!(activeTask as Task).parent_task_id || (activeTask as Task).parent_task_id !== overId) {
       setTaskParent(activeId, overId);
     }
@@ -405,12 +507,38 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         const { error: dErr } = await supabase.from("onboarding_tasks").delete().in("id", deletedTaskIds);
         if (dErr) throw dErr;
       }
+
+      // Save key activities
+      for (const ka of editedKeyActivities) {
+        const isNew = ka.id.startsWith("temp-");
+        if (isNew) {
+          const { error } = await supabase.from("onboarding_key_activities").insert({
+            plan_id: ka.plan_id,
+            title: ka.title,
+            collection_id: ka.collection_id || null,
+            order_index: ka.order_index,
+          });
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("onboarding_key_activities")
+            .update({ title: ka.title, collection_id: ka.collection_id || null, order_index: ka.order_index })
+            .eq("id", ka.id);
+          if (error) throw error;
+        }
+      }
+
+      if (deletedKeyActivityIds.length > 0) {
+        const { error } = await supabase.from("onboarding_key_activities").delete().in("id", deletedKeyActivityIds);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       toast.success("Piano aggiornato");
       setHasChanges(false);
       setDeletedTaskIds([]);
+      setDeletedKeyActivityIds([]);
       queryClient.invalidateQueries({ queryKey: ["onboarding-plans"] });
+      queryClient.invalidateQueries({ queryKey: ["key-activities", plan.id] });
     },
     onError: () => toast.error("Errore nel salvataggio"),
   });
@@ -424,6 +552,10 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     const order = { "30d": 0, "60d": 1, "90d": 2 };
     return (order[a.label] ?? 0) - (order[b.label] ?? 0);
   });
+
+  const displayKeyActivities = isEditable ? editedKeyActivities : (keyActivities || []);
+  const kaCompleted = displayKeyActivities.filter(a => a.completed).length;
+  const kaTotal = displayKeyActivities.length;
 
   const groupTasksBySection = (tasks: Task[]) => {
     const rootTasks = tasks.filter(t => !(t as Task).parent_task_id);
@@ -448,7 +580,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     return sections;
   };
 
-  // Find the active drag task for overlay
   const activeDragTask = activeDragId ? allTasks.find(t => t.id === activeDragId) : null;
 
   // --- Editable list component ---
@@ -552,6 +683,121 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         </CardContent>
       </Card>
 
+      {/* Key Activities — Evergreen section */}
+      {(displayKeyActivities.length > 0 || isEditable) && (
+        <Card className="border-border bg-accent/30">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-primary" />
+                Attività Chiave
+              </CardTitle>
+              {kaTotal > 0 && (
+                <Badge variant="outline" className="text-[10px] font-mono">
+                  {kaCompleted}/{kaTotal}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">Attività evergreen indipendenti dalla timeline</p>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {displayKeyActivities.map((activity) => (
+              <div key={activity.id} className={`flex items-center gap-2 rounded-md px-3 py-2.5 transition-colors ${activity.completed ? "bg-muted/30" : "hover:bg-muted/50"}`}>
+                <Checkbox
+                  checked={activity.completed}
+                  disabled={isEditable || toggleKeyActivity.isPending}
+                  onCheckedChange={(checked) => {
+                    if (!activity.id.startsWith("temp-")) {
+                      toggleKeyActivity.mutate({ id: activity.id, completed: !!checked });
+                    }
+                  }}
+                />
+                <div className="flex-1 min-w-0">
+                  {isEditable ? (
+                    <Input
+                      value={activity.title}
+                      onChange={(e) => updateKeyActivityTitle(activity.id, e.target.value)}
+                      className="h-7 text-sm border-none bg-transparent px-0 focus-visible:ring-1"
+                    />
+                  ) : (
+                    <p className={`text-sm ${activity.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                      {activity.title}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {/* Collection link */}
+                  {isEditable ? (
+                    <Select
+                      value={activity.collection_id || "none"}
+                      onValueChange={(v) => updateKeyActivityCollection(activity.id, v === "none" ? null : v)}
+                    >
+                      <SelectTrigger className="h-7 w-[130px] text-xs">
+                        <SelectValue placeholder="Collection..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Nessuna</SelectItem>
+                        {(collections || []).map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : activity.collection_id && collectionMap.get(activity.collection_id) ? (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 text-[10px] cursor-pointer hover:bg-primary/10 transition-colors"
+                      onClick={() => navigate(`/learn?collection=${activity.collection_id}`)}
+                    >
+                      <BookOpen className="h-3 w-3" />
+                      {collectionMap.get(activity.collection_id)}
+                      <ExternalLink className="h-2.5 w-2.5" />
+                    </Badge>
+                  ) : null}
+                  {isEditable && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                      onClick={() => deleteKeyActivity(activity.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {/* Add new key activity */}
+            {isEditable && (
+              <div className="flex gap-1.5 pt-2 border-t border-border">
+                <Input
+                  value={newKeyActivityTitle}
+                  onChange={(e) => setNewKeyActivityTitle(e.target.value)}
+                  placeholder="Aggiungi attività chiave..."
+                  className="h-8 text-sm flex-1"
+                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyActivity(); } }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1"
+                  disabled={!newKeyActivityTitle.trim()}
+                  onClick={addKeyActivity}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+
+            {displayKeyActivities.length === 0 && !isEditable && (
+              <p className="text-sm text-muted-foreground py-2 text-center">Nessuna attività chiave</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Milestones */}
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         {orderedMilestones.map((milestone) => {
@@ -638,7 +884,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                                 onDelete={deleteTask}
                                 onAddSubtask={handleAddSubtaskPrompt}
                               />
-                              {/* Subtasks */}
                               {children.map(child => (
                                 <SortableTaskRow
                                   key={child.id}
@@ -653,7 +898,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                                   onAddSubtask={handleAddSubtaskPrompt}
                                 />
                               ))}
-                              {/* Inline subtask input */}
                               {isEditable && subtaskPromptParentId === task.id && (
                                 <div className="ml-8 border-l-2 border-border pl-3 flex gap-1.5 py-1.5">
                                   <Input
@@ -682,7 +926,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                       <p className="text-sm text-muted-foreground py-4 text-center">Nessun task per questo milestone</p>
                     )}
 
-                    {/* Inline add task */}
                     {isEditable && (
                       <div className="flex gap-1.5 pt-2 border-t border-border">
                         <Input
@@ -706,7 +949,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                       </div>
                     )}
 
-                    {/* KPIs */}
                     {(isEditable || kpis.length > 0) && (
                       <EditableList milestoneId={milestone.id} field="kpis" items={kpis} label="Milestone di fase" icon={<Target className="h-3.5 w-3.5" />} colorClass="bg-success/5 border border-success/10" />
                     )}
@@ -764,7 +1006,13 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
               variant="outline"
               size="sm"
               disabled={!hasChanges || saveMutation.isPending}
-              onClick={() => { setEditedPlan(clonePlan(plan)); setHasChanges(false); setDeletedTaskIds([]); }}
+              onClick={() => {
+                setEditedPlan(clonePlan(plan));
+                setEditedKeyActivities(JSON.parse(JSON.stringify(keyActivities || [])));
+                setHasChanges(false);
+                setDeletedTaskIds([]);
+                setDeletedKeyActivityIds([]);
+              }}
             >
               Annulla
             </Button>
