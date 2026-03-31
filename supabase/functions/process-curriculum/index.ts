@@ -368,39 +368,18 @@ ISTRUZIONI:
 
     console.log("[process-curriculum] Saved", savedModules.length, "skeleton modules");
 
+    // Mark job as completed — content generation is now a separate step triggered by the admin
     await supabase
       .from("generation_jobs")
       .update({
+        status: "completed",
         current_step: "outline_completed",
         total_steps: savedModules.length,
-        completed_steps: 0,
+        completed_steps: savedModules.length,
+        result: { count: savedModules.length, outline_only: true },
         updated_at: new Date().toISOString(),
       })
       .eq("id", jobId);
-
-    for (const mod of savedModules) {
-      const { data: childJob } = await supabase
-        .from("generation_jobs")
-        .insert({
-          job_type: "module_content",
-          parent_job_id: jobId,
-          status: "pending",
-          input: { module_id: mod.id, module_title: mod.title, source_document_ids: mod.source_document_ids, source_faq_ids: mod.source_faq_ids, relevant_sections: mod.relevant_sections },
-        })
-        .select("id")
-        .single();
-
-      if (childJob) {
-        fetch(`${supabaseUrl}/functions/v1/generate-module`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${serviceRoleKey}`,
-          },
-          body: JSON.stringify({ job_id: childJob.id }),
-        }).catch(err => console.error("[process-curriculum] Fire child error:", err));
-      }
-    }
 
     return new Response(JSON.stringify({ status: "outline_completed", modules: savedModules.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
