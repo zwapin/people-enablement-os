@@ -164,7 +164,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, onBa
         const mPct = mTotal > 0 ? Math.round((mDone / mTotal) * 100) : 0;
         const kpis = Array.isArray(milestone.kpis) ? milestone.kpis as string[] : [];
         const focus = Array.isArray(milestone.focus) ? milestone.focus as string[] : [];
-        const earlyWarnings = Array.isArray(milestone.early_warnings) ? milestone.early_warnings as string[] : [];
+        
         const sections = groupTasksBySection(milestone.tasks);
         const isOpen = openMilestones[milestone.label] ?? true;
 
