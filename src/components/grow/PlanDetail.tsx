@@ -56,7 +56,7 @@ interface PlanDetailProps {
   plan: Plan;
   repName?: string;
   canToggleTasks?: boolean;
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export default function PlanDetail({ plan, repName, canToggleTasks = false, onBack }: PlanDetailProps) {
