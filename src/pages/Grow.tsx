@@ -7,7 +7,6 @@ import { TrendingUp, Loader2 } from "lucide-react";
 import PlanCard from "@/components/grow/PlanCard";
 import PlanDetail from "@/components/grow/PlanDetail";
 import CreatePlanDialog from "@/components/grow/CreatePlanDialog";
-import AddTaskDialog from "@/components/grow/AddTaskDialog";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Task = Tables<"onboarding_tasks">;
@@ -113,20 +112,13 @@ export default function Grow() {
   // Detail view
   if (selectedPlan) {
     return (
-      <div className="space-y-6">
-        {effectiveAdmin && (
-          <div className="flex justify-end">
-            <AddTaskDialog milestones={selectedPlan.milestones} />
-          </div>
-        )}
-        <PlanDetail
-          plan={selectedPlan}
-          repName={isAdmin ? profileMap.get(selectedPlan.rep_id) : undefined}
-          canToggleTasks={!effectiveAdmin}
-          isEditable={effectiveAdmin}
-          onBack={isImpersonating ? undefined : () => setSelectedPlanId(null)}
-        />
-      </div>
+      <PlanDetail
+        plan={selectedPlan}
+        repName={isAdmin ? profileMap.get(selectedPlan.rep_id) : undefined}
+        canToggleTasks={!effectiveAdmin}
+        isEditable={effectiveAdmin}
+        onBack={isImpersonating ? undefined : () => setSelectedPlanId(null)}
+      />
     );
   }
 
