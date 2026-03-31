@@ -129,12 +129,26 @@ export default function Grow() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Crescita</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isAdmin
+            {effectiveAdmin
               ? "Gestisci i piani di onboarding 30-60-90 del team."
               : "Il tuo percorso di onboarding personalizzato."}
           </p>
         </div>
-        {isAdmin && <CreatePlanDialog />}
+        <div className="flex items-center gap-4">
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="grow-view-toggle"
+                checked={viewAsRep}
+                onCheckedChange={handleToggleView}
+              />
+              <Label htmlFor="grow-view-toggle" className="text-sm cursor-pointer">
+                New Klaaryan
+              </Label>
+            </div>
+          )}
+          {effectiveAdmin && <CreatePlanDialog />}
+        </div>
       </div>
 
       {(!plans || plans.length === 0) ? (
