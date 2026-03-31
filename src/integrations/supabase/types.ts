@@ -311,6 +311,89 @@ export type Database = {
           },
         ]
       }
+      onboarding_key_activities: {
+        Row: {
+          collection_id: string | null
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          order_index: number | null
+          plan_id: string
+          title: string
+        }
+        Insert: {
+          collection_id?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number | null
+          plan_id: string
+          title: string
+        }
+        Update: {
+          collection_id?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number | null
+          plan_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_key_activities_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_key_activities_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      onboarding_key_activity_templates: {
+        Row: {
+          collection_id: string | null
+          created_at: string
+          id: string
+          order_index: number | null
+          role: string
+          title: string
+        }
+        Insert: {
+          collection_id?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number | null
+          role: string
+          title: string
+        }
+        Update: {
+          collection_id?: string | null
+          created_at?: string
+          id?: string
+          order_index?: number | null
+          role?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_key_activity_templates_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "curricula"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_milestones: {
         Row: {
           early_warnings: Json | null
@@ -452,6 +535,7 @@ export type Database = {
           id: string
           milestone_label: Database["public"]["Enums"]["milestone_label"]
           order_index: number | null
+          role: string | null
           section: string | null
           title: string
           type: Database["public"]["Enums"]["task_type"]
@@ -461,6 +545,7 @@ export type Database = {
           id?: string
           milestone_label?: Database["public"]["Enums"]["milestone_label"]
           order_index?: number | null
+          role?: string | null
           section?: string | null
           title: string
           type?: Database["public"]["Enums"]["task_type"]
@@ -470,6 +555,7 @@ export type Database = {
           id?: string
           milestone_label?: Database["public"]["Enums"]["milestone_label"]
           order_index?: number | null
+          role?: string | null
           section?: string | null
           title?: string
           type?: Database["public"]["Enums"]["task_type"]
