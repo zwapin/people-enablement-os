@@ -89,17 +89,7 @@ function clonePlan(plan: Plan): Plan {
 }
 
 /* ── Sortable task row ── */
-function SortableTaskRow({
-  task,
-  isSubtask,
-  isEditable,
-  canToggleTasks,
-  togglePending,
-  onToggle,
-  onTitleChange,
-  onDelete,
-  onAddSubtask,
-}: {
+const SortableTaskRow = React.forwardRef<HTMLDivElement, {
   task: Task;
   isSubtask: boolean;
   isEditable: boolean;
@@ -109,7 +99,7 @@ function SortableTaskRow({
   onTitleChange: (taskId: string, title: string) => void;
   onDelete: (taskId: string) => void;
   onAddSubtask: (parentTaskId: string) => void;
-}) {
+}>(function SortableTaskRow({ task, isSubtask, isEditable, canToggleTasks, togglePending, onToggle, onTitleChange, onDelete, onAddSubtask }, _ref) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     disabled: !isEditable,
@@ -181,7 +171,7 @@ function SortableTaskRow({
       </div>
     </div>
   );
-}
+});
 
 export default function PlanDetail({ plan, repName, canToggleTasks = false, isEditable = false, onBack }: PlanDetailProps) {
   const queryClient = useQueryClient();
