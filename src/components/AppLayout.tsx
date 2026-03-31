@@ -1,6 +1,7 @@
-import { BookOpen, TrendingUp, BarChart3, Users, LogOut } from "lucide-react";
+import { BookOpen, TrendingUp, BarChart3, Users, LogOut, UserCheck } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import {
   Sidebar,
   SidebarContent,
@@ -15,6 +16,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 
 const navItems = [
