@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Circle, Calendar, User } from "lucide-react";
+import { Calendar } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Plan = Tables<"onboarding_plans">;
@@ -16,9 +16,9 @@ interface PlanCardProps {
 }
 
 const MILESTONE_LABELS: Record<string, string> = {
-  "30d": "30 Giorni",
-  "60d": "60 Giorni",
-  "90d": "90 Giorni",
+  "30d": "30g",
+  "60d": "60g",
+  "90d": "90g",
 };
 
 export default function PlanCard({ plan, repName, onClick }: PlanCardProps) {
@@ -83,6 +83,11 @@ export default function PlanCard({ plan, repName, onClick }: PlanCardProps) {
             );
           })}
         </div>
+
+        {/* Premessa preview */}
+        {plan.premessa && (
+          <p className="text-xs text-muted-foreground line-clamp-2">{plan.premessa}</p>
+        )}
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Calendar className="h-3 w-3" />
