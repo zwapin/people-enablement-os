@@ -425,7 +425,7 @@ export default function Learn() {
 
   // Rep view
   if (!isAdmin || viewAsRep) {
-    const firstName = profile?.full_name?.split(" ")[0] || "utente";
+    const firstName = (isImpersonating ? impersonating?.full_name : profile?.full_name)?.split(" ")[0] || "utente";
 
     const globalCompleted = publishedModules.filter(m => completions?.some(c => c.module_id === m.id)).length;
     const globalPct = publishedModules.length > 0 ? Math.round((globalCompleted / publishedModules.length) * 100) : 0;

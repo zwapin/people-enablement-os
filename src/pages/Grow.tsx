@@ -36,12 +36,17 @@ export default function Grow() {
 
   // Fetch plans with milestones and tasks
   const { data: plans, isLoading } = useQuery({
-    queryKey: ["onboarding-plans"],
+    queryKey: ["onboarding-plans", isImpersonating ? impersonating?.user_id : null],
     queryFn: async () => {
       // Get plans
-      const planQuery = isAdmin
-        ? supabase.from("onboarding_plans").select("*").order("created_at", { ascending: false })
-        : supabase.from("onboarding_plans").select("*").eq("rep_id", user!.id);
+      let planQuery;
+      if (isImpersonating) {
+        planQuery = supabase.from("onboarding_plans").select("*").eq("rep_id", impersonating!.user_id);
+      } else if (isAdmin) {
+        planQuery = supabase.from("onboarding_plans").select("*").order("created_at", { ascending: false });
+      } else {
+        planQuery = supabase.from("onboarding_plans").select("*").eq("rep_id", user!.id);
+      }
 
       const { data: rawPlans, error: pErr } = await planQuery;
       if (pErr) throw pErr;
