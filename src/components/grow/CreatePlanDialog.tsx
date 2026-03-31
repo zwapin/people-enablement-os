@@ -303,13 +303,6 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
                     onRemove={(i) => removeListItem(mc.label, "kpis", i)}
                   />
 
-                  <ListEditor
-                    label="Early Warning"
-                    placeholder="Aggiungi segnale di allarme..."
-                    items={milestones[mc.label].early_warnings}
-                    onAdd={(v) => addListItem(mc.label, "early_warnings", v)}
-                    onRemove={(i) => removeListItem(mc.label, "early_warnings", i)}
-                  />
                 </TabsContent>
               ))}
             </Tabs>
