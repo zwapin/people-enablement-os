@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -124,19 +124,26 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     enabled: open && !!roleTemplate && ROLE_OPTIONS.includes(roleTemplate),
   });
 
+  const prevRoleRef = useRef(roleTemplate);
+
+  // Auto-populate key activities when templates load for the selected role
+  useEffect(() => {
+    if (!activityTemplates?.length || !roleTemplate) return;
+    // Only auto-populate if role just changed or activities are empty
+    if (prevRoleRef.current !== roleTemplate || keyActivities.length === 0) {
+      const fromTemplates: KeyActivityDraft[] = activityTemplates.map((t) => ({
+        tempId: crypto.randomUUID(),
+        title: t.title,
+        collection_id: t.collection_id,
+        collection_title: collections?.find((c) => c.id === t.collection_id)?.title,
+      }));
+      setKeyActivities(fromTemplates);
+      prevRoleRef.current = roleTemplate;
+    }
+  }, [activityTemplates, roleTemplate, collections]);
+
   const handleRoleChange = (role: string) => {
     setRoleTemplate(role);
-  };
-
-  const applyTemplates = () => {
-    if (!activityTemplates?.length) return;
-    const fromTemplates: KeyActivityDraft[] = activityTemplates.map((t) => ({
-      tempId: crypto.randomUUID(),
-      title: t.title,
-      collection_id: t.collection_id,
-      collection_title: collections?.find((c) => c.id === t.collection_id)?.title,
-    }));
-    setKeyActivities(fromTemplates);
   };
 
   const addKeyActivity = () => {
@@ -460,11 +467,10 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
                   Attività evergreen che il nuovo hire deve completare, indipendenti dalla timeline 30-60-90.
                 </p>
 
-                {roleTemplate && ROLE_OPTIONS.includes(roleTemplate) && activityTemplates && activityTemplates.length > 0 && keyActivities.length === 0 && (
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={applyTemplates}>
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Carica template {roleTemplate}
-                  </Button>
+                {!roleTemplate && (
+                  <p className="text-xs text-amber-600 bg-amber-50 rounded px-3 py-2">
+                    Seleziona un ruolo nello step precedente per caricare automaticamente le attività template.
+                  </p>
                 )}
 
                 <div className="space-y-2">
