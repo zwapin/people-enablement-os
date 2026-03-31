@@ -342,6 +342,9 @@ export default function Home() {
         </motion.div>
       )}
 
+      {/* ── Onboarding plan ── */}
+      {activeUserId && <OnboardingPlanSection userId={activeUserId} />}
+
       {/* ── Collection overview ── */}
       <motion.div variants={fadeUp} className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">
