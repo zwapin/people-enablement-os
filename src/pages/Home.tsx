@@ -21,6 +21,7 @@ import {
   Target,
 } from "lucide-react";
 import { getCollectionCategories } from "@/lib/constants";
+import OnboardingPlanSection from "@/components/home/OnboardingPlanSection";
 
 /* ── Badge tiers based on % of total published modules completed ── */
 const BADGE_TIERS = [
@@ -340,6 +341,9 @@ export default function Home() {
           })}
         </motion.div>
       )}
+
+      {/* ── Onboarding plan ── */}
+      {activeUserId && <OnboardingPlanSection userId={activeUserId} />}
 
       {/* ── Collection overview ── */}
       <motion.div variants={fadeUp} className="space-y-3">
