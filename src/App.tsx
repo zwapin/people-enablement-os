@@ -40,8 +40,16 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <Navigate to="/learn" replace />
+                      <Navigate to="/home" replace />
                     </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/home"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Home /></AppLayout>
                   </ProtectedRoute>
                 }
               />
