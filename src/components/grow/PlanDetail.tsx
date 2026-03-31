@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,17 +89,7 @@ function clonePlan(plan: Plan): Plan {
 }
 
 /* ── Sortable task row ── */
-function SortableTaskRow({
-  task,
-  isSubtask,
-  isEditable,
-  canToggleTasks,
-  togglePending,
-  onToggle,
-  onTitleChange,
-  onDelete,
-  onAddSubtask,
-}: {
+const SortableTaskRow = React.forwardRef<HTMLDivElement, {
   task: Task;
   isSubtask: boolean;
   isEditable: boolean;
@@ -109,7 +99,7 @@ function SortableTaskRow({
   onTitleChange: (taskId: string, title: string) => void;
   onDelete: (taskId: string) => void;
   onAddSubtask: (parentTaskId: string) => void;
-}) {
+}>(function SortableTaskRow({ task, isSubtask, isEditable, canToggleTasks, togglePending, onToggle, onTitleChange, onDelete, onAddSubtask }, _ref) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
     disabled: !isEditable,
@@ -181,7 +171,7 @@ function SortableTaskRow({
       </div>
     </div>
   );
-}
+});
 
 export default function PlanDetail({ plan, repName, canToggleTasks = false, isEditable = false, onBack }: PlanDetailProps) {
   const queryClient = useQueryClient();
@@ -287,31 +277,34 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     markChanged();
   }, [markChanged]);
 
-  // --- Inline add task ---
-  const addTaskInline = useMutation({
-    mutationFn: async ({ milestoneId, title, parentTaskId }: { milestoneId: string; title: string; parentTaskId?: string }) => {
-      const { data, error } = await supabase.from("onboarding_tasks").insert({
-        milestone_id: milestoneId,
-        title,
-        type: "activity" as const,
-        parent_task_id: parentTaskId || null,
-      }).select().single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["onboarding-plans"] });
-    },
-    onError: () => toast.error("Errore nell'aggiunta del task"),
-  });
-
+  // --- Inline add task (local-first) ---
   const handleAddTask = useCallback((milestoneId: string, parentTaskId?: string) => {
     const key = parentTaskId || milestoneId;
     const title = newTaskInputs[key]?.trim();
     if (!title) return;
-    addTaskInline.mutate({ milestoneId, title, parentTaskId });
+    const tempId = `temp-${crypto.randomUUID()}`;
+    const newTask: Task = {
+      id: tempId,
+      milestone_id: milestoneId,
+      title,
+      type: "activity",
+      parent_task_id: parentTaskId || null,
+      completed: false,
+      completed_at: null,
+      order_index: 999,
+      is_common: false,
+      section: null,
+      module_id: null,
+    };
+    setEditedPlan(prev => ({
+      ...prev,
+      milestones: prev.milestones.map(m =>
+        m.id === milestoneId ? { ...m, tasks: [...m.tasks, newTask] } : m
+      ),
+    }));
     setNewTaskInputs(prev => ({ ...prev, [key]: "" }));
-  }, [newTaskInputs, addTaskInline]);
+    markChanged();
+  }, [newTaskInputs, markChanged]);
 
   // --- Subtask prompt state ---
   const [subtaskPromptParentId, setSubtaskPromptParentId] = useState<string | null>(null);
@@ -381,16 +374,30 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
 
       for (const m of editedPlan.milestones) {
         for (const t of m.tasks) {
-          const { error: tErr } = await supabase
-            .from("onboarding_tasks")
-            .update({
+          const isNew = t.id.startsWith("temp-");
+          if (isNew) {
+            const { error: iErr } = await supabase.from("onboarding_tasks").insert({
+              milestone_id: m.id,
               title: t.title,
+              type: t.type,
               section: t.section,
               order_index: t.order_index,
-              parent_task_id: (t as Task).parent_task_id || null,
-            })
-            .eq("id", t.id);
-          if (tErr) throw tErr;
+              parent_task_id: (t as Task).parent_task_id?.startsWith("temp-") ? null : (t as Task).parent_task_id || null,
+            });
+            if (iErr) throw iErr;
+          } else {
+            const parentId = (t as Task).parent_task_id;
+            const { error: tErr } = await supabase
+              .from("onboarding_tasks")
+              .update({
+                title: t.title,
+                section: t.section,
+                order_index: t.order_index,
+                parent_task_id: parentId?.startsWith("temp-") ? null : parentId || null,
+              })
+              .eq("id", t.id);
+            if (tErr) throw tErr;
+          }
         }
       }
 
@@ -690,7 +697,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                           variant="outline"
                           size="sm"
                           className="h-8 gap-1"
-                          disabled={!newTaskInputs[milestone.id]?.trim() || addTaskInline.isPending}
+                          disabled={!newTaskInputs[milestone.id]?.trim()}
                           onClick={() => handleAddTask(milestone.id)}
                         >
                           <Plus className="h-3.5 w-3.5" />
@@ -739,13 +746,38 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         </Card>
       )}
 
-      {/* Save button */}
-      {isEditable && hasChanges && (
-        <div className="sticky bottom-4 flex justify-end z-10">
-          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="shadow-lg gap-2">
-            <Save className="h-4 w-4" />
-            {saveMutation.isPending ? "Salvataggio..." : "Salva modifiche"}
-          </Button>
+      {/* Persistent save bar in edit mode */}
+      {isEditable && (
+        <div className="sticky bottom-0 z-10 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-t border-border flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm">
+            {hasChanges ? (
+              <span className="text-warning font-medium flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
+                Modifiche non salvate
+              </span>
+            ) : (
+              <span className="text-muted-foreground">Nessuna modifica</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!hasChanges || saveMutation.isPending}
+              onClick={() => { setEditedPlan(clonePlan(plan)); setHasChanges(false); setDeletedTaskIds([]); }}
+            >
+              Annulla
+            </Button>
+            <Button
+              size="sm"
+              disabled={!hasChanges || saveMutation.isPending}
+              onClick={() => saveMutation.mutate()}
+              className="gap-1.5"
+            >
+              <Save className="h-3.5 w-3.5" />
+              {saveMutation.isPending ? "Salvataggio..." : "Salva modifiche"}
+            </Button>
+          </div>
         </div>
       )}
     </div>
