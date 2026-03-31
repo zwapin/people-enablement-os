@@ -38,15 +38,8 @@ export default function Learn() {
   const [progressLabel, setProgressLabel] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
-  // viewAsRep in sessionStorage (not localStorage) — resets on tab close
-  const [viewAsRep, setViewAsRep] = useState(() => {
-    return sessionStorage.getItem("viewAsRep") === "true";
-  });
-
-  const handleViewAsRepChange = (val: boolean) => {
-    setViewAsRep(val);
-    sessionStorage.setItem("viewAsRep", String(val));
-  };
+  const { isImpersonating, impersonating } = useImpersonation();
+  const viewAsRep = isImpersonating;
   const activeJobId = useRef<string | null>(null);
 
   const { data: modules, isLoading, refetch } = useQuery({
