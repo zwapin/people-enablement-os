@@ -157,7 +157,7 @@ export default function Grow() {
             <TrendingUp className="h-6 w-6 text-muted-foreground" />
           </div>
           <p className="text-sm text-muted-foreground max-w-sm">
-            {isAdmin
+            {effectiveAdmin
               ? "Nessun piano di onboarding creato. Crea il primo piano per un membro del team."
               : "Non hai ancora un piano di onboarding assegnato."}
           </p>
