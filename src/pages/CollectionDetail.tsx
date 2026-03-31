@@ -52,6 +52,7 @@ import CollectionModuleList from "@/components/learn/CollectionModuleList";
 import DocumentsList from "@/components/learn/DocumentsList";
 import FaqList from "@/components/learn/FaqList";
 import ModuleEditor from "@/components/learn/ModuleEditor";
+import OutlineReviewDialog from "@/components/learn/OutlineReviewDialog";
 
 export default function CollectionDetail() {
   const { curriculumId } = useParams<{ curriculumId: string }>();
@@ -83,6 +84,9 @@ export default function CollectionDetail() {
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [customInstructions, setCustomInstructions] = useState("");
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+
+  // Outline review dialog
+  const [outlineReviewOpen, setOutlineReviewOpen] = useState(false);
 
   // Fetch completions for rep (must be at top level before any early returns)
   const { data: repCompletions } = useQuery({
@@ -238,24 +242,26 @@ export default function CollectionDetail() {
           const completedSteps = row.completed_steps ?? 0;
 
           if (row.current_step === "outline") {
-            setProgress(10);
+            setProgress(30);
             setProgressLabel("Analisi documenti e creazione outline...");
           } else if (row.current_step === "outline_completed") {
-            setProgress(20);
-            setProgressLabel(`Outline completato. Generazione ${totalSteps} moduli...`);
-            refreshAll();
-          } else if (row.current_step?.startsWith("module_") && totalSteps > 0) {
-            const pct = 20 + Math.round((completedSteps / totalSteps) * 70);
-            setProgress(pct);
-            setProgressLabel(`Modulo ${completedSteps}/${totalSteps} completato...`);
+            setProgress(90);
+            setProgressLabel("Outline completato!");
             refreshAll();
           }
 
           if (newStatus === "completed") {
             clearTimeout(timeout);
             const count = row.result?.count ?? 0;
+            const isOutlineOnly = row.result?.outline_only === true;
             stopGeneration(true);
-            toast.success(`${count} moduli generati.`);
+            if (isOutlineOnly) {
+              toast.success(`${count} moduli proposti. Rivedi l'outline.`);
+              // Open review dialog after refresh
+              setTimeout(() => setOutlineReviewOpen(true), 500);
+            } else {
+              toast.success(`${count} moduli generati.`);
+            }
             refreshAll();
             supabase.removeChannel(channel);
             activeJobId.current = null;
@@ -428,6 +434,22 @@ export default function CollectionDetail() {
 
   const currentModules = modules ?? [];
   const hasEmptyModules = currentModules.some(m => !m.content_body);
+  const hasProposedModules = currentModules.some(m => m.status === "proposed");
+  const draftOrPublishedModules = currentModules.filter(m => m.status === "draft" || m.status === "published");
+  const hasExistingModules = draftOrPublishedModules.length > 0;
+
+  // Determine if new docs were uploaded after the latest module was created
+  const latestModuleDate = draftOrPublishedModules.length > 0
+    ? Math.max(...draftOrPublishedModules.map(m => new Date(m.updated_at).getTime()))
+    : 0;
+  const latestDocDate = (collectionDocs ?? []).length > 0
+    ? Math.max(...(collectionDocs ?? []).map(() => Date.now())) // docs don't have updated_at in our query, fallback
+    : 0;
+
+  // Button labels: "Genera" if no modules exist, "Aggiorna" if they do
+  const moduliButtonLabel = hasExistingModules ? "Aggiorna moduli" : "Genera moduli";
+  const contenutiButtonLabel = hasExistingModules && !hasEmptyModules ? "Aggiorna contenuti" : "Genera contenuti";
+  const showContenutiButton = draftOrPublishedModules.length > 0;
 
   // repCompletions is fetched at top level (before early returns)
 
@@ -578,12 +600,14 @@ export default function CollectionDetail() {
             >
               {generating ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
+              ) : hasExistingModules ? (
                 <RefreshCw className="h-4 w-4 mr-2" />
+              ) : (
+                <Sparkles className="h-4 w-4 mr-2" />
               )}
-              Genera moduli
+              {moduliButtonLabel}
             </Button>
-            {hasEmptyModules && (
+            {showContenutiButton && (
               <Button
                 variant="outline"
                 size="sm"
@@ -595,7 +619,7 @@ export default function CollectionDetail() {
                 ) : (
                   <Sparkles className="h-4 w-4 mr-2" />
                 )}
-                Genera contenuti
+                {contenutiButtonLabel}
               </Button>
             )}
             <AlertDialog>
@@ -654,13 +678,24 @@ export default function CollectionDetail() {
           Moduli
           <span className="text-sm font-normal text-muted-foreground">({currentModules.length})</span>
         </h2>
-        {currentModules.length === 0 ? (
+        {hasProposedModules && (
+          <div className="flex items-center gap-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
+            <Sparkles className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-sm text-foreground flex-1">
+              {currentModules.filter(m => m.status === "proposed").length} moduli proposti dall'AI in attesa di revisione.
+            </span>
+            <Button size="sm" onClick={() => setOutlineReviewOpen(true)}>
+              Rivedi outline
+            </Button>
+          </div>
+        )}
+        {currentModules.filter(m => m.status !== "proposed").length === 0 && !hasProposedModules ? (
           <p className="text-sm text-muted-foreground py-4">
-            Nessun modulo. Clicca "Genera moduli" per crearli dalla Knowledge Base.
+            Nessun modulo. Clicca "{moduliButtonLabel}" per crearli dalla Knowledge Base.
           </p>
         ) : (
           <CollectionModuleList
-            modules={currentModules}
+            modules={currentModules.filter(m => m.status !== "proposed")}
             isAdmin={isAdmin}
             onEdit={handleEdit}
             onRefresh={refreshAll}
@@ -778,6 +813,15 @@ export default function CollectionDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Outline review dialog */}
+      <OutlineReviewDialog
+        open={outlineReviewOpen}
+        onOpenChange={setOutlineReviewOpen}
+        modules={currentModules}
+        collectionId={curriculumId!}
+        onApproved={refreshAll}
+      />
     </div>
   );
 }

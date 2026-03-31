@@ -207,6 +207,23 @@ ISTRUZIONI:
 - PRESERVA le tabelle originali trovate nei documenti sorgente in formato markdown
 - Tutto in italiano
 
+STRUTTURA OBBLIGATORIA DEL CONTENUTO (content_body):
+Il contenuto DEVE seguire questa struttura precisa, con ogni sezione separata da un divisore orizzontale (---):
+
+1. **Introduzione** — un breve paragrafo introduttivo che inquadra l'argomento e il suo valore pratico
+---
+2. **Capitoli tematici** — suddividi il contenuto in 3-5 capitoli con titoli ### chiari. Alterna paragrafi discorsivi brevi (max 4-5 righe) con elenchi puntati, tabelle o blockquote per creare un formato ibrido tra discorsivo e schematico
+---
+3. **Conclusione** — un breve paragrafo di sintesi e call-to-action pratico
+---
+4. **Punti chiave** — riassumi i concetti fondamentali in una lista puntata finale
+
+REGOLE PER MEDIA E RISORSE VISIVE (OBBLIGATORIE):
+- Se nei documenti sorgente sono presenti riferimenti a immagini, grafici, video, GIF o screenshot, DEVI includerli nel contenuto usando la sintassi markdown appropriata
+- Per immagini: usa ![descrizione](url) preservando l'URL originale
+- Per video: includi il link come embed o riferimento
+- Se un'immagine non ha URL ma è descritta nel testo, crea un placeholder: > 📊 [Grafico: descrizione del contenuto visivo]
+
 REGOLE DI FEDELTÀ AL MATERIALE SORGENTE (OBBLIGATORIE):
 - Includi TUTTI i termini specifici, nomi di fasi, framework, tool e processi menzionati nel materiale sorgente
 - NON generalizzare: se il documento menziona "Disco Call", "Executive Call", "MCP", "Pipeline", questi termini DEVONO comparire nel modulo
