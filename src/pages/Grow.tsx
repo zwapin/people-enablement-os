@@ -90,6 +90,16 @@ export default function Grow() {
     enabled: !!user,
   });
 
+  // Auto-select plan when impersonating
+  useEffect(() => {
+    if (isImpersonating && plans?.length) {
+      setSelectedPlanId(plans[0].id);
+    }
+    if (!isImpersonating) {
+      setSelectedPlanId(null);
+    }
+  }, [isImpersonating, plans]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
