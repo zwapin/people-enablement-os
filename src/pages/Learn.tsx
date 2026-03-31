@@ -425,12 +425,38 @@ export default function Learn() {
 
   // Rep view
   if (!isAdmin || viewAsRep) {
-    const firstName = (isImpersonating ? impersonating?.full_name : profile?.full_name)?.split(" ")[0] || "utente";
+    const activeProfile = isImpersonating ? impersonating : profile;
+    const firstName = activeProfile?.full_name?.split(" ")[0] || "utente";
 
-    const globalCompleted = publishedModules.filter(m => completions?.some(c => c.module_id === m.id)).length;
-    const globalPct = publishedModules.length > 0 ? Math.round((globalCompleted / publishedModules.length) * 100) : 0;
+    // Map user department to macro category key for filtering
+    const departmentToCategoryKey: Record<string, string> = {
+      "Sales": "sales",
+      "Customer Success": "customer_success",
+      "Operations": "operations",
+      "Product": "product",
+      "Management": "management",
+    };
+    const userTeamKey = activeProfile?.department ? departmentToCategoryKey[activeProfile.department] : null;
 
-    const repCollections = publishedCollections.map(c => {
+    // Filter published collections: user sees only their team's collections + Common Knowledge
+    const filteredPublishedCollections = publishedCollections.filter(c => {
+      const cats = getCollectionCategories(c.categories);
+      // Always show Common Knowledge
+      if (cats.includes("common")) return true;
+      // If user has no team, show all
+      if (!userTeamKey) return true;
+      // Show if collection belongs to user's team
+      return cats.includes(userTeamKey);
+    });
+
+    // Compute global stats only on visible modules
+    const visibleModules = publishedModules.filter(m =>
+      filteredPublishedCollections.some(c => c.id === m.curriculum_id)
+    );
+    const globalCompleted = visibleModules.filter(m => completions?.some(c => c.module_id === m.id)).length;
+    const globalPct = visibleModules.length > 0 ? Math.round((globalCompleted / visibleModules.length) * 100) : 0;
+
+    const repCollections = filteredPublishedCollections.map(c => {
       const cModules = publishedModules.filter(m => m.curriculum_id === c.id);
       const cCompleted = cModules.filter(m => completions?.some(comp => comp.module_id === m.id)).length;
       const cPct = cModules.length > 0 ? Math.round((cCompleted / cModules.length) * 100) : 0;
@@ -469,7 +495,7 @@ export default function Learn() {
           <div className="flex items-center justify-between text-sm flex-wrap gap-1">
             <span className="text-muted-foreground">Progresso totale</span>
             <span className="font-mono text-foreground">
-              {globalCompleted}/{publishedModules.length} moduli · {globalPct}%
+              {globalCompleted}/{visibleModules.length} moduli · {globalPct}%
             </span>
           </div>
           <Progress value={globalPct} className="h-2" />
