@@ -18,7 +18,6 @@ import {
   Calendar,
   ChevronDown,
   Target,
-  AlertTriangle,
   Crosshair,
   FileText,
 } from "lucide-react";
