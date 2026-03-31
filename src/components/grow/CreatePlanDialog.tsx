@@ -187,7 +187,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     }));
   };
 
-  const removeListItem = (label: string, field: "focus" | "kpis" | "early_warnings", index: number) => {
+  const removeListItem = (label: string, field: "focus" | "kpis", index: number) => {
     setMilestones((prev) => ({
       ...prev,
       [label]: {
