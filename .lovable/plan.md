@@ -1,44 +1,36 @@
 
 
-# Piano: Task inline + Subtask con drag-and-drop
+# Fix: Subtask creation bug + Save button chiaro
 
-## Panoramica
-1. Spostare il bottone "Aggiungi Task" dentro ogni sezione task del milestone (dentro PlanDetail), non più in cima alla pagina.
-2. Aggiungere il concetto di subtask: ogni task può avere sotto-task annidati.
-3. Trascinando una task su un'altra, questa diventa subtask della destinazione.
+## Problemi identificati
 
-## Cosa cambia per l'utente
-- Il bottone "+ Aggiungi Task" appare in fondo a ogni milestone (solo in modalità admin edit), con milestone già pre-selezionato
-- Le subtask appaiono indentate sotto il task padre con un bordo sinistro sottile
-- Drag-and-drop: trascinando un task sopra un altro lo rende subtask; trascinandolo fuori lo riporta a livello root
-- Le subtask possono essere create anche manualmente (bottone "+" piccolo accanto a ogni task)
+1. **Bug subtask**: quando si crea un task/subtask inline, il codice inserisce direttamente nel DB e poi fa `invalidateQueries`, che resetta lo state locale `editedPlan` — perdendo eventuali modifiche non salvate. Inoltre il task appena creato non appare nello state locale fino al refetch.
 
-## Dettaglio tecnico
+2. **forwardRef warnings**: `SortableTaskRow` e `PlanCanvas` non usano `forwardRef`, ma `@dnd-kit` prova a passare ref — causa warning in console.
 
-### 1. Migrazione DB
-Aggiungere colonna `parent_task_id` alla tabella `onboarding_tasks`:
-```sql
-ALTER TABLE onboarding_tasks ADD COLUMN parent_task_id uuid REFERENCES onboarding_tasks(id) ON DELETE CASCADE DEFAULT NULL;
-```
+3. **Save button poco chiaro**: il bottone "Salva modifiche" appare solo quando ci sono cambiamenti pendenti, in sticky bottom. L'utente non capisce quando/come salvare.
 
-### 2. Modifiche a `PlanDetail.tsx`
-- Rimuovere `AddTaskDialog` dalla pagina `Grow.tsx`
-- Aggiungere inline "Add task" button in fondo a ogni milestone (inserisce direttamente nel DB con milestone_id pre-impostato, input inline rapido)
-- Raggruppare task: separare root tasks (`parent_task_id IS NULL`) e subtasks, renderizzare subtask indentate sotto il padre
-- Aggiungere bottoncino "+" su ogni task per creare una subtask
-- Implementare drag-and-drop con `@dnd-kit/core` + `@dnd-kit/sortable`:
-  - Drop su un task → diventa subtask (set `parent_task_id`)
-  - Drop su area root → torna task principale (clear `parent_task_id`)
-- Subtask visualizzate con `ml-8 border-l-2 border-border pl-3`
-- Salvare `parent_task_id` nel batch save esistente
+## Cosa cambiamo
 
-### 3. Modifiche a `Grow.tsx`
-- Rimuovere import e render di `AddTaskDialog` dalla pagina
+### 1. Subtask/task inline → creazione locale (no DB diretto)
+- Invece di inserire subito nel DB, il nuovo task viene aggiunto allo state locale `editedPlan` con un ID temporaneo (uuid generato client-side).
+- Il task appare immediatamente nella lista e viene salvato col batch "Salva modifiche" insieme a tutto il resto.
+- Nel `saveMutation`, i task con ID temporaneo vengono inseriti (`INSERT`), quelli esistenti aggiornati (`UPDATE`).
 
-### 4. File coinvolti
+### 2. Fix forwardRef
+- Wrappare `SortableTaskRow` con `React.forwardRef`
+- PlanCanvas non ha bisogno di ref (non è sortable), ma il warning viene dal contesto — verificare e risolvere
+
+### 3. Save button sempre visibile in edit mode
+- In modalità edit, mostrare una barra sticky in basso sempre visibile con:
+  - Bottone "Salva modifiche" (abilitato solo se `hasChanges`)
+  - Bottone "Annulla modifiche" per resettare allo state originale
+  - Indicatore visivo "Modifiche non salvate" quando `hasChanges` è true
+
+## File coinvolti
+
 | File | Azione |
 |------|--------|
-| `onboarding_tasks` | Migrazione — aggiungere `parent_task_id` |
-| `src/components/grow/PlanDetail.tsx` | Refactor — add task inline, subtask rendering, drag-and-drop |
-| `src/pages/Grow.tsx` | Rimuovere AddTaskDialog |
+| `src/components/grow/PlanDetail.tsx` | Fix creazione task locale, forwardRef su SortableTaskRow, barra save persistente |
+| `src/components/grow/PlanCanvas.tsx` | Nessuna modifica necessaria (ref non applicata qui) |
 
