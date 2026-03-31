@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { TrendingUp, Loader2 } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import PlanCard from "@/components/grow/PlanCard";
 import PlanDetail from "@/components/grow/PlanDetail";
 import CreatePlanDialog from "@/components/grow/CreatePlanDialog";
@@ -18,17 +17,10 @@ type Plan = Tables<"onboarding_plans"> & { milestones: Milestone[] };
 export default function Grow() {
   const { profile, user } = useAuth();
   const isAdmin = profile?.role === "admin";
-  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [viewAsRep, setViewAsRep] = useState(() => {
-    return sessionStorage.getItem("growViewAsRep") === "true";
-  });
-
-  const handleToggleView = (checked: boolean) => {
-    setViewAsRep(checked);
-    sessionStorage.setItem("growViewAsRep", checked ? "true" : "false");
-  };
-
+  const { isImpersonating, impersonating } = useImpersonation();
+  const viewAsRep = isImpersonating;
   const effectiveAdmin = isAdmin && !viewAsRep;
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   // Fetch profiles for rep names (admin only)
   const { data: profiles } = useQuery({
@@ -44,12 +36,17 @@ export default function Grow() {
 
   // Fetch plans with milestones and tasks
   const { data: plans, isLoading } = useQuery({
-    queryKey: ["onboarding-plans"],
+    queryKey: ["onboarding-plans", isImpersonating ? impersonating?.user_id : null],
     queryFn: async () => {
       // Get plans
-      const planQuery = isAdmin
-        ? supabase.from("onboarding_plans").select("*").order("created_at", { ascending: false })
-        : supabase.from("onboarding_plans").select("*").eq("rep_id", user!.id);
+      let planQuery;
+      if (isImpersonating) {
+        planQuery = supabase.from("onboarding_plans").select("*").eq("rep_id", impersonating!.user_id);
+      } else if (isAdmin) {
+        planQuery = supabase.from("onboarding_plans").select("*").order("created_at", { ascending: false });
+      } else {
+        planQuery = supabase.from("onboarding_plans").select("*").eq("rep_id", user!.id);
+      }
 
       const { data: rawPlans, error: pErr } = await planQuery;
       if (pErr) throw pErr;
@@ -135,18 +132,6 @@ export default function Grow() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {isAdmin && (
-            <div className="flex items-center gap-2">
-              <Switch
-                id="grow-view-toggle"
-                checked={viewAsRep}
-                onCheckedChange={handleToggleView}
-              />
-              <Label htmlFor="grow-view-toggle" className="text-sm cursor-pointer">
-                New Klaaryan
-              </Label>
-            </div>
-          )}
           {effectiveAdmin && <CreatePlanDialog />}
         </div>
       </div>

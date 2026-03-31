@@ -2,13 +2,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
@@ -39,15 +38,8 @@ export default function Learn() {
   const [progressLabel, setProgressLabel] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
-  // viewAsRep in sessionStorage (not localStorage) — resets on tab close
-  const [viewAsRep, setViewAsRep] = useState(() => {
-    return sessionStorage.getItem("viewAsRep") === "true";
-  });
-
-  const handleViewAsRepChange = (val: boolean) => {
-    setViewAsRep(val);
-    sessionStorage.setItem("viewAsRep", String(val));
-  };
+  const { isImpersonating, impersonating } = useImpersonation();
+  const viewAsRep = isImpersonating;
   const activeJobId = useRef<string | null>(null);
 
   const { data: modules, isLoading, refetch } = useQuery({
@@ -433,7 +425,7 @@ export default function Learn() {
 
   // Rep view
   if (!isAdmin || viewAsRep) {
-    const firstName = profile?.full_name?.split(" ")[0] || "utente";
+    const firstName = (isImpersonating ? impersonating?.full_name : profile?.full_name)?.split(" ")[0] || "utente";
 
     const globalCompleted = publishedModules.filter(m => completions?.some(c => c.module_id === m.id)).length;
     const globalPct = publishedModules.length > 0 ? Math.round((globalCompleted / publishedModules.length) * 100) : 0;
@@ -448,12 +440,6 @@ export default function Learn() {
     if (repCollections.length === 0 && !isLoading) {
       return (
         <div className="space-y-6">
-          {isAdmin && (
-            <div className="flex items-center gap-3">
-              <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
-              <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">New Klaaryan</Label>
-            </div>
-          )}
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
             <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
               <BookOpen className="h-6 w-6 text-muted-foreground" />
@@ -469,12 +455,6 @@ export default function Learn() {
 
     return (
       <div className="space-y-8 max-w-3xl mx-auto">
-        {isAdmin && (
-          <div className="flex items-center gap-3">
-            <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
-            <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">New Klaaryan</Label>
-          </div>
-        )}
 
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
@@ -590,10 +570,6 @@ export default function Learn() {
             <p className="text-sm text-muted-foreground mt-1">
               L'AI analizza la Knowledge Base e propone la collection. Tu approvi.
             </p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Switch id="view-toggle-admin" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
-            <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">New Klaaryan</Label>
           </div>
         </div>
       </div>
