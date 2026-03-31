@@ -8,7 +8,7 @@ import { Plus, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-const DEPARTMENTS = ["Vendite", "CS", "Operations", "Management", "Common Knowledge"];
+import { TEAMS } from "@/lib/constants";
 
 interface InviteDialogProps {
   onInvited: () => void;

@@ -119,7 +119,7 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
           <TableRow>
             <TableHead>Nome</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Reparto</TableHead>
+            <TableHead>Team</TableHead>
             <TableHead>Ruolo lavorativo</TableHead>
             <TableHead>Ruolo</TableHead>
             <TableHead>Ultima attività</TableHead>
