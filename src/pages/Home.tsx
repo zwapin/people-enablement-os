@@ -217,13 +217,13 @@ export default function Home() {
 
   const fadeUp = {
     hidden: { opacity: 0, y: 18 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: "easeOut" } },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.25, 0.1, 0.25, 1] as const } },
   };
 
   const pulse = {
     animate: {
       scale: [1, 1.06, 1],
-      transition: { duration: 2.2, repeat: Infinity, ease: "easeInOut" },
+      transition: { duration: 2.2, repeat: Infinity, ease: [0.4, 0, 0.6, 1] as const },
     },
   };
 
