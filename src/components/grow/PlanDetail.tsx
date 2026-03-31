@@ -114,9 +114,11 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, onBa
     <div className="space-y-6 max-w-4xl">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="h-4 w-4" />
-        </Button>
+        {onBack && (
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        )}
         <div className="flex-1">
           <h2 className="text-xl font-bold text-foreground">
             {repName ? `${repName} · Piano 90 Giorni` : "Il tuo Piano di Onboarding"}
