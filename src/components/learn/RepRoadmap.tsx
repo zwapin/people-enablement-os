@@ -68,12 +68,7 @@ export default function RepRoadmap({ modules, completions }: RepRoadmapProps) {
                     )}
                   </div>
                   <div className="min-w-0 flex-1 space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {String(idx + 1).padStart(2, "0")}
-                      </span>
-                      <h3 className="font-medium text-foreground truncate">{mod.title}</h3>
-                    </div>
+                    <h3 className="font-medium text-foreground truncate">{mod.title}</h3>
                     {mod.summary && (
                       <p className="text-sm text-muted-foreground line-clamp-1">{mod.summary}</p>
                     )}
