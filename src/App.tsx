@@ -94,6 +94,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ErrorBoundary>
+          </ImpersonationProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

@@ -79,9 +79,65 @@ function AppSidebarContent() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-sidebar-border p-4">
+      <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
+        {isAdmin && !collapsed && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Switch
+                id="impersonation-toggle"
+                checked={isImpersonating}
+                onCheckedChange={(checked) => {
+                  if (!checked) {
+                    stopImpersonating();
+                  } else if (repProfiles.length > 0) {
+                    startImpersonating(repProfiles[0]);
+                  }
+                }}
+              />
+              <Label htmlFor="impersonation-toggle" className="text-xs text-sidebar-foreground/70 cursor-pointer">
+                New Klaaryan
+              </Label>
+            </div>
+            {isImpersonating && (
+              <Select
+                value={impersonating?.user_id ?? ""}
+                onValueChange={(userId) => {
+                  const p = repProfiles.find((r) => r.user_id === userId);
+                  if (p) startImpersonating(p);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-foreground">
+                  <SelectValue placeholder="Seleziona utente" />
+                </SelectTrigger>
+                <SelectContent>
+                  {repProfiles.map((p) => (
+                    <SelectItem key={p.user_id} value={p.user_id}>
+                      {p.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+        {isAdmin && collapsed && (
+          <button
+            onClick={() => {
+              if (isImpersonating) stopImpersonating();
+              else if (repProfiles.length > 0) startImpersonating(repProfiles[0]);
+            }}
+            className={`flex items-center justify-center w-8 h-8 rounded transition-colors ${
+              isImpersonating
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/50 hover:text-sidebar-foreground"
+            }`}
+            title="New Klaaryan"
+          >
+            <UserCheck className="h-4 w-4" />
+          </button>
+        )}
         {!collapsed && profile && (
-          <div className="mb-3 space-y-1">
+          <div className="space-y-1">
             <p className="text-sm font-medium text-sidebar-foreground truncate">
               {profile.full_name || profile.email}
             </p>
