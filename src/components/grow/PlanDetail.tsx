@@ -14,6 +14,22 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   ArrowLeft,
   BookOpen,
   Users,
@@ -26,12 +42,13 @@ import {
   Plus,
   Save,
   Trash2,
+  GripVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
 import PlanCanvas from "./PlanCanvas";
 
-type Task = Tables<"onboarding_tasks">;
+type Task = Tables<"onboarding_tasks"> & { parent_task_id?: string | null };
 type Milestone = Tables<"onboarding_milestones"> & { tasks: Task[] };
 type Plan = Tables<"onboarding_plans"> & { milestones: Milestone[] };
 
@@ -67,27 +84,123 @@ interface PlanDetailProps {
   onBack?: () => void;
 }
 
-// Deep clone helper
 function clonePlan(plan: Plan): Plan {
   return JSON.parse(JSON.stringify(plan));
+}
+
+/* ── Sortable task row ── */
+function SortableTaskRow({
+  task,
+  isSubtask,
+  isEditable,
+  canToggleTasks,
+  togglePending,
+  onToggle,
+  onTitleChange,
+  onDelete,
+  onAddSubtask,
+}: {
+  task: Task;
+  isSubtask: boolean;
+  isEditable: boolean;
+  canToggleTasks: boolean;
+  togglePending: boolean;
+  onToggle: (taskId: string, completed: boolean) => void;
+  onTitleChange: (taskId: string, title: string) => void;
+  onDelete: (taskId: string) => void;
+  onAddSubtask: (parentTaskId: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    disabled: !isEditable,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 rounded-md px-3 py-2.5 transition-colors ${
+        isSubtask ? "ml-8 border-l-2 border-border pl-3" : ""
+      } ${task.completed ? "bg-muted/30" : "hover:bg-muted/50"}`}
+    >
+      {isEditable && (
+        <button {...attributes} {...listeners} className="cursor-grab touch-none text-muted-foreground hover:text-foreground">
+          <GripVertical className="h-3.5 w-3.5" />
+        </button>
+      )}
+      <Checkbox
+        checked={task.completed}
+        disabled={isEditable || !canToggleTasks || togglePending}
+        onCheckedChange={(checked) => onToggle(task.id, !!checked)}
+      />
+      <div className="flex-1 min-w-0">
+        {isEditable ? (
+          <Input
+            value={task.title}
+            onChange={(e) => onTitleChange(task.id, e.target.value)}
+            className="h-7 text-sm border-none bg-transparent px-0 focus-visible:ring-1"
+          />
+        ) : (
+          <p className={`text-sm ${task.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
+            {task.title}
+          </p>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {TASK_TYPE_ICONS[task.type]}
+        <span className="text-[10px] text-muted-foreground">{TASK_TYPE_LABELS[task.type] || task.type}</span>
+        {isEditable && !isSubtask && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-primary"
+            title="Aggiungi subtask"
+            onClick={() => onAddSubtask(task.id)}
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        )}
+        {isEditable && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-destructive"
+            onClick={() => onDelete(task.id)}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function PlanDetail({ plan, repName, canToggleTasks = false, isEditable = false, onBack }: PlanDetailProps) {
   const queryClient = useQueryClient();
   const [openMilestones, setOpenMilestones] = useState<Record<string, boolean>>({
-    "30d": true,
-    "60d": true,
-    "90d": true,
+    "30d": true, "60d": true, "90d": true,
   });
 
-  // Editing state
   const [editedPlan, setEditedPlan] = useState<Plan>(() => clonePlan(plan));
   const [hasChanges, setHasChanges] = useState(false);
   const [newFocusInputs, setNewFocusInputs] = useState<Record<string, string>>({});
   const [newKpiInputs, setNewKpiInputs] = useState<Record<string, string>>({});
   const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
+  const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-  // Sync when plan prop changes (after save/refetch)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
   useEffect(() => {
     setEditedPlan(clonePlan(plan));
     setHasChanges(false);
@@ -96,19 +209,15 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
 
   const markChanged = useCallback(() => setHasChanges(true), []);
 
-  // --- Plan-level field setters ---
   const setPlanField = useCallback((field: keyof Plan, value: string) => {
     setEditedPlan(prev => ({ ...prev, [field]: value }));
     markChanged();
   }, [markChanged]);
 
-  // --- Milestone field setters ---
   const setMilestoneField = useCallback((milestoneId: string, field: string, value: unknown) => {
     setEditedPlan(prev => ({
       ...prev,
-      milestones: prev.milestones.map(m =>
-        m.id === milestoneId ? { ...m, [field]: value } : m
-      ),
+      milestones: prev.milestones.map(m => m.id === milestoneId ? { ...m, [field]: value } : m),
     }));
     markChanged();
   }, [markChanged]);
@@ -140,96 +249,153 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     markChanged();
   }, [markChanged]);
 
-  // --- Task setters ---
-  const setTaskTitle = useCallback((milestoneId: string, taskId: string, title: string) => {
+  // --- Task helpers ---
+  const setTaskTitle = useCallback((taskId: string, title: string) => {
     setEditedPlan(prev => ({
       ...prev,
-      milestones: prev.milestones.map(m =>
-        m.id === milestoneId
-          ? { ...m, tasks: m.tasks.map(t => t.id === taskId ? { ...t, title } : t) }
-          : m
-      ),
+      milestones: prev.milestones.map(m => ({
+        ...m,
+        tasks: m.tasks.map(t => t.id === taskId ? { ...t, title } : t),
+      })),
     }));
     markChanged();
   }, [markChanged]);
 
-  const deleteTask = useCallback((milestoneId: string, taskId: string) => {
+  const deleteTask = useCallback((taskId: string) => {
     setEditedPlan(prev => ({
       ...prev,
-      milestones: prev.milestones.map(m =>
-        m.id === milestoneId
-          ? { ...m, tasks: m.tasks.filter(t => t.id !== taskId) }
-          : m
-      ),
+      milestones: prev.milestones.map(m => ({
+        ...m,
+        tasks: m.tasks.filter(t => t.id !== taskId && (t as Task).parent_task_id !== taskId),
+      })),
     }));
-    setDeletedTaskIds(prev => [...prev, taskId]);
+    // Also mark children for deletion
+    const allTasks = editedPlan.milestones.flatMap(m => m.tasks);
+    const childIds = allTasks.filter(t => (t as Task).parent_task_id === taskId).map(t => t.id);
+    setDeletedTaskIds(prev => [...prev, taskId, ...childIds]);
+    markChanged();
+  }, [markChanged, editedPlan]);
+
+  const setTaskParent = useCallback((taskId: string, parentTaskId: string | null) => {
+    setEditedPlan(prev => ({
+      ...prev,
+      milestones: prev.milestones.map(m => ({
+        ...m,
+        tasks: m.tasks.map(t => t.id === taskId ? { ...t, parent_task_id: parentTaskId } : t),
+      })),
+    }));
     markChanged();
   }, [markChanged]);
 
-  // --- Toggle task (rep view) ---
-  const toggleTask = useMutation({
-    mutationFn: async ({ taskId, completed }: { taskId: string; completed: boolean }) => {
-      const { error } = await supabase
-        .from("onboarding_tasks")
-        .update({
-          completed,
-          completed_at: completed ? new Date().toISOString() : null,
-        })
-        .eq("id", taskId);
+  // --- Inline add task ---
+  const addTaskInline = useMutation({
+    mutationFn: async ({ milestoneId, title, parentTaskId }: { milestoneId: string; title: string; parentTaskId?: string }) => {
+      const { data, error } = await supabase.from("onboarding_tasks").insert({
+        milestone_id: milestoneId,
+        title,
+        type: "activity" as const,
+        parent_task_id: parentTaskId || null,
+      }).select().single();
       if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["onboarding-plans"] });
     },
-    onError: () => {
-      toast.error("Errore nell'aggiornamento del task");
-    },
+    onError: () => toast.error("Errore nell'aggiunta del task"),
   });
 
-  // --- Save all changes ---
+  const handleAddTask = useCallback((milestoneId: string, parentTaskId?: string) => {
+    const key = parentTaskId || milestoneId;
+    const title = newTaskInputs[key]?.trim();
+    if (!title) return;
+    addTaskInline.mutate({ milestoneId, title, parentTaskId });
+    setNewTaskInputs(prev => ({ ...prev, [key]: "" }));
+  }, [newTaskInputs, addTaskInline]);
+
+  // --- Subtask prompt state ---
+  const [subtaskPromptParentId, setSubtaskPromptParentId] = useState<string | null>(null);
+
+  const handleAddSubtaskPrompt = useCallback((parentTaskId: string) => {
+    setSubtaskPromptParentId(parentTaskId);
+  }, []);
+
+  // --- Toggle task ---
+  const toggleTask = useMutation({
+    mutationFn: async ({ taskId, completed }: { taskId: string; completed: boolean }) => {
+      const { error } = await supabase
+        .from("onboarding_tasks")
+        .update({ completed, completed_at: completed ? new Date().toISOString() : null })
+        .eq("id", taskId);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["onboarding-plans"] }),
+    onError: () => toast.error("Errore nell'aggiornamento del task"),
+  });
+
+  // --- DnD handlers ---
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveDragId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Find active task
+    const allTasks = editedPlan.milestones.flatMap(m => m.tasks);
+    const activeTask = allTasks.find(t => t.id === activeId);
+    const overTask = allTasks.find(t => t.id === overId);
+
+    if (!activeTask || !overTask) return;
+
+    // Don't nest a subtask under another subtask
+    if ((overTask as Task).parent_task_id) return;
+
+    // If dropping on a root task, make it a subtask
+    if (!(activeTask as Task).parent_task_id || (activeTask as Task).parent_task_id !== overId) {
+      setTaskParent(activeId, overId);
+    }
+  }, [editedPlan, setTaskParent]);
+
+  // --- Save ---
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // 1. Update plan
       const { error: planErr } = await supabase
         .from("onboarding_plans")
-        .update({
-          role_template: editedPlan.role_template,
-          premessa: editedPlan.premessa,
-          output_atteso: editedPlan.output_atteso,
-        })
+        .update({ role_template: editedPlan.role_template, premessa: editedPlan.premessa, output_atteso: editedPlan.output_atteso })
         .eq("id", editedPlan.id);
       if (planErr) throw planErr;
 
-      // 2. Update milestones
       for (const m of editedPlan.milestones) {
         const { error: mErr } = await supabase
           .from("onboarding_milestones")
-          .update({
-            obiettivo: m.obiettivo,
-            focus: m.focus,
-            kpis: m.kpis,
-          })
+          .update({ obiettivo: m.obiettivo, focus: m.focus, kpis: m.kpis })
           .eq("id", m.id);
         if (mErr) throw mErr;
       }
 
-      // 3. Update tasks
       for (const m of editedPlan.milestones) {
         for (const t of m.tasks) {
           const { error: tErr } = await supabase
             .from("onboarding_tasks")
-            .update({ title: t.title, section: t.section, order_index: t.order_index })
+            .update({
+              title: t.title,
+              section: t.section,
+              order_index: t.order_index,
+              parent_task_id: (t as Task).parent_task_id || null,
+            })
             .eq("id", t.id);
           if (tErr) throw tErr;
         }
       }
 
-      // 4. Delete removed tasks
       if (deletedTaskIds.length > 0) {
-        const { error: dErr } = await supabase
-          .from("onboarding_tasks")
-          .delete()
-          .in("id", deletedTaskIds);
+        const { error: dErr } = await supabase.from("onboarding_tasks").delete().in("id", deletedTaskIds);
         if (dErr) throw dErr;
       }
     },
@@ -239,19 +405,13 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
       setDeletedTaskIds([]);
       queryClient.invalidateQueries({ queryKey: ["onboarding-plans"] });
     },
-    onError: () => {
-      toast.error("Errore nel salvataggio");
-    },
+    onError: () => toast.error("Errore nel salvataggio"),
   });
 
-  // Use editedPlan for rendering when editable, else original plan
   const displayPlan = isEditable ? editedPlan : plan;
-
-  const allTasks = displayPlan.milestones.flatMap((m) => m.tasks);
-  const completedCount = allTasks.filter((t) => t.completed).length;
-  const progressPct = allTasks.length > 0
-    ? Math.round((completedCount / allTasks.length) * 100)
-    : 0;
+  const allTasks = displayPlan.milestones.flatMap(m => m.tasks);
+  const completedCount = allTasks.filter(t => t.completed).length;
+  const progressPct = allTasks.length > 0 ? Math.round((completedCount / allTasks.length) * 100) : 0;
 
   const orderedMilestones = [...displayPlan.milestones].sort((a, b) => {
     const order = { "30d": 0, "60d": 1, "90d": 2 };
@@ -259,25 +419,34 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   });
 
   const groupTasksBySection = (tasks: Task[]) => {
-    const sections = new Map<string, Task[]>();
-    const sorted = [...tasks].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
+    const rootTasks = tasks.filter(t => !(t as Task).parent_task_id);
+    const childMap = new Map<string, Task[]>();
+    for (const t of tasks) {
+      const pid = (t as Task).parent_task_id;
+      if (pid) {
+        const arr = childMap.get(pid) || [];
+        arr.push(t);
+        childMap.set(pid, arr);
+      }
+    }
+
+    const sections = new Map<string, { task: Task; children: Task[] }[]>();
+    const sorted = [...rootTasks].sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
     for (const t of sorted) {
       const section = t.section || "Attività generali";
       const arr = sections.get(section) || [];
-      arr.push(t);
+      arr.push({ task: t, children: (childMap.get(t.id) || []).sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0)) });
       sections.set(section, arr);
     }
     return sections;
   };
 
+  // Find the active drag task for overlay
+  const activeDragTask = activeDragId ? allTasks.find(t => t.id === activeDragId) : null;
+
   // --- Editable list component ---
   const EditableList = ({ milestoneId, field, items, label, icon, colorClass }: {
-    milestoneId: string;
-    field: "focus" | "kpis";
-    items: string[];
-    label: string;
-    icon: React.ReactNode;
-    colorClass?: string;
+    milestoneId: string; field: "focus" | "kpis"; items: string[]; label: string; icon: React.ReactNode; colorClass?: string;
   }) => {
     const inputKey = `${milestoneId}-${field}`;
     const inputVal = (field === "focus" ? newFocusInputs : newKpiInputs)[inputKey] || "";
@@ -286,19 +455,14 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     return (
       <div className={colorClass ? `rounded-lg ${colorClass} p-3 space-y-2` : "space-y-2"}>
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-          {icon}
-          {label}
+          {icon} {label}
         </p>
         <div className="flex flex-wrap gap-1.5">
           {items.map((item, i) => (
             <Badge key={i} variant="secondary" className="gap-1 pr-1">
               {item}
               {isEditable && (
-                <button
-                  type="button"
-                  onClick={() => removeFromList(milestoneId, field, i)}
-                  className="ml-0.5 hover:text-destructive"
-                >
+                <button type="button" onClick={() => removeFromList(milestoneId, field, i)} className="ml-0.5 hover:text-destructive">
                   <X className="h-3 w-3" />
                 </button>
               )}
@@ -312,24 +476,9 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
               onChange={(e) => setInput(prev => ({ ...prev, [inputKey]: e.target.value }))}
               placeholder="Aggiungi..."
               className="h-7 text-xs"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addToList(milestoneId, field, inputVal);
-                  setInput(prev => ({ ...prev, [inputKey]: "" }));
-                }
-              }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addToList(milestoneId, field, inputVal); setInput(prev => ({ ...prev, [inputKey]: "" })); } }}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0"
-              onClick={() => {
-                addToList(milestoneId, field, inputVal);
-                setInput(prev => ({ ...prev, [inputKey]: "" }));
-              }}
-            >
+            <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => { addToList(milestoneId, field, inputVal); setInput(prev => ({ ...prev, [inputKey]: "" })); }}>
               <Plus className="h-3.5 w-3.5" />
             </Button>
           </div>
@@ -377,15 +526,9 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
           </CardHeader>
           <CardContent>
             {isEditable ? (
-              <PlanCanvas
-                content={editedPlan.premessa || ""}
-                onChange={(md) => setPlanField("premessa", md)}
-                placeholder="Descrivi il contesto del ruolo..."
-              />
+              <PlanCanvas content={editedPlan.premessa || ""} onChange={(md) => setPlanField("premessa", md)} placeholder="Descrivi il contesto del ruolo..." />
             ) : (
-              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
-                {displayPlan.premessa}
-              </p>
+              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{displayPlan.premessa}</p>
             )}
           </CardContent>
         </Card>
@@ -396,183 +539,186 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         <CardContent className="pt-4 space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Progresso complessivo</span>
-            <span className="font-mono text-foreground">
-              {completedCount}/{allTasks.length} · {progressPct}%
-            </span>
+            <span className="font-mono text-foreground">{completedCount}/{allTasks.length} · {progressPct}%</span>
           </div>
           <Progress value={progressPct} className="h-2" />
         </CardContent>
       </Card>
 
       {/* Milestones */}
-      {orderedMilestones.map((milestone) => {
-        const mDone = milestone.tasks.filter((t) => t.completed).length;
-        const mTotal = milestone.tasks.length;
-        const mPct = mTotal > 0 ? Math.round((mDone / mTotal) * 100) : 0;
-        const kpis = Array.isArray(milestone.kpis) ? milestone.kpis as string[] : [];
-        const focus = Array.isArray(milestone.focus) ? milestone.focus as string[] : [];
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        {orderedMilestones.map((milestone) => {
+          const mDone = milestone.tasks.filter(t => t.completed).length;
+          const mTotal = milestone.tasks.length;
+          const mPct = mTotal > 0 ? Math.round((mDone / mTotal) * 100) : 0;
+          const kpis = Array.isArray(milestone.kpis) ? milestone.kpis as string[] : [];
+          const focus = Array.isArray(milestone.focus) ? milestone.focus as string[] : [];
+          const sections = groupTasksBySection(milestone.tasks);
+          const isOpen = openMilestones[milestone.label] ?? true;
+          const allTaskIds = milestone.tasks.map(t => t.id);
 
-        const sections = groupTasksBySection(milestone.tasks);
-        const isOpen = openMilestones[milestone.label] ?? true;
+          return (
+            <Collapsible
+              key={milestone.id}
+              open={isOpen}
+              onOpenChange={(open) => setOpenMilestones(prev => ({ ...prev, [milestone.label]: open }))}
+            >
+              <Card className="border-border overflow-hidden">
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "" : "-rotate-90"}`} />
+                        <div>
+                          <CardTitle className="text-base">{MILESTONE_LABELS[milestone.label] || milestone.label}</CardTitle>
+                          {MILESTONE_SUBTITLES[milestone.label] && (
+                            <p className="text-xs text-muted-foreground mt-0.5">{MILESTONE_SUBTITLES[milestone.label]}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Progress value={mPct} className="h-1.5 w-20" />
+                        <Badge variant="outline" className="text-[10px] font-mono">{mDone}/{mTotal}</Badge>
+                      </div>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
 
-        return (
-          <Collapsible
-            key={milestone.id}
-            open={isOpen}
-            onOpenChange={(open) =>
-              setOpenMilestones((prev) => ({ ...prev, [milestone.label]: open }))
-            }
-          >
-            <Card className="border-border overflow-hidden">
-              <CollapsibleTrigger asChild>
-                <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <ChevronDown
-                        className={`h-4 w-4 text-muted-foreground transition-transform ${
-                          isOpen ? "" : "-rotate-90"
-                        }`}
-                      />
-                      <div>
-                        <CardTitle className="text-base">
-                          {MILESTONE_LABELS[milestone.label] || milestone.label}
-                        </CardTitle>
-                        {MILESTONE_SUBTITLES[milestone.label] && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {MILESTONE_SUBTITLES[milestone.label]}
+                <CollapsibleContent>
+                  <CardContent className="space-y-4 pt-0">
+                    {/* Obiettivo */}
+                    <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
+                      <div className="flex items-start gap-2">
+                        <Target className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Obiettivo</p>
+                          {isEditable ? (
+                            <Textarea
+                              value={milestone.obiettivo || ""}
+                              onChange={(e) => setMilestoneField(milestone.id, "obiettivo", e.target.value)}
+                              placeholder="Obiettivo della fase..."
+                              className="min-h-[40px] text-sm border-none bg-transparent px-0 resize-none focus-visible:ring-1"
+                            />
+                          ) : (
+                            milestone.obiettivo && <p className="text-sm text-foreground">{milestone.obiettivo}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Focus */}
+                    {(isEditable || focus.length > 0) && (
+                      <EditableList milestoneId={milestone.id} field="focus" items={focus} label="Focus" icon={<Crosshair className="h-3.5 w-3.5" />} />
+                    )}
+
+                    {/* Tasks grouped by section with DnD */}
+                    <SortableContext items={allTaskIds} strategy={verticalListSortingStrategy}>
+                      {Array.from(sections.entries()).map(([sectionName, taskEntries]) => (
+                        <div key={sectionName} className="space-y-1">
+                          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border pb-1 mb-2">
+                            {sectionName}
                           </p>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Progress value={mPct} className="h-1.5 w-20" />
-                      <Badge variant="outline" className="text-[10px] font-mono">
-                        {mDone}/{mTotal}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-              </CollapsibleTrigger>
-
-              <CollapsibleContent>
-                <CardContent className="space-y-4 pt-0">
-                  {/* Obiettivo */}
-                  <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
-                    <div className="flex items-start gap-2">
-                      <Target className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <div className="flex-1">
-                        <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Obiettivo</p>
-                        {isEditable ? (
-                          <Textarea
-                            value={milestone.obiettivo || ""}
-                            onChange={(e) => setMilestoneField(milestone.id, "obiettivo", e.target.value)}
-                            placeholder="Obiettivo della fase..."
-                            className="min-h-[40px] text-sm border-none bg-transparent px-0 resize-none focus-visible:ring-1"
-                          />
-                        ) : (
-                          milestone.obiettivo && (
-                            <p className="text-sm text-foreground">{milestone.obiettivo}</p>
-                          )
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Focus */}
-                  {(isEditable || focus.length > 0) && (
-                    <EditableList
-                      milestoneId={milestone.id}
-                      field="focus"
-                      items={focus}
-                      label="Focus"
-                      icon={<Crosshair className="h-3.5 w-3.5" />}
-                    />
-                  )}
-
-                  {/* Tasks grouped by section */}
-                  {Array.from(sections.entries()).map(([sectionName, tasks]) => (
-                    <div key={sectionName} className="space-y-1">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide border-b border-border pb-1 mb-2">
-                        {sectionName}
-                      </p>
-                      {tasks.map((task) => (
-                        <div
-                          key={task.id}
-                          className={`flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors ${
-                            task.completed ? "bg-muted/30" : "hover:bg-muted/50"
-                          }`}
-                        >
-                          <Checkbox
-                            checked={task.completed}
-                            disabled={isEditable || !canToggleTasks || toggleTask.isPending}
-                            onCheckedChange={(checked) =>
-                              toggleTask.mutate({ taskId: task.id, completed: !!checked })
-                            }
-                          />
-                          <div className="flex-1 min-w-0">
-                            {isEditable ? (
-                              <Input
-                                value={task.title}
-                                onChange={(e) => setTaskTitle(milestone.id, task.id, e.target.value)}
-                                className="h-7 text-sm border-none bg-transparent px-0 focus-visible:ring-1"
+                          {taskEntries.map(({ task, children }) => (
+                            <div key={task.id}>
+                              <SortableTaskRow
+                                task={task}
+                                isSubtask={false}
+                                isEditable={isEditable}
+                                canToggleTasks={canToggleTasks}
+                                togglePending={toggleTask.isPending}
+                                onToggle={(id, c) => toggleTask.mutate({ taskId: id, completed: c })}
+                                onTitleChange={setTaskTitle}
+                                onDelete={deleteTask}
+                                onAddSubtask={handleAddSubtaskPrompt}
                               />
-                            ) : (
-                              <p
-                                className={`text-sm ${
-                                  task.completed
-                                    ? "text-muted-foreground line-through"
-                                    : "text-foreground"
-                                }`}
-                              >
-                                {task.title}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {TASK_TYPE_ICONS[task.type]}
-                            <span className="text-[10px] text-muted-foreground">
-                              {TASK_TYPE_LABELS[task.type] || task.type}
-                            </span>
-                            {isEditable && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-6 w-6 text-muted-foreground hover:text-destructive"
-                                onClick={() => deleteTask(milestone.id, task.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            )}
-                          </div>
+                              {/* Subtasks */}
+                              {children.map(child => (
+                                <SortableTaskRow
+                                  key={child.id}
+                                  task={child}
+                                  isSubtask
+                                  isEditable={isEditable}
+                                  canToggleTasks={canToggleTasks}
+                                  togglePending={toggleTask.isPending}
+                                  onToggle={(id, c) => toggleTask.mutate({ taskId: id, completed: c })}
+                                  onTitleChange={setTaskTitle}
+                                  onDelete={deleteTask}
+                                  onAddSubtask={handleAddSubtaskPrompt}
+                                />
+                              ))}
+                              {/* Inline subtask input */}
+                              {isEditable && subtaskPromptParentId === task.id && (
+                                <div className="ml-8 border-l-2 border-border pl-3 flex gap-1.5 py-1.5">
+                                  <Input
+                                    autoFocus
+                                    value={newTaskInputs[task.id] || ""}
+                                    onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                    placeholder="Nuova subtask..."
+                                    className="h-7 text-xs flex-1"
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") { e.preventDefault(); handleAddTask(milestone.id, task.id); setSubtaskPromptParentId(null); }
+                                      if (e.key === "Escape") setSubtaskPromptParentId(null);
+                                    }}
+                                  />
+                                  <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => { handleAddTask(milestone.id, task.id); setSubtaskPromptParentId(null); }}>
+                                    <Plus className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       ))}
-                    </div>
-                  ))}
+                    </SortableContext>
 
-                  {milestone.tasks.length === 0 && (
-                    <p className="text-sm text-muted-foreground py-4 text-center">
-                      Nessun task per questo milestone
-                    </p>
-                  )}
+                    {milestone.tasks.length === 0 && (
+                      <p className="text-sm text-muted-foreground py-4 text-center">Nessun task per questo milestone</p>
+                    )}
 
-                  {/* KPIs */}
-                  {(isEditable || kpis.length > 0) && (
-                    <EditableList
-                      milestoneId={milestone.id}
-                      field="kpis"
-                      items={kpis}
-                      label="Milestone di fase"
-                      icon={<Target className="h-3.5 w-3.5" />}
-                      colorClass="bg-success/5 border border-success/10"
-                    />
-                  )}
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
-        );
-      })}
+                    {/* Inline add task */}
+                    {isEditable && (
+                      <div className="flex gap-1.5 pt-2 border-t border-border">
+                        <Input
+                          value={newTaskInputs[milestone.id] || ""}
+                          onChange={(e) => setNewTaskInputs(prev => ({ ...prev, [milestone.id]: e.target.value }))}
+                          placeholder="Aggiungi task..."
+                          className="h-8 text-sm flex-1"
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTask(milestone.id); } }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1"
+                          disabled={!newTaskInputs[milestone.id]?.trim() || addTaskInline.isPending}
+                          onClick={() => handleAddTask(milestone.id)}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Task
+                        </Button>
+                      </div>
+                    )}
+
+                    {/* KPIs */}
+                    {(isEditable || kpis.length > 0) && (
+                      <EditableList milestoneId={milestone.id} field="kpis" items={kpis} label="Milestone di fase" icon={<Target className="h-3.5 w-3.5" />} colorClass="bg-success/5 border border-success/10" />
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          );
+        })}
+
+        <DragOverlay>
+          {activeDragTask && (
+            <div className="flex items-center gap-2 rounded-md px-3 py-2.5 bg-card border border-border shadow-lg">
+              <GripVertical className="h-3.5 w-3.5 text-muted-foreground" />
+              <p className="text-sm">{activeDragTask.title}</p>
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
 
       {/* Output Atteso */}
       {(isEditable || displayPlan.output_atteso) && (
@@ -585,15 +731,9 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
           </CardHeader>
           <CardContent>
             {isEditable ? (
-              <PlanCanvas
-                content={editedPlan.output_atteso || ""}
-                onChange={(md) => setPlanField("output_atteso", md)}
-                placeholder="Descrivi l'output atteso..."
-              />
+              <PlanCanvas content={editedPlan.output_atteso || ""} onChange={(md) => setPlanField("output_atteso", md)} placeholder="Descrivi l'output atteso..." />
             ) : (
-              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">
-                {displayPlan.output_atteso}
-              </p>
+              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{displayPlan.output_atteso}</p>
             )}
           </CardContent>
         </Card>
@@ -602,11 +742,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
       {/* Save button */}
       {isEditable && hasChanges && (
         <div className="sticky bottom-4 flex justify-end z-10">
-          <Button
-            onClick={() => saveMutation.mutate()}
-            disabled={saveMutation.isPending}
-            className="shadow-lg gap-2"
-          >
+          <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending} className="shadow-lg gap-2">
             <Save className="h-4 w-4" />
             {saveMutation.isPending ? "Salvataggio..." : "Salva modifiche"}
           </Button>

@@ -7,7 +7,6 @@ import { TrendingUp, Loader2 } from "lucide-react";
 import PlanCard from "@/components/grow/PlanCard";
 import PlanDetail from "@/components/grow/PlanDetail";
 import CreatePlanDialog from "@/components/grow/CreatePlanDialog";
-import AddTaskDialog from "@/components/grow/AddTaskDialog";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Task = Tables<"onboarding_tasks">;
