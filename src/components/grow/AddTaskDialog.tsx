@@ -25,9 +25,9 @@ import type { Tables } from "@/integrations/supabase/types";
 type Milestone = Tables<"onboarding_milestones">;
 
 const MILESTONE_LABELS: Record<string, string> = {
-  "30d": "30 Giorni",
-  "60d": "60 Giorni",
-  "90d": "90 Giorni",
+  "30d": "Fase 1 — 30 Giorni",
+  "60d": "Fase 2 — 60 Giorni",
+  "90d": "Fase 3 — 90 Giorni",
 };
 
 const TASK_TYPES = [
@@ -46,6 +46,7 @@ export default function AddTaskDialog({ milestones }: AddTaskDialogProps) {
   const [milestoneId, setMilestoneId] = useState("");
   const [title, setTitle] = useState("");
   const [type, setType] = useState<string>("activity");
+  const [section, setSection] = useState("");
 
   const addTask = useMutation({
     mutationFn: async () => {
@@ -53,6 +54,7 @@ export default function AddTaskDialog({ milestones }: AddTaskDialogProps) {
         milestone_id: milestoneId,
         title,
         type: type as "activity" | "module_link" | "meeting",
+        section: section || null,
       });
       if (error) throw error;
     },
@@ -63,6 +65,7 @@ export default function AddTaskDialog({ milestones }: AddTaskDialogProps) {
       setTitle("");
       setMilestoneId("");
       setType("activity");
+      setSection("");
     },
     onError: () => toast.error("Errore nell'aggiunta del task"),
   });
@@ -104,9 +107,18 @@ export default function AddTaskDialog({ milestones }: AddTaskDialogProps) {
           <div className="space-y-2">
             <Label>Titolo</Label>
             <Input
-              placeholder="es. Completare il modulo di onboarding..."
+              placeholder="es. Shadowing su 5 deal attivi..."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Sezione / Area (opzionale)</Label>
+            <Input
+              placeholder="es. Integrazione SDR, Discovery avanzata..."
+              value={section}
+              onChange={(e) => setSection(e.target.value)}
             />
           </div>
 
