@@ -1,28 +1,25 @@
 
 
-# Piano: Auto-aprire il piano in vista utente su Crescita
+# Piano: Abilitare il toggle New Klaaryan per l'utente corrente
 
-Quando `isImpersonating` è attivo e i piani sono caricati, se c'è esattamente un piano (o comunque piani disponibili), selezionare automaticamente il primo piano senza passare dalla griglia di card.
+## Problema
 
-## Modifica: `src/pages/Grow.tsx`
+Il toggle non funziona perché la query per caricare i profili rep restituisce un array vuoto. La causa: le policy RLS sulla tabella `profiles` usano la funzione `has_role()` che controlla la tabella `user_roles`. L'utente Manu (`6c9a0a45...`) ha `role: admin` nella tabella `profiles`, ma nella tabella `user_roles` ha solo il ruolo `rep`. Quindi la policy "Admins can view all profiles" non si attiva e Manu può vedere solo il proprio profilo.
 
-Aggiungere un `useEffect` che, quando `isImpersonating` è true e i piani sono stati caricati, imposta automaticamente `selectedPlanId` al primo piano disponibile. Quando l'impersonation viene disattivata, resettare `selectedPlanId` a `null`.
+## Soluzione
 
-```typescript
-useEffect(() => {
-  if (isImpersonating && plans?.length) {
-    setSelectedPlanId(plans[0].id);
-  }
-  if (!isImpersonating) {
-    setSelectedPlanId(null);
-  }
-}, [isImpersonating, plans]);
+Aggiungere una riga nella tabella `user_roles` per dare il ruolo `admin` all'utente Manu:
+
+```sql
+INSERT INTO user_roles (user_id, role)
+VALUES ('6c9a0a45-ca83-4dd9-a5d1-948ac0606ff9', 'admin')
+ON CONFLICT (user_id, role) DO NOTHING;
 ```
 
-Inoltre, nella vista detail quando `viewAsRep` è attivo, nascondere il pulsante "Indietro" (o disabilitarlo) dato che non ha senso tornare alla griglia se l'utente vede solo il suo piano.
+Questo allineerà il ruolo in `user_roles` con quello già presente in `profiles`, e le policy RLS consentiranno a Manu di vedere tutti i profili, inclusi i rep per il selettore di impersonazione.
 
 ### File coinvolti
-| File | Modifica |
+| Tipo | Dettaglio |
 |------|----------|
-| `src/pages/Grow.tsx` | `useEffect` per auto-select piano + nascondere back button in vista rep |
+| Migration SQL | INSERT ruolo admin in `user_roles` per Manu |
 
