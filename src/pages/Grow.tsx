@@ -20,6 +20,7 @@ export default function Grow() {
   const { isImpersonating, impersonating } = useImpersonation();
   const viewAsRep = isImpersonating;
   const effectiveAdmin = isAdmin && !viewAsRep;
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
   // Fetch profiles for rep names (admin only)
   const { data: profiles } = useQuery({
