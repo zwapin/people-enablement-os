@@ -39,7 +39,9 @@ function AppSidebarContent() {
   const collapsed = state === "collapsed";
   const isAdmin = profile?.role === "admin";
   const { impersonating, isImpersonating, startImpersonating, stopImpersonating, repProfiles } = useImpersonation();
-  const allItems = isAdmin ? [...navItems, ...adminItems] : navItems;
+  const allItems = isAdmin
+    ? [...navItems.filter(i => !(i as any).repOnly), ...adminItems]
+    : [...navItems, ...adminItems.filter(() => false)];
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
