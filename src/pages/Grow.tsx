@@ -127,18 +127,6 @@ export default function Grow() {
           </p>
         </div>
         <div className="flex items-center gap-4">
-          {isAdmin && (
-            <div className="flex items-center gap-2">
-              <Switch
-                id="grow-view-toggle"
-                checked={viewAsRep}
-                onCheckedChange={handleToggleView}
-              />
-              <Label htmlFor="grow-view-toggle" className="text-sm cursor-pointer">
-                New Klaaryan
-              </Label>
-            </div>
-          )}
           {effectiveAdmin && <CreatePlanDialog />}
         </div>
       </div>

@@ -571,10 +571,6 @@ export default function Learn() {
               L'AI analizza la Knowledge Base e propone la collection. Tu approvi.
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Switch id="view-toggle-admin" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
-            <Label htmlFor="view-toggle-admin" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">New Klaaryan</Label>
-          </div>
         </div>
       </div>
 
