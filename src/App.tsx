@@ -16,6 +16,7 @@ import CollectionDetail from "./pages/CollectionDetail";
 import Grow from "./pages/Grow";
 import Perform from "./pages/Perform";
 import People from "./pages/People";
+import Settings from "./pages/Settings";
 
 import NotFound from "./pages/NotFound";
 
