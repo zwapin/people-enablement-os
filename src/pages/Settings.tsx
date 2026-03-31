@@ -5,15 +5,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Trash2, GripVertical, ArrowUp, ArrowDown, Pencil, X, Check } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-const ROLE_OPTIONS = ["AE", "SDR", "CSM", "SE", "Manager"];
+const DEFAULT_ROLES = ["AE", "SDR", "CSM", "SE", "Manager"];
 
 export default function Settings() {
   const queryClient = useQueryClient();
   const [activeRole, setActiveRole] = useState("AE");
   const [newTitle, setNewTitle] = useState("");
+  const [newRoleName, setNewRoleName] = useState("");
+  const [editingRole, setEditingRole] = useState<string | null>(null);
+  const [editingRoleName, setEditingRoleName] = useState("");
+  const [roleToDelete, setRoleToDelete] = useState<string | null>(null);
+
+  // Fetch all distinct roles from templates
+  const { data: roles = DEFAULT_ROLES } = useQuery({
+    queryKey: ["template-roles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("onboarding_key_activity_templates")
+        .select("role");
+      if (error) throw error;
+      const dbRoles = [...new Set((data || []).map((r) => r.role))].sort();
+      // Merge with defaults to ensure all show up
+      const allRoles = [...new Set([...DEFAULT_ROLES, ...dbRoles])];
+      return allRoles;
+    },
+  });
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ["key-activity-templates", activeRole],
@@ -36,7 +65,10 @@ export default function Settings() {
     },
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["key-activity-templates", activeRole] });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ["key-activity-templates", activeRole] });
+    queryClient.invalidateQueries({ queryKey: ["template-roles"] });
+  };
 
   const addTemplate = useMutation({
     mutationFn: async (title: string) => {
@@ -82,6 +114,59 @@ export default function Settings() {
     invalidate();
   };
 
+  // Role management
+  const renameRole = useMutation({
+    mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
+      const { error } = await supabase
+        .from("onboarding_key_activity_templates")
+        .update({ role: newName })
+        .eq("role", oldName);
+      if (error) throw error;
+    },
+    onSuccess: (_, { newName }) => {
+      queryClient.invalidateQueries({ queryKey: ["template-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["key-activity-templates"] });
+      setActiveRole(newName);
+      setEditingRole(null);
+      toast.success("Ruolo rinominato");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteRole = useMutation({
+    mutationFn: async (role: string) => {
+      const { error } = await supabase
+        .from("onboarding_key_activity_templates")
+        .delete()
+        .eq("role", role);
+      if (error) throw error;
+    },
+    onSuccess: (_, role) => {
+      queryClient.invalidateQueries({ queryKey: ["template-roles"] });
+      queryClient.invalidateQueries({ queryKey: ["key-activity-templates"] });
+      if (activeRole === role) {
+        setActiveRole(roles.find((r) => r !== role) || "AE");
+      }
+      setRoleToDelete(null);
+      toast.success("Ruolo e relativi template eliminati");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const addRole = () => {
+    const name = newRoleName.trim().toUpperCase();
+    if (!name) return;
+    if (roles.includes(name)) {
+      toast.error("Questo ruolo esiste già");
+      return;
+    }
+    // Just add the role by switching to it — templates will be empty
+    queryClient.setQueryData(["template-roles"], [...roles, name]);
+    setActiveRole(name);
+    setNewRoleName("");
+    toast.success(`Ruolo ${name} aggiunto`);
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div>
@@ -96,13 +181,84 @@ export default function Settings() {
         </p>
 
         <Tabs value={activeRole} onValueChange={setActiveRole}>
-          <TabsList className="mb-4">
-            {ROLE_OPTIONS.map((role) => (
-              <TabsTrigger key={role} value={role}>{role}</TabsTrigger>
-            ))}
-          </TabsList>
+          <div className="flex items-center gap-2 mb-4 flex-wrap">
+            <TabsList>
+              {roles.map((role) => (
+                <TabsTrigger key={role} value={role} className="relative group">
+                  {editingRole === role ? (
+                    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Input
+                        value={editingRoleName}
+                        onChange={(e) => setEditingRoleName(e.target.value.toUpperCase())}
+                        className="h-5 w-16 text-xs px-1"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && editingRoleName.trim()) {
+                            renameRole.mutate({ oldName: role, newName: editingRoleName.trim() });
+                          }
+                          if (e.key === "Escape") setEditingRole(null);
+                        }}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (editingRoleName.trim()) renameRole.mutate({ oldName: role, newName: editingRoleName.trim() });
+                        }}
+                      >
+                        <Check className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-4 w-4"
+                        onClick={(e) => { e.stopPropagation(); setEditingRole(null); }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      {role}
+                      <span className="hidden group-hover:inline-flex items-center ml-1 gap-0.5">
+                        <Pencil
+                          className="h-3 w-3 text-muted-foreground hover:text-foreground cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingRole(role);
+                            setEditingRoleName(role);
+                          }}
+                        />
+                        <X
+                          className="h-3 w-3 text-muted-foreground hover:text-destructive cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRoleToDelete(role);
+                          }}
+                        />
+                      </span>
+                    </>
+                  )}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <div className="flex items-center gap-1">
+              <Input
+                value={newRoleName}
+                onChange={(e) => setNewRoleName(e.target.value.toUpperCase())}
+                placeholder="Nuovo ruolo..."
+                className="h-8 w-28 text-xs"
+                onKeyDown={(e) => { if (e.key === "Enter") addRole(); }}
+              />
+              <Button size="sm" variant="outline" className="h-8" onClick={addRole} disabled={!newRoleName.trim()}>
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
 
-          {ROLE_OPTIONS.map((role) => (
+          {roles.map((role) => (
             <TabsContent key={role} value={role} className="space-y-3">
               {isLoading ? (
                 <p className="text-sm text-muted-foreground py-4">Caricamento...</p>
@@ -180,6 +336,27 @@ export default function Settings() {
           ))}
         </Tabs>
       </div>
+
+      {/* Delete role confirmation */}
+      <AlertDialog open={!!roleToDelete} onOpenChange={(open) => !open && setRoleToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare il ruolo "{roleToDelete}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Verranno eliminati anche tutti i template delle attività chiave associati a questo ruolo. Questa azione è irreversibile.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => roleToDelete && deleteRole.mutate(roleToDelete)}
+            >
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
