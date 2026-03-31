@@ -455,12 +455,6 @@ export default function Learn() {
 
     return (
       <div className="space-y-8 max-w-3xl mx-auto">
-        {isAdmin && (
-          <div className="flex items-center gap-3">
-            <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
-            <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">New Klaaryan</Label>
-          </div>
-        )}
 
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
