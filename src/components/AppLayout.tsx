@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 
 const navItems = [
+  { title: "Home", url: "/home", icon: Home, comingSoon: false, repOnly: true },
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
   { title: "Crescita", url: "/grow", icon: TrendingUp, comingSoon: false },
   { title: "Performance", url: "/perform", icon: BarChart3, comingSoon: true },
