@@ -17,6 +17,7 @@ import Grow from "./pages/Grow";
 import Perform from "./pages/Perform";
 import People from "./pages/People";
 import Settings from "./pages/Settings";
+import Home from "./pages/Home";
 
 import NotFound from "./pages/NotFound";
 
@@ -39,8 +40,16 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <AppLayout>
-                      <Navigate to="/learn" replace />
+                      <Navigate to="/home" replace />
                     </AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/home"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><Home /></AppLayout>
                   </ProtectedRoute>
                 }
               />

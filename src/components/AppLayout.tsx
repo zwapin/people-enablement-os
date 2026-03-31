@@ -1,4 +1,4 @@
-import { BookOpen, TrendingUp, BarChart3, Users, LogOut, UserCheck, Settings } from "lucide-react";
+import { Home, BookOpen, TrendingUp, BarChart3, Users, LogOut, UserCheck, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 
 const navItems = [
+  { title: "Home", url: "/home", icon: Home, comingSoon: false, repOnly: true },
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
   { title: "Crescita", url: "/grow", icon: TrendingUp, comingSoon: false },
   { title: "Performance", url: "/perform", icon: BarChart3, comingSoon: true },
@@ -38,7 +39,9 @@ function AppSidebarContent() {
   const collapsed = state === "collapsed";
   const isAdmin = profile?.role === "admin";
   const { impersonating, isImpersonating, startImpersonating, stopImpersonating, repProfiles } = useImpersonation();
-  const allItems = isAdmin ? [...navItems, ...adminItems] : navItems;
+  const allItems = isAdmin
+    ? [...navItems.filter(i => !(i as any).repOnly), ...adminItems]
+    : [...navItems, ...adminItems.filter(() => false)];
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
