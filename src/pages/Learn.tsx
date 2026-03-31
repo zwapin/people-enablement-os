@@ -440,12 +440,6 @@ export default function Learn() {
     if (repCollections.length === 0 && !isLoading) {
       return (
         <div className="space-y-6">
-          {isAdmin && (
-            <div className="flex items-center gap-3">
-              <Switch id="view-toggle" checked={viewAsRep} onCheckedChange={handleViewAsRepChange} />
-              <Label htmlFor="view-toggle" className="text-sm text-muted-foreground cursor-pointer">New Klaaryan</Label>
-            </div>
-          )}
           <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-4">
             <div className="w-12 h-12 rounded-full bg-accent flex items-center justify-center">
               <BookOpen className="h-6 w-6 text-muted-foreground" />
