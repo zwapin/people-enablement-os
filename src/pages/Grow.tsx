@@ -22,6 +22,16 @@ export default function Grow() {
   const effectiveAdmin = isAdmin && !viewAsRep;
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
 
+  // Auto-select plan when impersonating
+  useEffect(() => {
+    if (isImpersonating && plans?.length) {
+      setSelectedPlanId(plans[0].id);
+    }
+    if (!isImpersonating) {
+      setSelectedPlanId(null);
+    }
+  }, [isImpersonating, plans]);
+
   // Fetch profiles for rep names (admin only)
   const { data: profiles } = useQuery({
     queryKey: ["profiles-for-plans"],
