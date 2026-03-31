@@ -49,9 +49,9 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
 
   // Step 1: Milestones
   const [milestones, setMilestones] = useState<Record<string, MilestoneData>>({
-    "30d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
-    "60d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
-    "90d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
+    "30d": { obiettivo: "", focus: [], kpis: [] },
+    "60d": { obiettivo: "", focus: [], kpis: [] },
+    "90d": { obiettivo: "", focus: [], kpis: [] },
   });
 
   // Step 2: Output
