@@ -21,6 +21,7 @@ import {
   Target,
 } from "lucide-react";
 import { getCollectionCategories } from "@/lib/constants";
+import OnboardingPlanSection from "@/components/home/OnboardingPlanSection";
 
 /* ── Badge tiers based on % of total published modules completed ── */
 const BADGE_TIERS = [
