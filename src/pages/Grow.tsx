@@ -123,7 +123,7 @@ export default function Grow() {
           plan={selectedPlan}
           repName={isAdmin ? profileMap.get(selectedPlan.rep_id) : undefined}
           canToggleTasks={!effectiveAdmin}
-          onBack={() => setSelectedPlanId(null)}
+          onBack={isImpersonating ? undefined : () => setSelectedPlanId(null)}
         />
       </div>
     );
