@@ -18,7 +18,6 @@ import {
   Calendar,
   ChevronDown,
   Target,
-  AlertTriangle,
   Crosshair,
   FileText,
 } from "lucide-react";
@@ -165,7 +164,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, onBa
         const mPct = mTotal > 0 ? Math.round((mDone / mTotal) * 100) : 0;
         const kpis = Array.isArray(milestone.kpis) ? milestone.kpis as string[] : [];
         const focus = Array.isArray(milestone.focus) ? milestone.focus as string[] : [];
-        const earlyWarnings = Array.isArray(milestone.early_warnings) ? milestone.early_warnings as string[] : [];
+        
         const sections = groupTasksBySection(milestone.tasks);
         const isOpen = openMilestones[milestone.label] ?? true;
 
@@ -301,20 +300,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, onBa
                     </div>
                   )}
 
-                  {/* Early Warnings */}
-                  {earlyWarnings.length > 0 && (
-                    <div className="rounded-lg bg-warning/5 border border-warning/10 p-3 space-y-1.5">
-                      <p className="text-xs font-semibold text-warning uppercase tracking-wide flex items-center gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        Early Warning
-                      </p>
-                      <ul className="space-y-1 pl-5">
-                        {earlyWarnings.map((w, i) => (
-                          <li key={i} className="text-sm text-foreground list-disc">{w}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </CardContent>
               </CollapsibleContent>
             </Card>

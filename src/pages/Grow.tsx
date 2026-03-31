@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { TrendingUp, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import PlanCard from "@/components/grow/PlanCard";
 import PlanDetail from "@/components/grow/PlanDetail";
 import CreatePlanDialog from "@/components/grow/CreatePlanDialog";
@@ -17,6 +19,16 @@ export default function Grow() {
   const { profile, user } = useAuth();
   const isAdmin = profile?.role === "admin";
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [viewAsRep, setViewAsRep] = useState(() => {
+    return sessionStorage.getItem("growViewAsRep") === "true";
+  });
+
+  const handleToggleView = (checked: boolean) => {
+    setViewAsRep(checked);
+    sessionStorage.setItem("growViewAsRep", checked ? "true" : "false");
+  };
+
+  const effectiveAdmin = isAdmin && !viewAsRep;
 
   // Fetch profiles for rep names (admin only)
   const { data: profiles } = useQuery({
@@ -95,7 +107,7 @@ export default function Grow() {
   if (selectedPlan) {
     return (
       <div className="space-y-6">
-        {isAdmin && (
+        {effectiveAdmin && (
           <div className="flex justify-end">
             <AddTaskDialog milestones={selectedPlan.milestones} />
           </div>
@@ -103,7 +115,7 @@ export default function Grow() {
         <PlanDetail
           plan={selectedPlan}
           repName={isAdmin ? profileMap.get(selectedPlan.rep_id) : undefined}
-          canToggleTasks={!isAdmin}
+          canToggleTasks={!effectiveAdmin}
           onBack={() => setSelectedPlanId(null)}
         />
       </div>
@@ -117,12 +129,26 @@ export default function Grow() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Crescita</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {isAdmin
+            {effectiveAdmin
               ? "Gestisci i piani di onboarding 30-60-90 del team."
               : "Il tuo percorso di onboarding personalizzato."}
           </p>
         </div>
-        {isAdmin && <CreatePlanDialog />}
+        <div className="flex items-center gap-4">
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="grow-view-toggle"
+                checked={viewAsRep}
+                onCheckedChange={handleToggleView}
+              />
+              <Label htmlFor="grow-view-toggle" className="text-sm cursor-pointer">
+                New Klaaryan
+              </Label>
+            </div>
+          )}
+          {effectiveAdmin && <CreatePlanDialog />}
+        </div>
       </div>
 
       {(!plans || plans.length === 0) ? (
@@ -131,7 +157,7 @@ export default function Grow() {
             <TrendingUp className="h-6 w-6 text-muted-foreground" />
           </div>
           <p className="text-sm text-muted-foreground max-w-sm">
-            {isAdmin
+            {effectiveAdmin
               ? "Nessun piano di onboarding creato. Crea il primo piano per un membro del team."
               : "Non hai ancora un piano di onboarding assegnato."}
           </p>

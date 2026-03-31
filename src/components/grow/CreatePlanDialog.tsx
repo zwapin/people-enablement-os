@@ -34,7 +34,6 @@ type MilestoneData = {
   obiettivo: string;
   focus: string[];
   kpis: string[];
-  early_warnings: string[];
 };
 
 export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void }) {
@@ -50,9 +49,9 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
 
   // Step 1: Milestones
   const [milestones, setMilestones] = useState<Record<string, MilestoneData>>({
-    "30d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
-    "60d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
-    "90d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
+    "30d": { obiettivo: "", focus: [], kpis: [] },
+    "60d": { obiettivo: "", focus: [], kpis: [] },
+    "90d": { obiettivo: "", focus: [], kpis: [] },
   });
 
   // Step 2: Output
@@ -105,7 +104,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
           obiettivo: data.obiettivo || null,
           focus: data.focus.length > 0 ? data.focus : [],
           kpis: data.kpis.length > 0 ? data.kpis : [],
-          early_warnings: data.early_warnings.length > 0 ? data.early_warnings : [],
+          
         };
       });
 
@@ -167,9 +166,9 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     setPremessa("");
     setOutputAtteso("");
     setMilestones({
-      "30d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
-      "60d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
-      "90d": { obiettivo: "", focus: [], kpis: [], early_warnings: [] },
+    "30d": { obiettivo: "", focus: [], kpis: [] },
+    "60d": { obiettivo: "", focus: [], kpis: [] },
+    "90d": { obiettivo: "", focus: [], kpis: [] },
     });
   };
 
@@ -180,7 +179,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     }));
   };
 
-  const addListItem = (label: string, field: "focus" | "kpis" | "early_warnings", value: string) => {
+  const addListItem = (label: string, field: "focus" | "kpis", value: string) => {
     if (!value.trim()) return;
     setMilestones((prev) => ({
       ...prev,
@@ -188,7 +187,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     }));
   };
 
-  const removeListItem = (label: string, field: "focus" | "kpis" | "early_warnings", index: number) => {
+  const removeListItem = (label: string, field: "focus" | "kpis", index: number) => {
     setMilestones((prev) => ({
       ...prev,
       [label]: {
@@ -304,13 +303,6 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
                     onRemove={(i) => removeListItem(mc.label, "kpis", i)}
                   />
 
-                  <ListEditor
-                    label="Early Warning"
-                    placeholder="Aggiungi segnale di allarme..."
-                    items={milestones[mc.label].early_warnings}
-                    onAdd={(v) => addListItem(mc.label, "early_warnings", v)}
-                    onRemove={(i) => removeListItem(mc.label, "early_warnings", i)}
-                  />
                 </TabsContent>
               ))}
             </Tabs>
