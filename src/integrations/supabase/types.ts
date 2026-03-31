@@ -391,6 +391,7 @@ export type Database = {
           milestone_id: string
           module_id: string | null
           order_index: number | null
+          parent_task_id: string | null
           section: string | null
           title: string
           type: Database["public"]["Enums"]["task_type"]
@@ -403,6 +404,7 @@ export type Database = {
           milestone_id: string
           module_id?: string | null
           order_index?: number | null
+          parent_task_id?: string | null
           section?: string | null
           title: string
           type?: Database["public"]["Enums"]["task_type"]
@@ -415,6 +417,7 @@ export type Database = {
           milestone_id?: string
           module_id?: string | null
           order_index?: number | null
+          parent_task_id?: string | null
           section?: string | null
           title?: string
           type?: Database["public"]["Enums"]["task_type"]
@@ -432,6 +435,13 @@ export type Database = {
             columns: ["module_id"]
             isOneToOne: false
             referencedRelation: "modules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
             referencedColumns: ["id"]
           },
         ]

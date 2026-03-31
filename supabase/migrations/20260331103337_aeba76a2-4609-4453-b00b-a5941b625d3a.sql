@@ -1,0 +1,1 @@
+ALTER TABLE onboarding_tasks ADD COLUMN parent_task_id uuid REFERENCES onboarding_tasks(id) ON DELETE CASCADE DEFAULT NULL;
