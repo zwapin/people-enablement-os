@@ -813,6 +813,15 @@ export default function CollectionDetail() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Outline review dialog */}
+      <OutlineReviewDialog
+        open={outlineReviewOpen}
+        onOpenChange={setOutlineReviewOpen}
+        modules={currentModules}
+        collectionId={curriculumId!}
+        onApproved={refreshAll}
+      />
     </div>
   );
 }
