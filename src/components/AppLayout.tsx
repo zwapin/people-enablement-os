@@ -1,4 +1,4 @@
-import { BookOpen, TrendingUp, BarChart3, Users, LogOut, UserCheck } from "lucide-react";
+import { BookOpen, TrendingUp, BarChart3, Users, LogOut, UserCheck, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
