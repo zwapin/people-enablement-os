@@ -242,24 +242,26 @@ export default function CollectionDetail() {
           const completedSteps = row.completed_steps ?? 0;
 
           if (row.current_step === "outline") {
-            setProgress(10);
+            setProgress(30);
             setProgressLabel("Analisi documenti e creazione outline...");
           } else if (row.current_step === "outline_completed") {
-            setProgress(20);
-            setProgressLabel(`Outline completato. Generazione ${totalSteps} moduli...`);
-            refreshAll();
-          } else if (row.current_step?.startsWith("module_") && totalSteps > 0) {
-            const pct = 20 + Math.round((completedSteps / totalSteps) * 70);
-            setProgress(pct);
-            setProgressLabel(`Modulo ${completedSteps}/${totalSteps} completato...`);
+            setProgress(90);
+            setProgressLabel("Outline completato!");
             refreshAll();
           }
 
           if (newStatus === "completed") {
             clearTimeout(timeout);
             const count = row.result?.count ?? 0;
+            const isOutlineOnly = row.result?.outline_only === true;
             stopGeneration(true);
-            toast.success(`${count} moduli generati.`);
+            if (isOutlineOnly) {
+              toast.success(`${count} moduli proposti. Rivedi l'outline.`);
+              // Open review dialog after refresh
+              setTimeout(() => setOutlineReviewOpen(true), 500);
+            } else {
+              toast.success(`${count} moduli generati.`);
+            }
             refreshAll();
             supabase.removeChannel(channel);
             activeJobId.current = null;
