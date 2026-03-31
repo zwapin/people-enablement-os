@@ -34,7 +34,6 @@ type MilestoneData = {
   obiettivo: string;
   focus: string[];
   kpis: string[];
-  early_warnings: string[];
 };
 
 export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void }) {
