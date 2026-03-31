@@ -29,6 +29,7 @@ const navItems = [
 
 const adminItems = [
   { title: "Team", url: "/people", icon: Users, comingSoon: false },
+  { title: "Impostazioni", url: "/settings", icon: Settings, comingSoon: false },
 ];
 
 function AppSidebarContent() {
