@@ -36,6 +36,7 @@ function AppSidebarContent() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const isAdmin = profile?.role === "admin";
+  const { impersonating, isImpersonating, startImpersonating, stopImpersonating, repProfiles } = useImpersonation();
   const allItems = isAdmin ? [...navItems, ...adminItems] : navItems;
 
   return (
