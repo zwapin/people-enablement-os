@@ -467,11 +467,10 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
                   Attività evergreen che il nuovo hire deve completare, indipendenti dalla timeline 30-60-90.
                 </p>
 
-                {roleTemplate && ROLE_OPTIONS.includes(roleTemplate) && activityTemplates && activityTemplates.length > 0 && keyActivities.length === 0 && (
-                  <Button variant="outline" size="sm" className="gap-1.5" onClick={applyTemplates}>
-                    <BookOpen className="h-3.5 w-3.5" />
-                    Carica template {roleTemplate}
-                  </Button>
+                {!roleTemplate && (
+                  <p className="text-xs text-amber-600 bg-amber-50 rounded px-3 py-2">
+                    Seleziona un ruolo nello step precedente per caricare automaticamente le attività template.
+                  </p>
                 )}
 
                 <div className="space-y-2">
