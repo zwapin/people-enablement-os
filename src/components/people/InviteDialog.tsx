@@ -93,13 +93,13 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="department">Reparto</Label>
+            <Label htmlFor="department">Team</Label>
             <Select value={department} onValueChange={setDepartment}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleziona reparto" />
+                <SelectValue placeholder="Seleziona team" />
               </SelectTrigger>
               <SelectContent>
-                {DEPARTMENTS.map((d) => (
+                {TEAMS.map((d) => (
                   <SelectItem key={d} value={d}>{d}</SelectItem>
                 ))}
               </SelectContent>
