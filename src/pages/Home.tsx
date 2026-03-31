@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { motion } from "framer-motion";
 import {
   BookOpen,
   Trophy,
@@ -209,10 +210,32 @@ export default function Home() {
     complete: "border-l-secondary",
   };
 
+  const containerVariants = {
+    hidden: {},
+    visible: { transition: { staggerChildren: 0.12 } },
+  };
+
+  const fadeUp = {
+    hidden: { opacity: 0, y: 18 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.25, 0.1, 0.25, 1] as const } },
+  };
+
+  const pulse = {
+    animate: {
+      scale: [1, 1.06, 1],
+      transition: { duration: 2.2, repeat: Infinity, ease: [0.4, 0, 0.6, 1] as const },
+    },
+  };
+
   return (
-    <div className="space-y-8 max-w-3xl mx-auto">
+    <motion.div
+      className="space-y-8 max-w-3xl mx-auto"
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* ── Welcome + Badge ── */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+      <motion.div variants={fadeUp} className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
         <div className="flex-1 space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
             Bentornato, {firstName}! 👋
@@ -223,8 +246,10 @@ export default function Home() {
         </div>
 
         {/* Badge */}
-        <div
+        <motion.div
           className={`flex items-center gap-3 px-5 py-3 rounded-xl ${currentBadge.bg} border border-border`}
+          variants={pulse}
+          animate="animate"
         >
           <div
             className={`w-12 h-12 rounded-full flex items-center justify-center ${currentBadge.bg} ${currentBadge.color}`}
@@ -239,137 +264,164 @@ export default function Home() {
               {completedCount}/{totalModules} moduli completati
             </p>
           </div>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* ── Global progress ── */}
-      <Card className="bg-card border-border">
-        <CardContent className="p-5 space-y-3">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground font-medium">
-              Progresso globale
-            </span>
-            <span className="font-mono text-foreground font-semibold">
-              {globalPct}%
-            </span>
-          </div>
-          <Progress value={globalPct} className="h-3" />
-          {nextBadge && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Target className="h-3.5 w-3.5" />
-              <span>
-                Prossimo badge:{" "}
-                <span className="font-semibold text-foreground">
-                  {nextBadge.label}
-                </span>{" "}
-                al {nextBadge.min}%
+      <motion.div variants={fadeUp}>
+        <Card className="bg-card border-border">
+          <CardContent className="p-5 space-y-3">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground font-medium">
+                Progresso globale
+              </span>
+              <span className="font-mono text-foreground font-semibold">
+                {globalPct}%
               </span>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <div className="relative h-3 w-full overflow-hidden rounded-full bg-muted">
+              <motion.div
+                className="h-full rounded-full bg-primary"
+                initial={{ width: 0 }}
+                animate={{ width: `${globalPct}%` }}
+                transition={{ duration: 0.9, ease: "easeOut", delay: 0.3 }}
+              />
+            </div>
+            {nextBadge && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Target className="h-3.5 w-3.5" />
+                <span>
+                  Prossimo badge:{" "}
+                  <span className="font-semibold text-foreground">
+                    {nextBadge.label}
+                  </span>{" "}
+                  al {nextBadge.min}%
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* ── Encouragement cards ── */}
       {encouragements.length > 0 && (
-        <div className="space-y-3">
+        <motion.div variants={fadeUp} className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">
             Il tuo prossimo passo
           </h2>
           {encouragements.map((e, idx) => {
             const EIcon = e.icon;
             return (
-              <Card
+              <motion.div
                 key={idx}
-                className={`border-l-4 ${encouragementColors[e.type]} bg-card hover:shadow-md transition-shadow cursor-pointer`}
-                onClick={() => navigate(`/learn/${e.collectionId}`)}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: 0.5 + idx * 0.12 }}
               >
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                    <EIcon className="h-5 w-5 text-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-foreground">{e.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {e.subtitle}
-                    </p>
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                </CardContent>
-              </Card>
+                <Card
+                  className={`border-l-4 ${encouragementColors[e.type]} bg-card hover:shadow-md transition-shadow cursor-pointer`}
+                  onClick={() => navigate(`/learn/${e.collectionId}`)}
+                >
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+                      <EIcon className="h-5 w-5 text-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground">{e.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {e.subtitle}
+                      </p>
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </CardContent>
+                </Card>
+              </motion.div>
             );
           })}
-        </div>
+        </motion.div>
       )}
 
       {/* ── Collection overview ── */}
-      <div className="space-y-3">
+      <motion.div variants={fadeUp} className="space-y-3">
         <h2 className="text-base font-semibold text-foreground">
           Le tue collection
         </h2>
         <div className="grid gap-3">
-          {collectionStats.map((c) => (
-            <Card
+          {collectionStats.map((c, idx) => (
+            <motion.div
               key={c.id}
-              className="bg-card border-border hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/learn/${c.id}`)}
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.6 + idx * 0.08 }}
             >
-              <CardContent className="p-4 flex items-center gap-4">
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                    c.pct === 100
-                      ? "bg-secondary/15 text-secondary"
-                      : "bg-primary/10 text-primary"
-                  }`}
-                >
-                  {c.pct === 100 ? (
-                    <CheckCircle2 className="h-5 w-5" />
-                  ) : (
-                    <BookOpen className="h-5 w-5" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 space-y-1.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-medium text-foreground truncate">
-                      {c.title}
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className="shrink-0 text-[10px] font-mono"
-                    >
-                      {c.completedCount}/{c.moduleCount}
-                    </Badge>
+              <Card
+                className="bg-card border-border hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/learn/${c.id}`)}
+              >
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      c.pct === 100
+                        ? "bg-secondary/15 text-secondary"
+                        : "bg-primary/10 text-primary"
+                    }`}
+                  >
+                    {c.pct === 100 ? (
+                      <CheckCircle2 className="h-5 w-5" />
+                    ) : (
+                      <BookOpen className="h-5 w-5" />
+                    )}
                   </div>
-                  <Progress value={c.pct} className="h-1.5" />
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              </CardContent>
-            </Card>
+                  <div className="flex-1 min-w-0 space-y-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="font-medium text-foreground truncate">
+                        {c.title}
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className="shrink-0 text-[10px] font-mono"
+                      >
+                        {c.completedCount}/{c.moduleCount}
+                      </Badge>
+                    </div>
+                    <Progress value={c.pct} className="h-1.5" />
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </CardContent>
+              </Card>
+            </motion.div>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* ── CTA if everything is done ── */}
       {completedCount === totalModules && totalModules > 0 && (
-        <Card className="bg-secondary/5 border-secondary/20">
-          <CardContent className="p-6 text-center space-y-3">
-            <Crown className="h-10 w-10 text-secondary mx-auto" />
-            <h2 className="text-xl font-bold text-foreground">
-              Hai completato tutto! 🏆
-            </h2>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              Complimenti! Hai completato tutti i moduli di formazione.
-              Continua a consultarli per rinfrescare le tue conoscenze.
-            </p>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/learn")}
-              className="mt-2"
-            >
-              Vai alla Formazione
-            </Button>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.92 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+        >
+          <Card className="bg-secondary/5 border-secondary/20">
+            <CardContent className="p-6 text-center space-y-3">
+              <Crown className="h-10 w-10 text-secondary mx-auto" />
+              <h2 className="text-xl font-bold text-foreground">
+                Hai completato tutto! 🏆
+              </h2>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Complimenti! Hai completato tutti i moduli di formazione.
+                Continua a consultarli per rinfrescare le tue conoscenze.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/learn")}
+                className="mt-2"
+              >
+                Vai alla Formazione
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 }
