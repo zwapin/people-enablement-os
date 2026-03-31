@@ -313,21 +313,30 @@ export type Database = {
       }
       onboarding_milestones: {
         Row: {
-          goals: Json
+          early_warnings: Json | null
+          focus: Json | null
           id: string
+          kpis: Json
           label: Database["public"]["Enums"]["milestone_label"]
+          obiettivo: string | null
           plan_id: string
         }
         Insert: {
-          goals?: Json
+          early_warnings?: Json | null
+          focus?: Json | null
           id?: string
+          kpis?: Json
           label: Database["public"]["Enums"]["milestone_label"]
+          obiettivo?: string | null
           plan_id: string
         }
         Update: {
-          goals?: Json
+          early_warnings?: Json | null
+          focus?: Json | null
           id?: string
+          kpis?: Json
           label?: Database["public"]["Enums"]["milestone_label"]
+          obiettivo?: string | null
           plan_id?: string
         }
         Relationships: [
@@ -345,7 +354,9 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          output_atteso: string | null
           plan_status: Database["public"]["Enums"]["plan_status"]
+          premessa: string | null
           rep_id: string
           role_template: string | null
         }
@@ -353,7 +364,9 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          output_atteso?: string | null
           plan_status?: Database["public"]["Enums"]["plan_status"]
+          premessa?: string | null
           rep_id: string
           role_template?: string | null
         }
@@ -361,7 +374,9 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          output_atteso?: string | null
           plan_status?: Database["public"]["Enums"]["plan_status"]
+          premessa?: string | null
           rep_id?: string
           role_template?: string | null
         }
@@ -372,8 +387,11 @@ export type Database = {
           completed: boolean
           completed_at: string | null
           id: string
+          is_common: boolean | null
           milestone_id: string
           module_id: string | null
+          order_index: number | null
+          section: string | null
           title: string
           type: Database["public"]["Enums"]["task_type"]
         }
@@ -381,8 +399,11 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           id?: string
+          is_common?: boolean | null
           milestone_id: string
           module_id?: string | null
+          order_index?: number | null
+          section?: string | null
           title: string
           type?: Database["public"]["Enums"]["task_type"]
         }
@@ -390,8 +411,11 @@ export type Database = {
           completed?: boolean
           completed_at?: string | null
           id?: string
+          is_common?: boolean | null
           milestone_id?: string
           module_id?: string | null
+          order_index?: number | null
+          section?: string | null
           title?: string
           type?: Database["public"]["Enums"]["task_type"]
         }
@@ -411,6 +435,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      onboarding_templates: {
+        Row: {
+          created_at: string
+          id: string
+          milestone_label: Database["public"]["Enums"]["milestone_label"]
+          order_index: number | null
+          section: string | null
+          title: string
+          type: Database["public"]["Enums"]["task_type"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          milestone_label?: Database["public"]["Enums"]["milestone_label"]
+          order_index?: number | null
+          section?: string | null
+          title: string
+          type?: Database["public"]["Enums"]["task_type"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          milestone_label?: Database["public"]["Enums"]["milestone_label"]
+          order_index?: number | null
+          section?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["task_type"]
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
