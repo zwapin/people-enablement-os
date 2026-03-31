@@ -434,6 +434,22 @@ export default function CollectionDetail() {
 
   const currentModules = modules ?? [];
   const hasEmptyModules = currentModules.some(m => !m.content_body);
+  const hasProposedModules = currentModules.some(m => m.status === "proposed");
+  const draftOrPublishedModules = currentModules.filter(m => m.status === "draft" || m.status === "published");
+  const hasExistingModules = draftOrPublishedModules.length > 0;
+
+  // Determine if new docs were uploaded after the latest module was created
+  const latestModuleDate = draftOrPublishedModules.length > 0
+    ? Math.max(...draftOrPublishedModules.map(m => new Date(m.updated_at).getTime()))
+    : 0;
+  const latestDocDate = (collectionDocs ?? []).length > 0
+    ? Math.max(...(collectionDocs ?? []).map(() => Date.now())) // docs don't have updated_at in our query, fallback
+    : 0;
+
+  // Button labels: "Genera" if no modules exist, "Aggiorna" if they do
+  const moduliButtonLabel = hasExistingModules ? "Aggiorna moduli" : "Genera moduli";
+  const contenutiButtonLabel = hasExistingModules && !hasEmptyModules ? "Aggiorna contenuti" : "Genera contenuti";
+  const showContenutiButton = draftOrPublishedModules.length > 0;
 
   // repCompletions is fetched at top level (before early returns)
 
