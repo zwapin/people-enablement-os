@@ -697,7 +697,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                           variant="outline"
                           size="sm"
                           className="h-8 gap-1"
-                          disabled={!newTaskInputs[milestone.id]?.trim() || addTaskInline.isPending}
+                          disabled={!newTaskInputs[milestone.id]?.trim()}
                           onClick={() => handleAddTask(milestone.id)}
                         >
                           <Plus className="h-3.5 w-3.5" />
