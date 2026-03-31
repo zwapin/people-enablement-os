@@ -104,7 +104,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
           obiettivo: data.obiettivo || null,
           focus: data.focus.length > 0 ? data.focus : [],
           kpis: data.kpis.length > 0 ? data.kpis : [],
-          early_warnings: data.early_warnings.length > 0 ? data.early_warnings : [],
+          
         };
       });
 
