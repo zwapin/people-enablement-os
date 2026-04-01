@@ -40,13 +40,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   ArrowLeft,
-  RefreshCw,
   Sparkles,
   Loader2,
   BookOpen,
   Upload,
   Pencil,
   Trash2,
+  Plus,
 } from "lucide-react";
 import CollectionModuleList from "@/components/learn/CollectionModuleList";
 import DocumentsList from "@/components/learn/DocumentsList";
