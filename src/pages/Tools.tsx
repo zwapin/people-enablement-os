@@ -3,15 +3,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { motion } from "framer-motion";
 import { ExternalLink, Wrench } from "lucide-react";
 import { toast } from "sonner";
 import { getProfileDepartments } from "@/lib/constants";
+import ToolsManager from "@/components/settings/ToolsManager";
 
 export default function Tools() {
   const { profile } = useAuth();
   const { isImpersonating, impersonating } = useImpersonation();
+  const isAdmin = profile?.role === "admin" && !isImpersonating;
   const activeProfile = isImpersonating ? impersonating : profile;
   const departments = getProfileDepartments(activeProfile ?? {});
 
@@ -30,10 +31,24 @@ export default function Tools() {
     enabled: departments.length > 0,
   });
 
+  if (isAdmin) {
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Tools</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Configura i tool per ogni team.
+          </p>
+        </div>
+        <ToolsManager />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">I tuoi Tool</h1>
+        <h1 className="text-2xl font-bold text-foreground">I tuoi Tools</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Gli strumenti del tuo team. Clicca per copiare il link di invito.
         </p>
