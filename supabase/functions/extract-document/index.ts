@@ -112,7 +112,6 @@ async function extractTextWithAI(fileData: Blob, fileName: string): Promise<stri
   const bytes = new Uint8Array(buffer);
   
   // No size limit enforced
-  }
 
   const base64 = btoa(
     bytes.reduce((data, byte) => data + String.fromCharCode(byte), "")
