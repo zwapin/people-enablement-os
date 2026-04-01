@@ -523,7 +523,7 @@ export default function CollectionDetail() {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <BookOpen className="h-4 w-4" />
-              {completedCount}/{publishedModules.length} completati
+              {completedCount}/{visibleModules.length} completati
             </span>
             <span>·</span>
             <span>Punteggio medio: <strong className="text-foreground">{avgScore}</strong></span>
