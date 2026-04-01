@@ -41,6 +41,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
   const [saving, setSaving] = useState(false);
   const [autoSaved, setAutoSaved] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingAssessment, setGeneratingAssessment] = useState(false);
   const [sourceDocIds, setSourceDocIds] = useState<string[] | null>(null);
   const [sourceFaqIds, setSourceFaqIds] = useState<string[] | null>(null);
 
