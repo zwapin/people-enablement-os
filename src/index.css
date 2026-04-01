@@ -45,6 +45,14 @@
 
     --radius: 0.5rem;
 
+    /* Module content colors */
+    --module-h2: 200 90% 15%;
+    --module-h3: 189 100% 34%;
+    --module-callout-bg: 189 100% 34%;
+    --module-callout-border: 189 100% 34%;
+    --module-table-header-bg: 200 90% 15%;
+    --module-table-header-fg: 0 0% 100%;
+
     --sidebar-background: 200 90% 15%;
     --sidebar-foreground: 200 20% 85%;
     --sidebar-primary: 189 100% 34%;
