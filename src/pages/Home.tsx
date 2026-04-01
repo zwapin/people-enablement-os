@@ -118,10 +118,10 @@ export default function Home() {
     ) ?? [];
 
   const completionSet = new Set(completions?.map((c) => c.module_id) ?? []);
-  const completedCount = publishedModules.filter((m) =>
+  const completedCount = visibleModules.filter((m) =>
     completionSet.has(m.id)
   ).length;
-  const totalModules = publishedModules.length;
+  const totalModules = visibleModules.length;
   const globalPct =
     totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
 
