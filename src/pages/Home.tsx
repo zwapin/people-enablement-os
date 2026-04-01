@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { getCollectionCategories, departmentsToCategoryKeys, getProfileDepartments } from "@/lib/constants";
 import OnboardingPlanSection from "@/components/home/OnboardingPlanSection";
-import ToolsSection from "@/components/home/ToolsSection";
 import CollectionProgressSection from "@/components/home/CollectionProgressSection";
 
 /* ── Badge tiers based on % of total published modules completed ── */
