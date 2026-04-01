@@ -610,15 +610,13 @@ export default function Learn() {
       );
     }
 
-    const memberTeamKey = selectedMember.department
-      ? adminDepartmentToCategoryKey[selectedMember.department]
-      : null;
+    const memberTeamKeys = departmentsToCategoryKeys(getProfileDepartments(selectedMember));
 
     const memberFilteredCollections = publishedCollections.filter((c) => {
       const cats = getCollectionCategories(c.categories);
       if (cats.includes("common")) return true;
-      if (!memberTeamKey) return true;
-      return cats.includes(memberTeamKey);
+      if (memberTeamKeys.length === 0) return true;
+      return memberTeamKeys.some((k) => cats.includes(k));
     });
 
     const memberVisibleModules = publishedModules.filter((m) =>
