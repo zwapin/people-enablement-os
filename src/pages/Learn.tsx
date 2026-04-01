@@ -173,6 +173,7 @@ export default function Learn() {
     enabled: isAdmin && adminViewMode === "member" && !!selectedMemberId,
   });
 
+  const refreshAll = () => {
     refetch();
     refetchCurricula();
   };
