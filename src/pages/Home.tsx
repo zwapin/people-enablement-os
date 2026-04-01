@@ -51,7 +51,7 @@ function getNextBadge(pct: number) {
 
 export default function Home() {
   const { profile, user } = useAuth();
-  const { isImpersonating, impersonating } = useImpersonation();
+  const { isImpersonating, impersonating, adminViewMode } = useImpersonation();
   const navigate = useNavigate();
   const activeProfile = isImpersonating ? impersonating : profile;
   const activeUserId = isImpersonating ? impersonating?.user_id : user?.id;
