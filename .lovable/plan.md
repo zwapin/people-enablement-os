@@ -1,52 +1,40 @@
 
 
-# Popolare template attività chiave per AE, SDR e CSM
+## Plan: White Sidebar + Tools Admin View
 
-## Panoramica
-Aggiornare i template AE esistenti (linkando le collection appropriate) e creare i template per SDR e CSM con attività specifiche per ruolo.
+### 1. White sidebar theme
 
-## Dati da inserire
+Update CSS variables in `src/index.css` (lines 56–64) to switch the sidebar from dark navy to white:
 
-### AE (aggiornamento dei 4 esistenti + eventuali nuovi)
-| # | Titolo | Collection |
-|---|--------|-----------|
-| 0 | Completa la formazione Sales Fundamentals | Fondamenti del Sales Process Klaaryo |
-| 1 | Setup CRM e strumenti di lavoro | — |
-| 2 | Completa la formazione Prodotto | Come funziona Klaaryo |
-| 3 | Revisiona playbook commerciale | — |
-| 4 | Completa formazione Discovery e Closing | AE Excellence — Dal Discovery al Closing |
-| 5 | Completa formazione ICP e Account Tiering | ICP Targeting e Account Tiering Strategy |
-| 6 | Effettua 3 shadow call con un AE senior | — |
-| 7 | Prepara e presenta una demo di prova | — |
+```
+--sidebar-background: 0 0% 100%;
+--sidebar-foreground: 200 90% 15%;
+--sidebar-primary: 189 100% 34%;
+--sidebar-primary-foreground: 0 0% 100%;
+--sidebar-accent: 210 20% 96%;
+--sidebar-accent-foreground: 200 90% 15%;
+--sidebar-border: 210 18% 90%;
+--sidebar-ring: 189 100% 34%;
+--sidebar-muted: 200 15% 46%;
+```
 
-### SDR (nuovi)
-| # | Titolo | Collection |
-|---|--------|-----------|
-| 0 | Completa la formazione Sales Fundamentals | Fondamenti del Sales Process Klaaryo |
-| 1 | Setup CRM e strumenti di lavoro | — |
-| 2 | Completa la formazione Prodotto | Come funziona Klaaryo |
-| 3 | Completa formazione SDR Mastery | SDR Mastery — Da Cold Call a Qualified Opportunity |
-| 4 | Completa formazione ICP e Account Tiering | ICP Targeting e Account Tiering Strategy |
-| 5 | Effettua 10 cold call di pratica con feedback | — |
-| 6 | Scrivi 5 email di prospecting e falle revisionare | — |
-| 7 | Studia e memorizza il pitch di 30 secondi | — |
+Update `src/components/AppLayout.tsx`:
+- Remove `brightness-0 invert` filters from the Klaaryo logo (no longer needed on white background)
+- Rename "Tool" to "Tools" in `navItems`
 
-### CSM (nuovi)
-| # | Titolo | Collection |
-|---|--------|-----------|
-| 0 | Completa la formazione Sales Fundamentals | Fondamenti del Sales Process Klaaryo |
-| 1 | Setup CRM e strumenti di lavoro | — |
-| 2 | Completa la formazione Prodotto | Come funziona Klaaryo |
-| 3 | Completa formazione Customer Success | Customer Success e Post-Sales Excellence |
-| 4 | Revisiona il processo di onboarding cliente | — |
-| 5 | Effettua 2 shadow call con un CSM senior | — |
-| 6 | Studia le metriche chiave (NPS, Churn, Health Score) | — |
-| 7 | Prepara un piano di successo per un account fittizio | — |
+### 2. Tools page: show admin ToolsManager
 
-## Operazioni tecniche
-- **UPDATE** i 4 template AE esistenti per aggiungere i `collection_id` mancanti
-- **INSERT** 4 nuovi template AE (attività 4-7)
-- **INSERT** 8 template SDR
-- **INSERT** 8 template CSM
-- Tutto tramite il tool di insert dati (non migrazione, sono operazioni sui dati)
+Update `src/pages/Tools.tsx`:
+- Import `useAuth` and check if the user is admin
+- If admin, render the `ToolsManager` component (from `src/components/settings/ToolsManager.tsx`) instead of or in addition to the member tools grid
+- Rename the page title accordingly
+
+### 3. Sidebar nav label
+
+Update `navItems` in `AppLayout.tsx` to use "Tools" instead of "Tool".
+
+### Files to modify
+- `src/index.css` — sidebar CSS variables
+- `src/components/AppLayout.tsx` — logo styling, nav label
+- `src/pages/Tools.tsx` — conditional admin view with ToolsManager
 
