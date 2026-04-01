@@ -99,7 +99,7 @@ function AppSidebarContent() {
         {/* Admin View Mode selector */}
         {isAdmin && (
           <SidebarGroup>
-            {!collapsed && <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40">Visualizzazione</SidebarGroupLabel>}
+            {!collapsed && <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40">View Mode</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
                 {viewModeItems.map((vm) => (
