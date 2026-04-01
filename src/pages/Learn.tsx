@@ -3,13 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
-import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus, Sparkles, Eye } from "lucide-react";
+import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
@@ -17,7 +15,7 @@ import CollectionModuleList from "@/components/learn/CollectionModuleList";
 import CollectionCard from "@/components/learn/CollectionCard";
 import ProposalsList from "@/components/learn/ProposalsList";
 import RepRoadmap from "@/components/learn/RepRoadmap";
-import { MACRO_CATEGORIES, getCollectionCategories } from "@/lib/constants";
+import { MACRO_CATEGORIES, getCollectionCategories, departmentsToCategoryKeys, getProfileDepartments } from "@/lib/constants";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,11 +38,10 @@ export default function Learn() {
   const [progressLabel, setProgressLabel] = useState("");
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
-  const { isImpersonating, impersonating } = useImpersonation();
+  const { isImpersonating, impersonating, adminViewMode, setAdminViewMode, repProfiles: impRepProfiles } = useImpersonation();
   const viewAsRep = isImpersonating;
   const activeJobId = useRef<string | null>(null);
-  const [adminViewMode, setAdminViewMode] = useState<"all" | "myteam" | "member">("all");
-  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const selectedMemberId = impersonating?.user_id ?? null;
 
   const { data: modules, isLoading, refetch } = useQuery({
     queryKey: ["modules"],
@@ -442,30 +439,19 @@ export default function Learn() {
     return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} collections={allCollections} />;
   }
 
-  // Rep view
-  if (!isAdmin || viewAsRep) {
+  // Rep view (only for actual reps, not admin in member view mode)
+  if (!isAdmin) {
     const activeProfile = isImpersonating ? impersonating : profile;
     const firstName = activeProfile?.full_name?.split(" ")[0] || "utente";
 
-    // Map user department to macro category key for filtering
-    const departmentToCategoryKey: Record<string, string> = {
-      "Sales": "sales",
-      "Customer Success": "customer_success",
-      "Operations": "operations",
-      "Product": "product",
-      "Management": "management",
-    };
-    const userTeamKey = activeProfile?.department ? departmentToCategoryKey[activeProfile.department] : null;
+    const userTeamKeys = departmentsToCategoryKeys(getProfileDepartments(activeProfile ?? {}));
 
     // Filter published collections: user sees only their team's collections + Common Knowledge
     const filteredPublishedCollections = publishedCollections.filter(c => {
       const cats = getCollectionCategories(c.categories);
-      // Always show Common Knowledge
       if (cats.includes("common")) return true;
-      // If user has no team, show all
-      if (!userTeamKey) return true;
-      // Show if collection belongs to user's team
-      return cats.includes(userTeamKey);
+      if (userTeamKeys.length === 0) return true;
+      return userTeamKeys.some(k => cats.includes(k));
     });
 
     // Compute global stats only on visible modules
@@ -605,15 +591,8 @@ export default function Learn() {
   const orphanPublished = orphanModules(["published"]);
   const orphanDraft = orphanModules(["draft"]);
 
-  // Determine admin's team key for "Il mio team" filter
-  const adminDepartmentToCategoryKey: Record<string, string> = {
-    Sales: "sales",
-    "Customer Success": "customer_success",
-    Operations: "operations",
-    Product: "product",
-    Management: "management",
-  };
-  const adminTeamKey = profile?.department ? adminDepartmentToCategoryKey[profile.department] : null;
+  // Determine admin's team keys for "Il mio team" filter
+  const adminTeamKeys = departmentsToCategoryKeys(getProfileDepartments(profile ?? {}));
 
   // For "Vista membro" — selected member's completions
   const selectedMember = repProfiles?.find((p) => p.user_id === selectedMemberId) ?? null;
@@ -628,15 +607,13 @@ export default function Learn() {
       );
     }
 
-    const memberTeamKey = selectedMember.department
-      ? adminDepartmentToCategoryKey[selectedMember.department]
-      : null;
+    const memberTeamKeys = departmentsToCategoryKeys(getProfileDepartments(selectedMember));
 
     const memberFilteredCollections = publishedCollections.filter((c) => {
       const cats = getCollectionCategories(c.categories);
       if (cats.includes("common")) return true;
-      if (!memberTeamKey) return true;
-      return cats.includes(memberTeamKey);
+      if (memberTeamKeys.length === 0) return true;
+      return memberTeamKeys.some((k) => cats.includes(k));
     });
 
     const memberVisibleModules = publishedModules.filter((m) =>
@@ -731,11 +708,11 @@ export default function Learn() {
 
   // Helper: filter collections for "Il mio team" admin view
   const getMyTeamCollections = () => {
-    if (!adminTeamKey) return allCollections.filter((c) => c.status !== "archived");
+    if (adminTeamKeys.length === 0) return allCollections.filter((c) => c.status !== "archived");
     return allCollections.filter((c) => {
       if (c.status === "archived") return false;
       const cats = getCollectionCategories(c.categories);
-      return cats.includes(adminTeamKey) || cats.includes("common");
+      return cats.includes("common") || adminTeamKeys.some((k) => cats.includes(k));
     });
   };
 
@@ -752,34 +729,6 @@ export default function Learn() {
           </div>
         </div>
 
-        {/* Admin view mode tabs */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Tabs value={adminViewMode} onValueChange={(v) => setAdminViewMode(v as any)}>
-            <TabsList>
-              <TabsTrigger value="all">Tutti i team</TabsTrigger>
-              <TabsTrigger value="myteam">Il mio team</TabsTrigger>
-              <TabsTrigger value="member">Vista membro</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          {adminViewMode === "member" && (
-            <Select
-              value={selectedMemberId ?? ""}
-              onValueChange={(v) => setSelectedMemberId(v)}
-            >
-              <SelectTrigger className="w-48 h-9 text-sm">
-                <SelectValue placeholder="Seleziona membro" />
-              </SelectTrigger>
-              <SelectContent>
-                {(repProfiles ?? []).map((p) => (
-                  <SelectItem key={p.user_id} value={p.user_id}>
-                    {p.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
       </div>
 
       {/* Bulk generation progress */}

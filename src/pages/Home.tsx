@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   Target,
 } from "lucide-react";
-import { getCollectionCategories } from "@/lib/constants";
+import { getCollectionCategories, departmentsToCategoryKeys, getProfileDepartments } from "@/lib/constants";
 import OnboardingPlanSection from "@/components/home/OnboardingPlanSection";
 import ToolsSection from "@/components/home/ToolsSection";
 import CollectionProgressSection from "@/components/home/CollectionProgressSection";
@@ -58,16 +58,9 @@ export default function Home() {
   const activeUserId = isImpersonating ? impersonating?.user_id : user?.id;
   const firstName = activeProfile?.full_name?.split(" ")[0] || "utente";
 
-  const departmentToCategoryKey: Record<string, string> = {
-    Sales: "sales",
-    "Customer Success": "customer_success",
-    Operations: "operations",
-    Product: "product",
-    Management: "management",
-  };
-  const userTeamKey = activeProfile?.department
-    ? departmentToCategoryKey[activeProfile.department]
-    : null;
+  const userTeamKeys = departmentsToCategoryKeys(
+    getProfileDepartments(activeProfile ?? {})
+  );
 
   /* ── Queries ── */
   const { data: curricula } = useQuery({
@@ -114,8 +107,8 @@ export default function Home() {
   const filteredCollections = publishedCollections.filter((c) => {
     const cats = getCollectionCategories(c.categories);
     if (cats.includes("common")) return true;
-    if (!userTeamKey) return true;
-    return cats.includes(userTeamKey);
+    if (userTeamKeys.length === 0) return true;
+    return userTeamKeys.some((k) => cats.includes(k));
   });
 
   const publishedModules =
@@ -351,7 +344,7 @@ export default function Home() {
       {activeUserId && <OnboardingPlanSection userId={activeUserId} />}
 
       {/* ── Tools ── */}
-      <ToolsSection department={activeProfile?.department ?? null} />
+      <ToolsSection departments={getProfileDepartments(activeProfile ?? {})} />
 
 
       {/* ── CTA if everything is done ── */}

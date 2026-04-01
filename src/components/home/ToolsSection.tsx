@@ -7,7 +7,7 @@ import { ExternalLink, Wrench } from "lucide-react";
 import { toast } from "sonner";
 
 interface Props {
-  department: string | null;
+  departments: string[];
 }
 
 const fadeUp = {
@@ -15,27 +15,23 @@ const fadeUp = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: [0.25, 0.1, 0.25, 1] as const } },
 };
 
-export default function ToolsSection({ department }: Props) {
+export default function ToolsSection({ departments }: Props) {
   const { data: tools } = useQuery({
-    queryKey: ["team_tools", department],
+    queryKey: ["team_tools", departments],
     queryFn: async () => {
-      const query = supabase
+      if (departments.length === 0) return [];
+      const { data, error } = await supabase
         .from("team_tools")
         .select("*")
+        .in("team", departments)
         .order("order_index", { ascending: true });
-
-      if (department) {
-        query.eq("team", department);
-      }
-
-      const { data, error } = await query;
       if (error) throw error;
       return data;
     },
-    enabled: !!department,
+    enabled: departments.length > 0,
   });
 
-  if (!department || !tools || tools.length === 0) return null;
+  if (departments.length === 0 || !tools || tools.length === 0) return null;
 
   return (
     <motion.div variants={fadeUp} className="space-y-3">

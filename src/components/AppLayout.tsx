@@ -1,13 +1,14 @@
-import { Home, BookOpen, TrendingUp, BarChart3, Users, LogOut, UserCheck, Settings } from "lucide-react";
+import { Home, BookOpen, TrendingUp, BarChart3, Users, LogOut, Settings, Eye, Layers, Building2, User } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
-import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useImpersonation, AdminViewMode } from "@/contexts/ImpersonationContext";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -16,8 +17,6 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 
@@ -33,16 +32,30 @@ const adminItems = [
   { title: "Impostazioni", url: "/settings", icon: Settings, comingSoon: false },
 ];
 
+const viewModeItems: { mode: AdminViewMode; title: string; icon: typeof Layers }[] = [
+  { mode: "all", title: "Tutti i team", icon: Layers },
+  { mode: "myteam", title: "Il mio team", icon: Building2 },
+  { mode: "member", title: "Vista membro", icon: Eye },
+];
+
 function AppSidebarContent() {
   const { profile, signOut } = useAuth();
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const isAdmin = profile?.role === "admin";
-  const { impersonating, isImpersonating, startImpersonating, stopImpersonating, repProfiles } = useImpersonation();
-  const viewAsRep = !isAdmin || isImpersonating;
-  const allItems = viewAsRep
-    ? navItems
-    : [...navItems, ...adminItems];
+  const {
+    impersonating,
+    isImpersonating,
+    startImpersonating,
+    stopImpersonating,
+    repProfiles,
+    adminViewMode,
+    setAdminViewMode,
+  } = useImpersonation();
+
+  const allNavItems = isAdmin && adminViewMode !== "member"
+    ? [...navItems, ...adminItems]
+    : navItems;
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
@@ -58,7 +71,7 @@ function AppSidebarContent() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {allItems.map((item) => (
+              {allNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink
@@ -82,65 +95,59 @@ function AppSidebarContent() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Admin View Mode selector */}
+        {isAdmin && (
+          <SidebarGroup>
+            {!collapsed && <SidebarGroupLabel className="text-[10px] uppercase tracking-wider text-sidebar-foreground/40">Visualizzazione</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {viewModeItems.map((vm) => (
+                  <SidebarMenuItem key={vm.mode}>
+                    <SidebarMenuButton
+                      onClick={() => setAdminViewMode(vm.mode)}
+                      className={`flex items-center gap-3 px-3 py-2 rounded transition-colors duration-150 cursor-pointer ${
+                        adminViewMode === vm.mode
+                          ? "!text-sidebar-primary-foreground bg-sidebar-primary"
+                          : "text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+                      }`}
+                    >
+                      <vm.icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && <span>{vm.title}</span>}
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+
+                {/* Member selector dropdown */}
+                {adminViewMode === "member" && !collapsed && (
+                  <div className="px-3 pt-1">
+                    <Select
+                      value={impersonating?.user_id ?? ""}
+                      onValueChange={(userId) => {
+                        const p = repProfiles.find((r) => r.user_id === userId);
+                        if (p) startImpersonating(p);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-foreground">
+                        <SelectValue placeholder="Seleziona membro" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {repProfiles.map((p) => (
+                          <SelectItem key={p.user_id} value={p.user_id}>
+                            {p.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-sidebar-border p-4 space-y-3">
-        {isAdmin && !collapsed && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="impersonation-toggle"
-                checked={isImpersonating}
-                onCheckedChange={(checked) => {
-                  if (!checked) {
-                    stopImpersonating();
-                  } else if (repProfiles.length > 0) {
-                    startImpersonating(repProfiles[0]);
-                  }
-                }}
-              />
-              <Label htmlFor="impersonation-toggle" className="text-xs text-sidebar-foreground/70 cursor-pointer">
-                New Klaaryan
-              </Label>
-            </div>
-            {isImpersonating && (
-              <Select
-                value={impersonating?.user_id ?? ""}
-                onValueChange={(userId) => {
-                  const p = repProfiles.find((r) => r.user_id === userId);
-                  if (p) startImpersonating(p);
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs bg-sidebar-accent border-sidebar-border text-sidebar-foreground">
-                  <SelectValue placeholder="Seleziona utente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {repProfiles.map((p) => (
-                    <SelectItem key={p.user_id} value={p.user_id}>
-                      {p.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        )}
-        {isAdmin && collapsed && (
-          <button
-            onClick={() => {
-              if (isImpersonating) stopImpersonating();
-              else if (repProfiles.length > 0) startImpersonating(repProfiles[0]);
-            }}
-            className={`flex items-center justify-center w-8 h-8 rounded transition-colors ${
-              isImpersonating
-                ? "bg-primary text-primary-foreground"
-                : "text-sidebar-foreground/50 hover:text-sidebar-foreground"
-            }`}
-            title="New Klaaryan"
-          >
-            <UserCheck className="h-4 w-4" />
-          </button>
-        )}
         {!collapsed && profile && (
           <div className="space-y-1">
             <p className="text-sm font-medium text-sidebar-foreground truncate">

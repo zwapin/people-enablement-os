@@ -17,7 +17,7 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
 
-    const { email, full_name, department, job_role } = await req.json();
+    const { email, full_name, department, departments, job_role, member_type } = await req.json();
 
     if (!email || !full_name) {
       return new Response(
@@ -47,12 +47,17 @@ serve(async (req) => {
 
     const newUserId = inviteData.user.id;
 
-    // Update profile with department and job_role (trigger creates the profile)
+    // Update profile with department, departments, job_role, member_type
     await new Promise((r) => setTimeout(r, 500));
 
     await supabaseAdmin
       .from("profiles")
-      .update({ department, job_role })
+      .update({
+        department: department || (Array.isArray(departments) && departments.length > 0 ? departments[0] : null),
+        departments: Array.isArray(departments) ? departments : (department ? [department] : []),
+        job_role,
+        member_type: member_type || "new_klaaryan",
+      })
       .eq("user_id", newUserId);
 
     return new Response(
