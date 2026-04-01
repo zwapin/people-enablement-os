@@ -370,7 +370,7 @@ export default function CollectionDetail() {
         if (jobErr || !job) throw new Error("Job creation failed");
 
         const { error: fnErr } = await supabase.functions.invoke("generate-module", {
-          body: { jobId: job.id },
+          body: { job_id: job.id },
         });
         if (fnErr) throw fnErr;
 
