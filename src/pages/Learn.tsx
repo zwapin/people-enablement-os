@@ -447,25 +447,14 @@ export default function Learn() {
     const activeProfile = isImpersonating ? impersonating : profile;
     const firstName = activeProfile?.full_name?.split(" ")[0] || "utente";
 
-    // Map user department to macro category key for filtering
-    const departmentToCategoryKey: Record<string, string> = {
-      "Sales": "sales",
-      "Customer Success": "customer_success",
-      "Operations": "operations",
-      "Product": "product",
-      "Management": "management",
-    };
-    const userTeamKey = activeProfile?.department ? departmentToCategoryKey[activeProfile.department] : null;
+    const userTeamKeys = departmentsToCategoryKeys(getProfileDepartments(activeProfile ?? {}));
 
     // Filter published collections: user sees only their team's collections + Common Knowledge
     const filteredPublishedCollections = publishedCollections.filter(c => {
       const cats = getCollectionCategories(c.categories);
-      // Always show Common Knowledge
       if (cats.includes("common")) return true;
-      // If user has no team, show all
-      if (!userTeamKey) return true;
-      // Show if collection belongs to user's team
-      return cats.includes(userTeamKey);
+      if (userTeamKeys.length === 0) return true;
+      return userTeamKeys.some(k => cats.includes(k));
     });
 
     // Compute global stats only on visible modules
