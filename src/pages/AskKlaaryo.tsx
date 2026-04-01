@@ -324,7 +324,39 @@ export default function AskKlaaryo() {
                   >
                     {m.role === "assistant" ? (
                       <div className="prose prose-sm max-w-none [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a: ({ href, children }) => {
+                              if (href?.startsWith("klaaryo-doc://")) {
+                                const parts = href.replace("klaaryo-doc://", "").split("/");
+                                const docId = parts[0];
+                                const label = typeof children === "string" ? children : String(children);
+                                return (
+                                  <button
+                                    onClick={async () => {
+                                      const { data } = await supabase
+                                        .from("knowledge_documents")
+                                        .select("id, title, content")
+                                        .eq("id", docId)
+                                        .single();
+                                      if (data) {
+                                        setViewingDoc({ id: data.id, title: data.title, content: data.content, highlight: "" });
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer font-medium text-sm"
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                    {label}
+                                  </button>
+                                );
+                              }
+                              return <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>;
+                            },
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
                       </div>
                     ) : (
                       <p className="text-sm">{m.content}</p>
