@@ -352,7 +352,6 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
     { id: "table", label: "Tabella", icon: TableIcon, desc: "Tabella 3×3" },
     { id: "image", label: "Immagine / Video", icon: ImageIcon, desc: "Carica un file media" },
     { id: "divider", label: "Separatore", icon: Minus, desc: "Linea orizzontale" },
-    { id: "ai", label: "Modifica con AI", icon: Sparkles, desc: "Modifica o genera contenuto con AI" },
   ];
 
   return (
