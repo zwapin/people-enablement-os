@@ -531,6 +531,49 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
             variant="ghost"
             size="sm"
             className="opacity-0 group-hover:opacity-100 transition-opacity h-6 text-xs"
+            disabled={generatingAssessment}
+            onClick={async (e) => {
+              e.stopPropagation();
+              if (!moduleId || !contentBody.trim()) {
+                toast.error("Aggiungi del contenuto al modulo prima di generare le domande.");
+                return;
+              }
+              setGeneratingAssessment(true);
+              try {
+                // Save current content first
+                await doAutosave();
+                const { data, error } = await supabase.functions.invoke("generate-assessment", {
+                  body: { module_id: moduleId },
+                });
+                if (error) throw error;
+                if (data?.error) throw new Error(data.error);
+                if (data?.questions) {
+                  setQuestions(data.questions.map((q: any) => ({
+                    question: q.question,
+                    options: q.options,
+                    correct_index: q.correct_index,
+                    feedback_correct: q.feedback_correct || "",
+                    feedback_wrong: q.feedback_wrong || "",
+                  })));
+                  toast.success("3 domande generate con successo!");
+                }
+              } catch (err: any) {
+                toast.error(err.message || "Generazione domande fallita");
+              } finally {
+                setGeneratingAssessment(false);
+              }
+            }}
+          >
+            {generatingAssessment ? (
+              <><Loader2 className="h-3 w-3 mr-1 animate-spin" />Generazione...</>
+            ) : (
+              <><Sparkles className="h-3 w-3 mr-1" />Genera con AI</>
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 text-xs"
             onClick={(e) => { e.stopPropagation(); addQuestion(); }}
           >
             <Plus className="h-3 w-3 mr-1" />Aggiungi
