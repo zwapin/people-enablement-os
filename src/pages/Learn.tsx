@@ -96,7 +96,7 @@ export default function Learn() {
       if (error) throw error;
       return data;
     },
-    enabled: isAdmin && !viewAsRep,
+    enabled: isAdmin,
   });
 
   const { data: allCompletions } = useQuery({
