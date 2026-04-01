@@ -485,7 +485,6 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
                 e.stopPropagation();
                 setKeyPoints([]);
                 setKeyPointsRemoved(true);
-                triggerAutosave();
               }}
             >
               <Trash2 className="h-3 w-3 mr-1" />Rimuovi
