@@ -667,7 +667,9 @@ export default function Learn() {
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                   {cat.label}
                 </h3>
-                {cat.collections.map(renderCollectionCard)}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {cat.collections.map(renderCollectionCard)}
+                </div>
               </div>
             ))}
 
@@ -678,7 +680,9 @@ export default function Learn() {
                     Non categorizzate
                   </h3>
                 )}
-                {uncategorized.map(renderCollectionCard)}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {uncategorized.map(renderCollectionCard)}
+                </div>
               </div>
             )}
           </div>
