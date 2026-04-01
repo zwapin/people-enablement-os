@@ -30,7 +30,6 @@ export default function ProposalsList({ modules, onEdit, onRefresh }: ProposalsL
   };
 
   const handleReject = async (mod: Module) => {
-    // Delete questions first, then module
     await supabase.from("assessment_questions").delete().eq("module_id", mod.id);
     const { error } = await supabase.from("modules").delete().eq("id", mod.id);
 
@@ -43,7 +42,6 @@ export default function ProposalsList({ modules, onEdit, onRefresh }: ProposalsL
   };
 
   const handleEditAsDraft = (mod: Module) => {
-    // Set to draft then open editor
     supabase
       .from("modules")
       .update({ status: "draft", updated_at: new Date().toISOString() })
@@ -52,7 +50,7 @@ export default function ProposalsList({ modules, onEdit, onRefresh }: ProposalsL
   };
 
   return (
-    <div className="space-y-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {modules.map((mod) => {
         const sourceDocIds = Array.isArray(mod.source_document_ids) ? mod.source_document_ids : [];
         const sourceFaqIds = Array.isArray(mod.source_faq_ids) ? mod.source_faq_ids : [];
@@ -60,65 +58,74 @@ export default function ProposalsList({ modules, onEdit, onRefresh }: ProposalsL
         return (
           <Card
             key={mod.id}
-            className="p-4 border-dashed border-primary/30 bg-primary/[0.03] space-y-3"
+            className="flex flex-col h-full border-dashed border-primary/30 bg-primary/[0.03] overflow-hidden"
           >
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
-                    <Sparkles className="h-3 w-3 mr-1" />
-                    AI Proposto
-                  </Badge>
-                  <Badge variant="secondary" className="text-[10px]">
-                    {mod.track}
-                  </Badge>
+            <div className="flex-1 p-5 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Sparkles className="h-5 w-5 text-primary" />
                 </div>
-                <h3 className="font-medium text-foreground mt-2">{mod.title}</h3>
-                {mod.summary && (
-                  <p className="text-sm text-muted-foreground mt-1">{mod.summary}</p>
-                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-semibold text-foreground leading-tight">
+                      {mod.title}
+                    </h3>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-primary hover:text-primary hover:bg-primary/10"
+                        onClick={() => handleApprove(mod)}
+                        title="Approva e pubblica"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleEditAsDraft(mod)}
+                        title="Modifica come bozza"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive hover:text-destructive"
+                        onClick={() => handleReject(mod)}
+                        title="Rifiuta"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleApprove(mod)}
-                  title="Approva e pubblica"
-                  className="text-primary hover:text-primary hover:bg-primary/10"
-                >
-                  <Check className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEditAsDraft(mod)}
-                  title="Modifica come bozza"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleReject(mod)}
-                  title="Rifiuta"
-                  className="text-destructive hover:text-destructive"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+              {mod.summary && (
+                <p className="text-xs text-muted-foreground line-clamp-2">{mod.summary}</p>
+              )}
+
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  AI Proposto
+                </Badge>
+                <Badge variant="secondary" className="text-[10px]">
+                  {mod.track}
+                </Badge>
               </div>
+
+              {mod.ai_rationale && (
+                <div className="text-xs text-muted-foreground bg-secondary/50 rounded px-3 py-2">
+                  <span className="font-medium">Motivazione AI:</span> {mod.ai_rationale}
+                </div>
+              )}
             </div>
 
-            {/* AI Rationale */}
-            {mod.ai_rationale && (
-              <div className="text-xs text-muted-foreground bg-secondary/50 rounded px-3 py-2">
-                <span className="font-medium">Motivazione AI:</span> {mod.ai_rationale}
-              </div>
-            )}
-
-            {/* Sources */}
             {(sourceDocIds.length > 0 || sourceFaqIds.length > 0) && (
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="px-5 pb-4 flex items-center gap-3 text-xs text-muted-foreground">
                 {sourceDocIds.length > 0 && (
                   <span className="flex items-center gap-1">
                     <FileText className="h-3 w-3" />
