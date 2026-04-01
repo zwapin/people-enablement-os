@@ -342,8 +342,6 @@ export default function Home() {
       {/* ── Onboarding plan ── */}
       {activeUserId && <OnboardingPlanSection userId={activeUserId} />}
 
-      {/* ── Tools ── */}
-      <ToolsSection departments={getProfileDepartments(activeProfile ?? {})} />
 
 
       {/* ── CTA if everything is done ── */}
