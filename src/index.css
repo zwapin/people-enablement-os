@@ -122,13 +122,13 @@
 
 .ProseMirror h3 {
   @apply text-lg font-semibold mt-8 mb-3 flex items-center gap-2;
-  color: hsl(var(--secondary));
+  color: hsl(var(--module-h3));
 }
 
 .ProseMirror h3::before {
   content: "";
   @apply inline-block w-1 h-5 rounded-full shrink-0;
-  background: hsl(var(--secondary));
+  background: hsl(var(--module-h3));
 }
 
 .ProseMirror blockquote {
