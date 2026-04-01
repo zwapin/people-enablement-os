@@ -147,7 +147,7 @@ async function handleChildJob(
     return new Response(JSON.stringify({ error: "Job not found" }), { status: 404 });
   }
 
-  const { module_id, module_title, source_document_ids, source_faq_ids, relevant_sections } = job.input;
+  const { module_id, module_title, source_document_ids, source_faq_ids, relevant_sections, custom_instructions } = job.input;
 
   await supabase
     .from("generation_jobs")
