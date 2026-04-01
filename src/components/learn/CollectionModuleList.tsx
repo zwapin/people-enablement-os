@@ -71,7 +71,7 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
   return (
     <div className="space-y-2">
       {modules.map((mod, index) => (
-        <Card key={mod.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-card border-border">
+        <Card key={mod.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-card border-border cursor-pointer hover:border-primary/40 transition-colors" onClick={() => onEdit(mod.id)}>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-muted-foreground">
