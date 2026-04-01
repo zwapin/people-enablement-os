@@ -22,7 +22,7 @@ serve(async (req) => {
     // Fetch all knowledge documents for context
     const { data: docs } = await supabase
       .from("knowledge_documents")
-      .select("title, content, collection_id");
+      .select("id, title, content, collection_id");
 
     // Fetch collection titles for references
     const { data: collections } = await supabase
@@ -34,7 +34,7 @@ serve(async (req) => {
     const docsContext = (docs ?? [])
       .map((d: any) => {
         const collTitle = d.collection_id ? collectionMap.get(d.collection_id) ?? "N/A" : "Generale";
-        return `--- Documento: "${d.title}" (Collection: ${collTitle}) ---\n${d.content}\n`;
+        return `--- Documento: "${d.title}" (ID: ${d.id}) (Collection: ${collTitle}, Collection ID: ${d.collection_id || "none"}) ---\n${d.content}\n`;
       })
       .join("\n");
 
