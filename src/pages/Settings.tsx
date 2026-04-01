@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import ToolsManager from "@/components/settings/ToolsManager";
+
 
 const DEFAULT_ROLES = ["AE", "SDR", "CSM", "SE", "Manager"];
 
@@ -357,7 +357,7 @@ export default function Settings() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <ToolsManager />
+      
     </div>
   );
 }
