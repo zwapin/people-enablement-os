@@ -617,19 +617,6 @@ export default function Learn() {
   // For "Vista membro" — selected member's completions
   const selectedMember = repProfiles?.find((p) => p.user_id === selectedMemberId) ?? null;
 
-  const { data: memberCompletions } = useQuery({
-    queryKey: ["member-completions", selectedMemberId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("module_completions")
-        .select("*")
-        .eq("user_id", selectedMemberId!);
-      if (error) throw error;
-      return data;
-    },
-    enabled: isAdmin && adminViewMode === "member" && !!selectedMemberId,
-  });
-
   // Helper: render member view (rep-like view for a specific member)
   const renderMemberView = () => {
     if (!selectedMember) {
