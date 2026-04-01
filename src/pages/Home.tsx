@@ -51,7 +51,7 @@ function getNextBadge(pct: number) {
 
 export default function Home() {
   const { profile, user } = useAuth();
-  const { isImpersonating, impersonating } = useImpersonation();
+  const { isImpersonating, impersonating, adminViewMode } = useImpersonation();
   const navigate = useNavigate();
   const activeProfile = isImpersonating ? impersonating : profile;
   const activeUserId = isImpersonating ? impersonating?.user_id : user?.id;
@@ -103,11 +103,18 @@ export default function Home() {
   const allCollections =
     curricula?.filter((c) => c.status !== "archived") ?? [];
 
+  // In "myteam" mode for admins, filter by admin's own teams
+  const isAdmin = profile?.role === "admin";
+  const adminTeamKeys = departmentsToCategoryKeys(
+    getProfileDepartments(profile ?? {})
+  );
+  const effectiveTeamKeys = isAdmin && adminViewMode === "myteam" ? adminTeamKeys : userTeamKeys;
+
   const filteredCollections = allCollections.filter((c) => {
     const cats = getCollectionCategories(c.categories);
     if (cats.includes("common")) return true;
-    if (userTeamKeys.length === 0) return true;
-    return userTeamKeys.some((k) => cats.includes(k));
+    if (effectiveTeamKeys.length === 0) return true;
+    return effectiveTeamKeys.some((k) => cats.includes(k));
   });
 
   const visibleModules =
