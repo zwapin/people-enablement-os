@@ -349,58 +349,6 @@ export default function Home() {
       {/* ── Tools ── */}
       <ToolsSection department={activeProfile?.department ?? null} />
 
-      {/* ── Collection overview ── */}
-      <motion.div variants={fadeUp} className="space-y-3">
-        <h2 className="text-base font-semibold text-foreground">
-          Le tue collection
-        </h2>
-        <div className="grid gap-3">
-          {collectionStats.map((c, idx) => (
-            <motion.div
-              key={c.id}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: 0.6 + idx * 0.08 }}
-            >
-              <Card
-                className="bg-card border-border hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => navigate(`/learn/${c.id}`)}
-              >
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      c.pct === 100
-                        ? "bg-secondary/15 text-secondary"
-                        : "bg-primary/10 text-primary"
-                    }`}
-                  >
-                    {c.pct === 100 ? (
-                      <CheckCircle2 className="h-5 w-5" />
-                    ) : (
-                      <BookOpen className="h-5 w-5" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium text-foreground truncate">
-                        {c.title}
-                      </p>
-                      <Badge
-                        variant="outline"
-                        className="shrink-0 text-[10px] font-mono"
-                      >
-                        {c.completedCount}/{c.moduleCount}
-                      </Badge>
-                    </div>
-                    <Progress value={c.pct} className="h-1.5" />
-                  </div>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
-      </motion.div>
 
       {/* ── CTA if everything is done ── */}
       {completedCount === totalModules && totalModules > 0 && (
