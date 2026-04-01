@@ -275,23 +275,18 @@ export default function ModuleView() {
                 </blockquote>
               ),
               ul: ({ children }) => (
-                <ul className="my-5 space-y-2 pl-1">{children}</ul>
+                <ul className="my-5 space-y-2 pl-1 [&>li>.marker-dot]:block [&>li>.marker-num]:hidden">{children}</ul>
               ),
               ol: ({ children }) => (
-                <ol className="my-5 space-y-2 pl-0 list-none counter-reset-[item]">{children}</ol>
+                <ol className="my-5 space-y-2 pl-1 list-none [counter-reset:item] [&>li>.marker-dot]:hidden [&>li>.marker-num]:flex">{children}</ol>
               ),
-              li: ({ children, node }) => {
-                // Detect if parent is ol by checking if ordered prop exists
-                const isOrdered = node?.position?.start?.line !== undefined && 
-                  (node as any)?.properties?.className?.includes?.('ordered');
-                // Simple heuristic: if this li's parent was an ol, we won't show a bullet
-                return (
-                  <li className="flex items-start gap-2.5 text-foreground/80 leading-relaxed">
-                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                    <span className="flex-1">{children}</span>
-                  </li>
-                );
-              },
+              li: ({ children }) => (
+                <li className="flex items-start gap-2.5 text-foreground/80 leading-relaxed">
+                  <span className="marker-dot mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <span className="marker-num hidden items-center justify-center mt-0.5 h-5 w-5 rounded-full bg-secondary/20 text-secondary text-xs font-bold shrink-0 [counter-increment:item] before:content-[counter(item)]" />
+                  <span className="flex-1">{children}</span>
+                </li>
+              ),
               strong: ({ children }) => (
                 <strong className="text-foreground font-semibold bg-primary/10 px-1 rounded">
                   {children}
