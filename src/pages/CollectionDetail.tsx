@@ -295,6 +295,9 @@ export default function CollectionDetail() {
   };
 
   const doGenerate = async () => {
+    if (generateDialogMode === "content") {
+      return doBulkGenerate();
+    }
     setGenerateDialogOpen(false);
     setGenerating(true);
     setProgress(2);
