@@ -1,4 +1,4 @@
-import { Home, BookOpen, TrendingUp, BarChart3, Users, LogOut, Settings, Eye, Layers, Building2, User } from "lucide-react";
+import { Home, BookOpen, TrendingUp, Users, LogOut, Settings, Eye, Layers, Building2, User, Wrench } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation, AdminViewMode } from "@/contexts/ImpersonationContext";
