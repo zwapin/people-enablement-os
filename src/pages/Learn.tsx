@@ -9,7 +9,6 @@ import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
 import CollectionModuleList from "@/components/learn/CollectionModuleList";
