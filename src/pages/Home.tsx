@@ -344,6 +344,9 @@ export default function Home() {
         </motion.div>
       )}
 
+      {/* ── Collection in progress ── */}
+      <CollectionProgressSection collectionStats={collectionStats} />
+
       {/* ── Onboarding plan ── */}
       {activeUserId && <OnboardingPlanSection userId={activeUserId} />}
 
