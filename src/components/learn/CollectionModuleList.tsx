@@ -102,9 +102,9 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
                 title={mod.status === "published" ? "Sposta in bozza" : "Pubblica"}
               >
                 {mod.status === "published" ? (
-                  <EyeOff className="h-4 w-4" />
-                ) : (
                   <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
                 )}
               </Button>
               <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(mod.id); }}>
