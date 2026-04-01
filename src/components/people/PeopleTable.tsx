@@ -234,10 +234,40 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                   onCheckedChange={() => handleToggleActive(p)}
                 />
               </TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  onClick={() => setProfileToDelete(p)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      <AlertDialog open={!!profileToDelete} onOpenChange={(open) => !open && setProfileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rimuovere {profileToDelete?.full_name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L'utente verrà disattivato e non potrà più accedere alla piattaforma.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => profileToDelete && handleDeleteProfile(profileToDelete)}
+            >
+              Rimuovi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
