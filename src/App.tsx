@@ -18,9 +18,9 @@ import People from "./pages/People";
 import Settings from "./pages/Settings";
 import Home from "./pages/Home";
 import Tools from "./pages/Tools";
+import AskKlaaryo from "./pages/AskKlaaryo";
 
 import NotFound from "./pages/NotFound";
-import ChatAgentWidget from "./components/ChatAgentWidget";
 
 const queryClient = new QueryClient();
 
