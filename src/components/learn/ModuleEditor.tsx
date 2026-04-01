@@ -14,7 +14,6 @@ import ModuleCanvas from "./ModuleCanvas";
 import ModulePreview from "./ModulePreview";
 import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Sparkles, ChevronDown, Lightbulb, HelpCircle, Eye, Check } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
-import type { Json } from "@/integrations/supabase/types";
 
 interface QuestionForm {
   id?: string;
