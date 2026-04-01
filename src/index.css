@@ -45,6 +45,14 @@
 
     --radius: 0.5rem;
 
+    /* Module content colors */
+    --module-h2: 200 90% 15%;
+    --module-h3: 189 100% 34%;
+    --module-callout-bg: 189 100% 34%;
+    --module-callout-border: 189 100% 34%;
+    --module-table-header-bg: 200 90% 15%;
+    --module-table-header-fg: 0 0% 100%;
+
     --sidebar-background: 200 90% 15%;
     --sidebar-foreground: 200 20% 85%;
     --sidebar-primary: 189 100% 34%;
@@ -114,19 +122,19 @@
 
 .ProseMirror h3 {
   @apply text-lg font-semibold mt-8 mb-3 flex items-center gap-2;
-  color: hsl(var(--secondary));
+  color: hsl(var(--module-h3));
 }
 
 .ProseMirror h3::before {
   content: "";
   @apply inline-block w-1 h-5 rounded-full shrink-0;
-  background: hsl(var(--secondary));
+  background: hsl(var(--module-h3));
 }
 
 .ProseMirror blockquote {
   @apply my-6 border-l-4 rounded-r-lg px-5 py-4 not-italic;
-  border-color: hsl(var(--secondary) / 0.6);
-  background: hsl(var(--secondary) / 0.08);
+  border-color: hsl(var(--module-callout-border) / 0.6);
+  background: hsl(var(--module-callout-bg) / 0.08);
 }
 
 .ProseMirror blockquote p {
@@ -151,8 +159,8 @@
 .ProseMirror ol > li::before {
   content: counter(item);
   @apply mt-0.5 h-5 w-5 rounded-full text-xs font-bold shrink-0 inline-flex items-center justify-center;
-  background: hsl(var(--secondary) / 0.2);
-  color: hsl(var(--secondary));
+  background: hsl(var(--module-h3) / 0.2);
+  color: hsl(var(--module-h3));
 }
 
 .ProseMirror ul > li {
@@ -179,7 +187,8 @@
 
 .ProseMirror table th {
   @apply px-4 py-3 text-left font-semibold border-b border-border;
-  background: hsl(var(--muted) / 0.6);
+  background: hsl(var(--module-table-header-bg));
+  color: hsl(var(--module-table-header-fg));
 }
 
 .ProseMirror table td {

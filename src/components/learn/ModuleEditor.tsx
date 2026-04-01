@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import ModuleCanvas from "./ModuleCanvas";
 import ModulePreview from "./ModulePreview";
-import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Save, Sparkles, ChevronDown, Lightbulb, HelpCircle, Eye } from "lucide-react";
+import { ArrowLeft, Loader2, Plus, Trash2, GripVertical, Sparkles, ChevronDown, Lightbulb, HelpCircle, Eye, Check } from "lucide-react";
 import type { Json } from "@/integrations/supabase/types";
 
 interface QuestionForm {
@@ -39,6 +39,7 @@ interface ModuleEditorProps {
 export default function ModuleEditor({ moduleId, onClose, collections = [] }: ModuleEditorProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [sourceDocIds, setSourceDocIds] = useState<string[] | null>(null);
   const [sourceFaqIds, setSourceFaqIds] = useState<string[] | null>(null);
@@ -56,8 +57,10 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
   const [questionsOpen, setQuestionsOpen] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatingStep, setGeneratingStep] = useState(0);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const summaryRef = useRef<HTMLTextAreaElement>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cycling generation status messages
   const generationMessages = useMemo(() => [
@@ -127,7 +130,62 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
     }
 
     setLoading(false);
+    setInitialLoad(false);
   };
+
+  // Debounced autosave
+  const doAutosave = useCallback(async () => {
+    if (!moduleId || !title.trim() || generating) return;
+    setSaving(true);
+    setAutoSaved(false);
+    try {
+      await supabase
+        .from("modules")
+        .update({
+          title: title.trim(),
+          summary: summary.trim() || null,
+          track,
+          content_body: contentBody.trim() || null,
+          key_points: keyPoints as unknown as Json,
+          curriculum_id: curriculumId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", moduleId);
+
+      // Save questions
+      await supabase.from("assessment_questions").delete().eq("module_id", moduleId);
+      if (questions.length > 0) {
+        const qRows = questions.map((q, i) => ({
+          module_id: moduleId!,
+          question: q.question,
+          options: q.options as unknown as Json,
+          correct_index: q.correct_index,
+          feedback_correct: q.feedback_correct || null,
+          feedback_wrong: q.feedback_wrong || null,
+          order_index: i,
+        }));
+        await supabase.from("assessment_questions").insert(qRows);
+      }
+
+      setAutoSaved(true);
+      setTimeout(() => setAutoSaved(false), 2000);
+    } catch (err: any) {
+      console.error("Autosave error:", err);
+    } finally {
+      setSaving(false);
+    }
+  }, [moduleId, title, summary, track, contentBody, keyPoints, curriculumId, questions, generating]);
+
+  useEffect(() => {
+    if (initialLoad || !moduleId) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      doAutosave();
+    }, 1500);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [title, summary, track, contentBody, keyPoints, curriculumId, questions, doAutosave, initialLoad, moduleId]);
 
   const handleSave = async (publishStatus?: string) => {
     if (!title.trim()) {
@@ -548,13 +606,21 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
       {/* Sticky action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto flex items-center justify-end gap-3 px-4 py-3">
+          {saving && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Salvataggio...
+            </span>
+          )}
+          {autoSaved && !saving && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Check className="h-3 w-3 text-green-500" />
+              Salvato
+            </span>
+          )}
+          <div className="flex-1" />
           <Button variant="ghost" onClick={onClose} className="text-sm">
-            Annulla
-          </Button>
-          <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving} className="text-sm gap-1.5">
-            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            <Save className="h-3.5 w-3.5" />
-            Salva bozza
+            Chiudi
           </Button>
           <Button onClick={() => handleSave("published")} disabled={saving} className="text-sm">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

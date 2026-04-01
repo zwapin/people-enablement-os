@@ -259,18 +259,18 @@ export default function ModuleView() {
             remarkPlugins={[remarkGfm]}
             components={{
               h2: ({ children }) => (
-                <h2 className="text-xl font-bold text-foreground mt-10 mb-4 pb-2 border-b border-border">
+                <h2 className="text-xl font-bold mt-10 mb-4 pb-2 border-b border-border" style={{ color: 'hsl(var(--module-h2))' }}>
                   {children}
                 </h2>
               ),
               h3: ({ children }) => (
-                <h3 className="text-lg font-semibold mt-8 mb-3 flex items-center gap-2" style={{ color: 'hsl(var(--secondary))' }}>
-                  <span className="inline-block w-1 h-5 rounded-full bg-secondary" />
+                <h3 className="text-lg font-semibold mt-8 mb-3 flex items-center gap-2" style={{ color: 'hsl(var(--module-h3))' }}>
+                  <span className="inline-block w-1 h-5 rounded-full shrink-0" style={{ background: 'hsl(var(--module-h3))' }} />
                   {children}
                 </h3>
               ),
               blockquote: ({ children }) => (
-                <blockquote className="my-6 border-l-4 border-secondary/60 rounded-r-lg px-5 py-4 not-italic" style={{ background: 'hsl(var(--secondary) / 0.08)' }}>
+                <blockquote className="my-6 border-l-4 rounded-r-lg px-5 py-4 not-italic" style={{ borderColor: 'hsl(var(--module-callout-border) / 0.6)', background: 'hsl(var(--module-callout-bg) / 0.08)' }}>
                   <div className="text-foreground/90 font-medium">{children}</div>
                 </blockquote>
               ),
@@ -283,7 +283,7 @@ export default function ModuleView() {
               li: ({ children }) => (
                 <li className="flex items-start gap-2.5 text-foreground/80 leading-relaxed">
                   <span className="marker-dot mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  <span className="marker-num hidden items-center justify-center mt-0.5 h-5 w-5 rounded-full bg-secondary/20 text-secondary text-xs font-bold shrink-0 [counter-increment:item] before:content-[counter(item)]" />
+                  <span className="marker-num hidden items-center justify-center mt-0.5 h-5 w-5 rounded-full text-xs font-bold shrink-0 [counter-increment:item] before:content-[counter(item)]" style={{ background: 'hsl(var(--module-h3) / 0.2)', color: 'hsl(var(--module-h3))' }} />
                   <span className="flex-1">{children}</span>
                 </li>
               ),
@@ -301,10 +301,10 @@ export default function ModuleView() {
                 </div>
               ),
               thead: ({ children }) => (
-                <thead className="bg-muted/60">{children}</thead>
+                <thead style={{ background: 'hsl(var(--module-table-header-bg))' }}>{children}</thead>
               ),
               th: ({ children }) => (
-                <th className="px-4 py-3 text-left font-semibold text-foreground border-b border-border">
+                <th className="px-4 py-3 text-left font-semibold border-b border-border" style={{ color: 'hsl(var(--module-table-header-fg))' }}>
                   {children}
                 </th>
               ),
