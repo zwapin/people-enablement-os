@@ -159,7 +159,20 @@ export default function Learn() {
     enabled: isAdmin && !viewAsRep,
   });
 
-  const refreshAll = () => {
+  // Query for member view completions (must be before early returns)
+  const { data: memberCompletions } = useQuery({
+    queryKey: ["member-completions", selectedMemberId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("module_completions")
+        .select("*")
+        .eq("user_id", selectedMemberId!);
+      if (error) throw error;
+      return data;
+    },
+    enabled: isAdmin && adminViewMode === "member" && !!selectedMemberId,
+  });
+
     refetch();
     refetchCurricula();
   };
