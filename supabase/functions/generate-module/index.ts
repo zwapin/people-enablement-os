@@ -194,6 +194,10 @@ async function handleChildJob(
       ? `\nSEZIONI RILEVANTI DEL DOCUMENTO SORGENTE DA CUI ESTRARRE IL CONTENUTO:\n${relevant_sections}\nConcentrati su queste sezioni ma includi anche contesto utile dalle altre parti.\n`
       : "";
 
+    const customInstructionsBlock = custom_instructions
+      ? `\n\nISTRUZIONI PERSONALIZZATE DELL'AMMINISTRATORE (PRIORITÀ ALTA):\n${custom_instructions}\n`
+      : "";
+
     const systemPrompt = `Sei un esperto di contenuti formativi per la vendita. Genera il contenuto completo per UN singolo modulo formativo.
 
 Modulo: "${module_title}"
