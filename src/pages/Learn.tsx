@@ -655,32 +655,36 @@ export default function Learn() {
 
         return (
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-foreground">Collections</h2>
-              <Button variant="outline" size="sm" onClick={handleCreateCollection}>
-                <Plus className="h-4 w-4 mr-1" />
-                Nuova
-              </Button>
-            </div>
+            <h2 className="text-lg font-semibold text-foreground">Collections</h2>
 
-            {categorized.filter(cat => cat.collections.length > 0).map(cat => (
+            {categorized.map(cat => (
               <div key={cat.key} className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  {cat.label}
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {cat.collections.map(renderCollectionCard)}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                    {cat.label}
+                  </h3>
+                  <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Nuova
+                  </Button>
                 </div>
+                {cat.collections.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {cat.collections.map(renderCollectionCard)}
+                  </div>
+                ) : (
+                  <Card className="p-4 bg-card border-border text-sm text-muted-foreground">
+                    Nessuna collection in questa area al momento.
+                  </Card>
+                )}
               </div>
             ))}
 
             {uncategorized.length > 0 && (
               <div className="space-y-3">
-                {categorized.some(cat => cat.collections.length > 0) && (
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    Non categorizzate
-                  </h3>
-                )}
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                  Non categorizzate
+                </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {uncategorized.map(renderCollectionCard)}
                 </div>
