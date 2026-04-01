@@ -114,16 +114,24 @@
 
 .ProseMirror h3 {
   @apply text-lg font-semibold mt-8 mb-3 flex items-center gap-2;
+  color: hsl(var(--secondary));
 }
 
 .ProseMirror h3::before {
   content: "";
-  @apply inline-block w-1 h-5 rounded-full bg-primary shrink-0;
+  @apply inline-block w-1 h-5 rounded-full shrink-0;
+  background: hsl(var(--secondary));
 }
 
 .ProseMirror blockquote {
-  @apply my-6 border-l-4 border-primary/50 rounded-r-lg px-5 py-4 not-italic;
-  background: hsl(var(--secondary) / 0.3);
+  @apply my-6 border-l-4 rounded-r-lg px-5 py-4 not-italic;
+  border-color: hsl(var(--secondary) / 0.6);
+  background: hsl(var(--secondary) / 0.08);
+}
+
+.ProseMirror blockquote p {
+  @apply font-medium;
+  color: hsl(var(--foreground) / 0.9);
 }
 
 .ProseMirror ul {
@@ -131,7 +139,20 @@
 }
 
 .ProseMirror ol {
-  @apply my-5 space-y-2 pl-1 list-decimal list-inside;
+  @apply my-5 space-y-2 pl-1 list-none;
+  counter-reset: item;
+}
+
+.ProseMirror ol > li {
+  @apply flex items-start gap-2.5 leading-relaxed;
+  counter-increment: item;
+}
+
+.ProseMirror ol > li::before {
+  content: counter(item);
+  @apply mt-0.5 h-5 w-5 rounded-full text-xs font-bold shrink-0 inline-flex items-center justify-center;
+  background: hsl(var(--secondary) / 0.2);
+  color: hsl(var(--secondary));
 }
 
 .ProseMirror ul > li {

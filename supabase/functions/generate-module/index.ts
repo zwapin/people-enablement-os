@@ -222,11 +222,15 @@ Il contenuto DEVE seguire questa struttura precisa, con ogni sezione separata da
 ---
 4. **Punti chiave** — riassumi i concetti fondamentali in una lista puntata finale
 
-REGOLE PER MEDIA E RISORSE VISIVE (OBBLIGATORIE):
-- Se nei documenti sorgente sono presenti riferimenti a immagini, grafici, video, GIF o screenshot, DEVI includerli nel contenuto usando la sintassi markdown appropriata
-- Per immagini: usa ![descrizione](url) preservando l'URL originale
-- Per video: includi il link come embed o riferimento
-- Se un'immagine non ha URL ma è descritta nel testo, crea un placeholder: > 📊 [Grafico: descrizione del contenuto visivo]
+REGOLE PER MEDIA E RISORSE VISIVE (OBBLIGATORIE — MASSIMA PRIORITÀ):
+- Se nei documenti sorgente sono presenti immagini, grafici, video, GIF, screenshot, tabelle o riquadri di QUALSIASI tipo, DEVONO essere riprodotti fedelmente nel modulo
+- Per immagini: usa ![descrizione](url) preservando l'URL originale esatto
+- Per video: includi il link come embed o riferimento testuale con icona 🎥
+- Per GIF: usa ![descrizione](url.gif) preservando l'URL originale
+- Per tabelle: riproducile INTEGRALMENTE in formato markdown, preservando tutte le righe e colonne originali
+- Per riquadri/box informativi: usa blockquote con emoji appropriata (💡, ⚠️, 📌, 🎯) per ricreare l'effetto visivo del riquadro
+- Se un'immagine non ha URL ma è descritta nel testo, crea un placeholder: > 📊 **[Grafico: descrizione del contenuto visivo]**
+- NON omettere MAI materiale visivo presente nei documenti sorgente
 
 REGOLE DI FEDELTÀ AL MATERIALE SORGENTE (OBBLIGATORIE):
 - Includi TUTTI i termini specifici, nomi di fasi, framework, tool e processi menzionati nel materiale sorgente
@@ -236,15 +240,26 @@ REGOLE DI FEDELTÀ AL MATERIALE SORGENTE (OBBLIGATORIE):
 - Usa i nomi propri di strumenti, metodologie e framework così come appaiono nel documento
 - Quando il documento contiene numeri, KPI, percentuali o metriche, riportali fedelmente
 
-REGOLE DI FORMATTAZIONE (OBBLIGATORIE):
+REGOLE DI FORMATTAZIONE E STYLING (OBBLIGATORIE — STILE ACCATTIVANTE):
 - Usa sottotitoli ### (h3) per spezzare il contenuto in sezioni tematiche chiare
-- Usa **elenchi puntati** per liste di concetti, stakeholder, step, vantaggi, caratteristiche
-- Usa **tabelle markdown** per confronti, categorizzazioni, metriche
-- Usa **blockquote** (> ) per evidenziare concetti chiave, best practice o citazioni importanti
+- **Elenchi puntati e numerati**: ogni elemento dell'elenco deve avere il contenuto testuale SULLA STESSA RIGA del numero o del punto. NON andare a capo dopo il numero. Esempio corretto:
+  1. **Champion:** Chi spinge internamente la soluzione.
+  2. **Economic Buyer:** Chi ha l'autorità sul budget.
+  Esempio ERRATO (da NON fare):
+  1.
+  **Champion:** Chi spinge internamente la soluzione.
+- Usa **tabelle markdown** per confronti, categorizzazioni, metriche — riproduci TUTTE le tabelle dei documenti sorgente
+- Usa **blockquote stilizzati** con emoji per creare riquadri visivi accattivanti per concetti chiave, regole e best practice:
+  > 🎯 **Regola d'oro:** [concetto importante]
+  > 💡 **Tip:** [suggerimento pratico]
+  > ⚠️ **Attenzione:** [avvertimento]
+  > 📌 **Da ricordare:** [concetto chiave da memorizzare]
+- Usa **grassetto** generosamente per i termini chiave e i concetti fondamentali
 - Usa separatori (---) tra macro-sezioni tematiche diverse
 - MAI scrivere paragrafi più lunghi di 4-5 righe consecutive — spezza con bullet point o sottotitoli
-- Alterna paragrafi brevi, elenchi e tabelle per creare varietà visiva
-- Ogni sezione h3 deve contenere almeno un elemento visivo (lista, tabella o blockquote)`;
+- Alterna paragrafi brevi, elenchi, tabelle e blockquote per creare varietà visiva e profondità
+- Ogni sezione h3 deve contenere almeno un elemento visivo (lista, tabella o blockquote stilizzato)
+- Crea contrasto visivo: non lasciare mai due paragrafi di testo semplice consecutivi senza un elemento formattato in mezzo`;
 
     console.log("[generate-module] Calling Lovable AI, prompt length:", systemPrompt.length);
 
