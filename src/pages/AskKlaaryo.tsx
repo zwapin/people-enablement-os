@@ -25,6 +25,7 @@ export default function AskKlaaryo() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<{ id: string; title: string; content: string; highlight: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
