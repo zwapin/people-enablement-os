@@ -201,7 +201,7 @@ async function handleChildJob(
     const systemPrompt = `Sei un esperto di contenuti formativi per la vendita. Genera il contenuto completo per UN singolo modulo formativo.
 
 Modulo: "${module_title}"
-${sectionHint}
+${sectionHint}${customInstructionsBlock}
 ${sourceContext}
 
 ISTRUZIONI:
