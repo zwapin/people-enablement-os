@@ -126,6 +126,7 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
                     size="icon"
                     title="Elimina"
                     className="text-destructive hover:text-destructive"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
