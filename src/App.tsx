@@ -120,7 +120,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ErrorBoundary>
-          <ChatAgentWidget />
+          
           </ImpersonationProvider>
         </AuthProvider>
       </BrowserRouter>

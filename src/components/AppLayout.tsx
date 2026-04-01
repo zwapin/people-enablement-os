@@ -24,6 +24,7 @@ const navItems = [
   { title: "Home", url: "/home", icon: Home, comingSoon: false },
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
   { title: "Tools", url: "/tools", icon: Wrench, comingSoon: false },
+  { title: "Ask Klaaryo", url: "/ask", icon: MessageSquare, comingSoon: false },
 ];
 
 const adminItems = [
