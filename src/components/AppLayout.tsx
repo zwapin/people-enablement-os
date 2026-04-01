@@ -53,7 +53,7 @@ function AppSidebarContent() {
     setAdminViewMode,
   } = useImpersonation();
 
-  const allNavItems = isAdmin && adminViewMode !== "member"
+  const allNavItems = isAdmin
     ? [...navItems, ...adminItems]
     : navItems;
 
