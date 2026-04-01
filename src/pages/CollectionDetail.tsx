@@ -530,14 +530,14 @@ export default function CollectionDetail() {
           </div>
         )}
 
-        {publishedModules.length === 0 ? (
+        {visibleModules.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
             <BookOpen className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Nessun modulo pubblicato in questa collection.</p>
+            <p className="text-sm text-muted-foreground">Nessun modulo in questa collection.</p>
           </div>
         ) : (
           <RepRoadmap
-            modules={publishedModules}
+            modules={visibleModules}
             completions={repCompletions ?? []}
           />
         )}
