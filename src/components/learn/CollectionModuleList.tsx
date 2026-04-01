@@ -107,7 +107,7 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
                   <Eye className="h-4 w-4" />
                 )}
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => onEdit(mod.id)}>
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(mod.id); }}>
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
