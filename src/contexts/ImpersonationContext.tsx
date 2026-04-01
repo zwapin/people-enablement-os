@@ -67,12 +67,11 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
 
   // Fetch rep profiles for the selector (admin only)
   const { data: repProfiles = [], isLoading: isLoadingProfiles } = useQuery({
-    queryKey: ["impersonation-rep-profiles"],
+    queryKey: ["impersonation-all-profiles"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("role", "rep")
         .eq("is_active", true)
         .order("full_name");
       if (error) throw error;
