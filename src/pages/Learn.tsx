@@ -43,6 +43,8 @@ export default function Learn() {
   const { isImpersonating, impersonating } = useImpersonation();
   const viewAsRep = isImpersonating;
   const activeJobId = useRef<string | null>(null);
+  const [adminViewMode, setAdminViewMode] = useState<"all" | "myteam" | "member">("all");
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const { data: modules, isLoading, refetch } = useQuery({
     queryKey: ["modules"],
