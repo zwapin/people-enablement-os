@@ -100,20 +100,20 @@ export default function Home() {
   });
 
   /* ── Computed ── */
-  const publishedCollections =
-    curricula?.filter((c) => c.status === "published") ?? [];
+  const allCollections =
+    curricula?.filter((c) => c.status !== "archived") ?? [];
 
-  const filteredCollections = publishedCollections.filter((c) => {
+  const filteredCollections = allCollections.filter((c) => {
     const cats = getCollectionCategories(c.categories);
     if (cats.includes("common")) return true;
     if (userTeamKeys.length === 0) return true;
     return userTeamKeys.some((k) => cats.includes(k));
   });
 
-  const publishedModules =
+  const visibleModules =
     modules?.filter(
       (m) =>
-        m.status === "published" &&
+        m.status !== "archived" &&
         filteredCollections.some((c) => c.id === m.curriculum_id)
     ) ?? [];
 
