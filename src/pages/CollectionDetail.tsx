@@ -351,9 +351,19 @@ export default function CollectionDetail() {
       });
 
       try {
+        const jobInput: any = {
+          module_id: mod.id,
+          module_title: mod.title,
+          source_document_ids: mod.source_document_ids ?? selectedDocIds,
+          source_faq_ids: mod.source_faq_ids ?? [],
+        };
+        if (customInstructions.trim()) {
+          jobInput.custom_instructions = customInstructions.trim();
+        }
+
         const { data: job, error: jobErr } = await supabase
           .from("generation_jobs")
-          .insert({ job_type: "generate-module", status: "pending", input: { module_id: mod.id } })
+          .insert({ job_type: "generate-module", status: "pending", input: jobInput })
           .select("id")
           .single();
 
