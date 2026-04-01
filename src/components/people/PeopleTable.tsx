@@ -362,17 +362,6 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                   ) : (p.job_role || <span className="text-muted-foreground">—</span>)}
                 </TableCell>
                 <TableCell>
-                  {isEditing ? (
-                    <Select value={editValues.member_type ?? "new_klaaryan"} onValueChange={(v) => setEditValues({ ...editValues, member_type: v })}>
-                      <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new_klaaryan">New Klaaryan</SelectItem>
-                        <SelectItem value="veteran_klaaryan">Veteran Klaaryan</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : renderMemberType(p)}
-                </TableCell>
-                <TableCell>
                   <Select value={getCombinedRole(p)} onValueChange={(v) => handleCombinedRoleChange(p, v)}>
                     <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
