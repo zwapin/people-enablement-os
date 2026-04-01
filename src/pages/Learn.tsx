@@ -711,11 +711,11 @@ export default function Learn() {
 
   // Helper: filter collections for "Il mio team" admin view
   const getMyTeamCollections = () => {
-    if (!adminTeamKey) return allCollections.filter((c) => c.status !== "archived");
+    if (adminTeamKeys.length === 0) return allCollections.filter((c) => c.status !== "archived");
     return allCollections.filter((c) => {
       if (c.status === "archived") return false;
       const cats = getCollectionCategories(c.categories);
-      return cats.includes(adminTeamKey) || cats.includes("common");
+      return cats.includes("common") || adminTeamKeys.some((k) => cats.includes(k));
     });
   };
 
