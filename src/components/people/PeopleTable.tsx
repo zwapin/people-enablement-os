@@ -1,13 +1,26 @@
+import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { it } from "date-fns/locale";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Trash2 } from "lucide-react";
 
 interface ProfileRow {
   id: string;
@@ -29,6 +42,30 @@ interface PeopleTableProps {
 
 export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
   const isMobile = useIsMobile();
+  const [profileToDelete, setProfileToDelete] = useState<ProfileRow | null>(null);
+
+  const handleDeleteProfile = async (profile: ProfileRow) => {
+    try {
+      // Delete from profiles (cascade will handle user_roles via auth)
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: false })
+        .eq("id", profile.id);
+      
+      // Also invoke edge function to delete the auth user
+      const { error: fnError } = await supabase.functions.invoke("delete-user", {
+        body: { user_id: profile.user_id },
+      });
+
+      if (error) throw error;
+      
+      toast.success(`${profile.full_name} è stato rimosso`);
+      setProfileToDelete(null);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Errore nella rimozione");
+    }
+  };
 
   const handleToggleActive = async (profile: ProfileRow) => {
     const { error } = await supabase
@@ -100,14 +137,44 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                   <SelectItem value="rep">New Klaaryan</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-xs text-muted-foreground">
-                {p.last_activity_at
-                  ? formatDistanceToNow(new Date(p.last_activity_at), { addSuffix: true, locale: it })
-                  : "Mai"}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {p.last_activity_at
+                    ? formatDistanceToNow(new Date(p.last_activity_at), { addSuffix: true, locale: it })
+                    : "Mai"}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  onClick={() => setProfileToDelete(p)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
           </Card>
         ))}
+
+        <AlertDialog open={!!profileToDelete} onOpenChange={(open) => !open && setProfileToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Rimuovere {profileToDelete?.full_name}?</AlertDialogTitle>
+              <AlertDialogDescription>
+                L'utente verrà disattivato e non potrà più accedere alla piattaforma.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={() => profileToDelete && handleDeleteProfile(profileToDelete)}
+              >
+                Rimuovi
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -117,13 +184,14 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nome</TableHead>
+             <TableHead>Nome</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Team</TableHead>
             <TableHead>Ruolo lavorativo</TableHead>
             <TableHead>Ruolo</TableHead>
             <TableHead>Ultima attività</TableHead>
             <TableHead>Attivo</TableHead>
+            <TableHead></TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -166,10 +234,40 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                   onCheckedChange={() => handleToggleActive(p)}
                 />
               </TableCell>
+              <TableCell>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                  onClick={() => setProfileToDelete(p)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
+
+      <AlertDialog open={!!profileToDelete} onOpenChange={(open) => !open && setProfileToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Rimuovere {profileToDelete?.full_name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L'utente verrà disattivato e non potrà più accedere alla piattaforma.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => profileToDelete && handleDeleteProfile(profileToDelete)}
+            >
+              Rimuovi
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

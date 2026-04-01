@@ -601,6 +601,36 @@ export type Database = {
         }
         Relationships: []
       }
+      team_tools: {
+        Row: {
+          created_at: string
+          icon_url: string | null
+          id: string
+          invite_link: string | null
+          name: string
+          order_index: number | null
+          team: string
+        }
+        Insert: {
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          invite_link?: string | null
+          name: string
+          order_index?: number | null
+          team: string
+        }
+        Update: {
+          created_at?: string
+          icon_url?: string | null
+          id?: string
+          invite_link?: string | null
+          name?: string
+          order_index?: number | null
+          team?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
