@@ -172,10 +172,22 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
     }
   };
 
-  const handleRoleChange = async (profile: ProfileRow, newRole: "admin" | "rep") => {
+  const handleCombinedRoleChange = async (profile: ProfileRow, newValue: string) => {
+    let newRole: "admin" | "rep";
+    let newMemberType: string;
+    if (newValue === "admin") {
+      newRole = "admin";
+      newMemberType = profile.member_type ?? "new_klaaryan";
+    } else if (newValue === "veteran_klaaryan") {
+      newRole = "rep";
+      newMemberType = "veteran_klaaryan";
+    } else {
+      newRole = "rep";
+      newMemberType = "new_klaaryan";
+    }
     const { error } = await supabase
       .from("profiles")
-      .update({ role: newRole })
+      .update({ role: newRole, member_type: newMemberType } as any)
       .eq("id", profile.id);
 
     if (error) {
@@ -183,6 +195,11 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
     } else {
       onRefresh();
     }
+  };
+
+  const getCombinedRole = (p: ProfileRow): string => {
+    if (p.role === "admin") return "admin";
+    return (p as any).member_type === "veteran_klaaryan" ? "veteran_klaaryan" : "new_klaaryan";
   };
 
   if (profiles.length === 0) {
