@@ -159,8 +159,8 @@
 .ProseMirror ol > li::before {
   content: counter(item);
   @apply mt-0.5 h-5 w-5 rounded-full text-xs font-bold shrink-0 inline-flex items-center justify-center;
-  background: hsl(var(--secondary) / 0.2);
-  color: hsl(var(--secondary));
+  background: hsl(var(--module-h3) / 0.2);
+  color: hsl(var(--module-h3));
 }
 
 .ProseMirror ul > li {
