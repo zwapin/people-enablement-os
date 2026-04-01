@@ -283,7 +283,7 @@ export default function ModuleView() {
               li: ({ children }) => (
                 <li className="flex items-start gap-2.5 text-foreground/80 leading-relaxed">
                   <span className="marker-dot mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  <span className="marker-num hidden items-center justify-center mt-0.5 h-5 w-5 rounded-full bg-secondary/20 text-secondary text-xs font-bold shrink-0 [counter-increment:item] before:content-[counter(item)]" />
+                  <span className="marker-num hidden items-center justify-center mt-0.5 h-5 w-5 rounded-full text-xs font-bold shrink-0 [counter-increment:item] before:content-[counter(item)]" style={{ background: 'hsl(var(--module-h3) / 0.2)', color: 'hsl(var(--module-h3))' }} />
                   <span className="flex-1">{children}</span>
                 </li>
               ),
