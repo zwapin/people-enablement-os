@@ -18,9 +18,9 @@ import People from "./pages/People";
 import Settings from "./pages/Settings";
 import Home from "./pages/Home";
 import Tools from "./pages/Tools";
+import AskKlaaryo from "./pages/AskKlaaryo";
 
 import NotFound from "./pages/NotFound";
-import ChatAgentWidget from "./components/ChatAgentWidget";
 
 const queryClient = new QueryClient();
 
@@ -87,6 +87,14 @@ const App = () => (
                 }
               />
               <Route
+                path="/ask"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><AskKlaaryo /></AppLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/grow"
                 element={
                   <ProtectedRoute>
@@ -113,7 +121,7 @@ const App = () => (
               <Route path="*" element={<NotFound />} />
             </Routes>
           </ErrorBoundary>
-          <ChatAgentWidget />
+          
           </ImpersonationProvider>
         </AuthProvider>
       </BrowserRouter>

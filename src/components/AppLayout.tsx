@@ -1,4 +1,4 @@
-import { Home, BookOpen, TrendingUp, Users, LogOut, Settings, Eye, Layers, Building2, User, Wrench } from "lucide-react";
+import { Home, BookOpen, TrendingUp, Users, LogOut, Settings, Eye, Layers, Building2, User, Wrench, MessageSquare } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation, AdminViewMode } from "@/contexts/ImpersonationContext";
@@ -24,6 +24,7 @@ const navItems = [
   { title: "Home", url: "/home", icon: Home, comingSoon: false },
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
   { title: "Tools", url: "/tools", icon: Wrench, comingSoon: false },
+  { title: "Ask Klaaryo", url: "/ask", icon: MessageSquare, comingSoon: false },
 ];
 
 const adminItems = [
