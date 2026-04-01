@@ -566,36 +566,42 @@ export type Database = {
         Row: {
           created_at: string
           department: string | null
+          departments: Json | null
           email: string
           full_name: string
           id: string
           is_active: boolean
           job_role: string | null
           last_activity_at: string | null
+          member_type: string | null
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Insert: {
           created_at?: string
           department?: string | null
+          departments?: Json | null
           email: string
           full_name: string
           id?: string
           is_active?: boolean
           job_role?: string | null
           last_activity_at?: string | null
+          member_type?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id: string
         }
         Update: {
           created_at?: string
           department?: string | null
+          departments?: Json | null
           email?: string
           full_name?: string
           id?: string
           is_active?: boolean
           job_role?: string | null
           last_activity_at?: string | null
+          member_type?: string | null
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
         }
