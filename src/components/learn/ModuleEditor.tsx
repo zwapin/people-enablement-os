@@ -130,7 +130,62 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
     }
 
     setLoading(false);
+    setInitialLoad(false);
   };
+
+  // Debounced autosave
+  const doAutosave = useCallback(async () => {
+    if (!moduleId || !title.trim() || generating) return;
+    setSaving(true);
+    setAutoSaved(false);
+    try {
+      await supabase
+        .from("modules")
+        .update({
+          title: title.trim(),
+          summary: summary.trim() || null,
+          track,
+          content_body: contentBody.trim() || null,
+          key_points: keyPoints as unknown as Json,
+          curriculum_id: curriculumId,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", moduleId);
+
+      // Save questions
+      await supabase.from("assessment_questions").delete().eq("module_id", moduleId);
+      if (questions.length > 0) {
+        const qRows = questions.map((q, i) => ({
+          module_id: moduleId!,
+          question: q.question,
+          options: q.options as unknown as Json,
+          correct_index: q.correct_index,
+          feedback_correct: q.feedback_correct || null,
+          feedback_wrong: q.feedback_wrong || null,
+          order_index: i,
+        }));
+        await supabase.from("assessment_questions").insert(qRows);
+      }
+
+      setAutoSaved(true);
+      setTimeout(() => setAutoSaved(false), 2000);
+    } catch (err: any) {
+      console.error("Autosave error:", err);
+    } finally {
+      setSaving(false);
+    }
+  }, [moduleId, title, summary, track, contentBody, keyPoints, curriculumId, questions, generating]);
+
+  useEffect(() => {
+    if (initialLoad || !moduleId) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      doAutosave();
+    }, 1500);
+    return () => {
+      if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    };
+  }, [title, summary, track, contentBody, keyPoints, curriculumId, questions, doAutosave, initialLoad, moduleId]);
 
   const handleSave = async (publishStatus?: string) => {
     if (!title.trim()) {
