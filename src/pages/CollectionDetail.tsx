@@ -615,36 +615,6 @@ export default function CollectionDetail() {
 
         {isAdmin && (
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : hasExistingModules ? (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
-              )}
-              {moduliButtonLabel}
-            </Button>
-            {showContenutiButton && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkGenerate}
-                disabled={bulkGenerating}
-              >
-                {bulkGenerating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
-                )}
-                {contenutiButtonLabel}
-              </Button>
-            )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">

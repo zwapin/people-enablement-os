@@ -841,28 +841,6 @@ export default function Learn() {
             );
           })()}
 
-          {/* Proposals Section */}
-          {proposedModules.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Proposte AI
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({proposedModules.length} moduli)
-                  </span>
-                </h2>
-                <Button variant="secondary" onClick={handleApproveAll}>
-                  <CheckCheck className="h-4 w-4 mr-2" />
-                  Approva tutti
-                </Button>
-              </div>
-              <ProposalsList
-                modules={proposedModules}
-                onEdit={handleEdit}
-                onRefresh={refreshAll}
-              />
-            </div>
-          )}
 
           {/* Orphan Published */}
           {orphanPublished.length > 0 && (
