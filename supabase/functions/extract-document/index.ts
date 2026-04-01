@@ -120,7 +120,7 @@ async function extractTextWithAI(fileData: Blob, fileName: string): Promise<stri
   console.log("[extract-document] Calling Anthropic API for PDF, base64 length:", base64.length);
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 50000);
+  const timeout = setTimeout(() => controller.abort("timeout"), 120_000);
 
   try {
     const userContent = [
