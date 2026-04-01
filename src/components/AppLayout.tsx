@@ -23,6 +23,7 @@ import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 const navItems = [
   { title: "Home", url: "/home", icon: Home, comingSoon: false },
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
+  { title: "Tool", url: "/tools", icon: Wrench, comingSoon: false },
 ];
 
 const adminItems = [
