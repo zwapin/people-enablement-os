@@ -315,11 +315,12 @@ export default function Learn() {
     refreshAll();
   };
 
-  const handleCreateCollection = async () => {
+  const handleCreateCollection = async (categoryKeys?: string[]) => {
     const { data, error } = await supabase.from("curricula").insert({
       title: "Nuova Collection",
       status: "draft",
       order_index: (curricula?.length ?? 0),
+      categories: categoryKeys ?? [],
     }).select("id").single();
     if (error) {
       toast.error("Creazione fallita");
