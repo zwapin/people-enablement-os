@@ -4,7 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 
-type Profile = Tables<"profiles">;
+type Profile = Tables<"profiles"> & { departments?: string[]; member_type?: string };
+
+export type AdminViewMode = "all" | "myteam" | "member";
 
 interface ImpersonationContextType {
   impersonating: Profile | null;
@@ -13,6 +15,8 @@ interface ImpersonationContextType {
   stopImpersonating: () => void;
   repProfiles: Profile[];
   isLoadingProfiles: boolean;
+  adminViewMode: AdminViewMode;
+  setAdminViewMode: (mode: AdminViewMode) => void;
 }
 
 const ImpersonationContext = createContext<ImpersonationContextType>({
@@ -22,6 +26,8 @@ const ImpersonationContext = createContext<ImpersonationContextType>({
   stopImpersonating: () => {},
   repProfiles: [],
   isLoadingProfiles: false,
+  adminViewMode: "all",
+  setAdminViewMode: () => {},
 });
 
 export function useImpersonation() {
@@ -41,6 +47,24 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
     }
   });
 
+  const [adminViewMode, setAdminViewModeState] = useState<AdminViewMode>(() => {
+    try {
+      const stored = sessionStorage.getItem("adminViewMode");
+      return (stored as AdminViewMode) || "all";
+    } catch {
+      return "all";
+    }
+  });
+
+  const setAdminViewMode = (mode: AdminViewMode) => {
+    setAdminViewModeState(mode);
+    sessionStorage.setItem("adminViewMode", mode);
+    if (mode !== "member") {
+      setImpersonating(null);
+      sessionStorage.removeItem("impersonating");
+    }
+  };
+
   // Fetch rep profiles for the selector (admin only)
   const { data: repProfiles = [], isLoading: isLoadingProfiles } = useQuery({
     queryKey: ["impersonation-rep-profiles"],
@@ -52,7 +76,7 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
         .eq("is_active", true)
         .order("full_name");
       if (error) throw error;
-      return data;
+      return data as Profile[];
     },
     enabled: isAdmin,
   });
@@ -60,6 +84,9 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
   const startImpersonating = (p: Profile) => {
     setImpersonating(p);
     sessionStorage.setItem("impersonating", JSON.stringify(p));
+    if (adminViewMode !== "member") {
+      setAdminViewMode("member");
+    }
   };
 
   const stopImpersonating = () => {
@@ -78,11 +105,13 @@ export function ImpersonationProvider({ children }: { children: ReactNode }) {
     <ImpersonationContext.Provider
       value={{
         impersonating,
-        isImpersonating: !!impersonating,
+        isImpersonating: adminViewMode === "member" && !!impersonating,
         startImpersonating,
         stopImpersonating,
         repProfiles,
         isLoadingProfiles,
+        adminViewMode,
+        setAdminViewMode,
       }}
     >
       {children}
