@@ -594,15 +594,8 @@ export default function Learn() {
   const orphanPublished = orphanModules(["published"]);
   const orphanDraft = orphanModules(["draft"]);
 
-  // Determine admin's team key for "Il mio team" filter
-  const adminDepartmentToCategoryKey: Record<string, string> = {
-    Sales: "sales",
-    "Customer Success": "customer_success",
-    Operations: "operations",
-    Product: "product",
-    Management: "management",
-  };
-  const adminTeamKey = profile?.department ? adminDepartmentToCategoryKey[profile.department] : null;
+  // Determine admin's team keys for "Il mio team" filter
+  const adminTeamKeys = departmentsToCategoryKeys(getProfileDepartments(profile ?? {}));
 
   // For "Vista membro" — selected member's completions
   const selectedMember = repProfiles?.find((p) => p.user_id === selectedMemberId) ?? null;
