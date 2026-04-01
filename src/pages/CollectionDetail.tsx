@@ -478,7 +478,7 @@ export default function CollectionDetail() {
 
   // Rep view: show roadmap with stats
   if (!isAdmin) {
-    const publishedModules = currentModules.filter(m => m.status === "published");
+    const visibleModules = currentModules.filter(m => m.status !== "archived");
 
     const collectionCompletions = (repCompletions ?? []).filter(c =>
       publishedModules.some(m => m.id === c.module_id)
