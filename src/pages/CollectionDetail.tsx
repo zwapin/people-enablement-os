@@ -329,6 +329,14 @@ export default function CollectionDetail() {
       toast.info("Tutti i moduli hanno già contenuto.");
       return;
     }
+    setSelectedDocIds((collectionDocs ?? []).map(d => d.id));
+    setGenerateDialogMode("content");
+    setGenerateDialogOpen(true);
+  };
+
+  const doBulkGenerate = async () => {
+    setGenerateDialogOpen(false);
+    const targetModules = modules?.filter(m => !m.content_body) ?? [];
 
     setBulkGenerating(true);
     setBulkProgress({ current: 0, total: targetModules.length, label: "Avvio..." });
