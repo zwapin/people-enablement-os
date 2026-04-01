@@ -595,7 +595,7 @@ export default function Learn() {
   const adminTeamKeys = departmentsToCategoryKeys(getProfileDepartments(profile ?? {}));
 
   // For "Vista membro" — selected member's completions
-  const selectedMember = repProfiles?.find((p) => p.user_id === selectedMemberId) ?? null;
+  const selectedMember = repProfiles?.find((p) => p.user_id === selectedMemberId) ?? impRepProfiles?.find((p) => p.user_id === selectedMemberId) ?? null;
 
   // Helper: render member view (rep-like view for a specific member)
   const renderMemberView = () => {

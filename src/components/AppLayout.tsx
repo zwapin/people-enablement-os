@@ -33,9 +33,9 @@ const adminItems = [
 ];
 
 const viewModeItems: { mode: AdminViewMode; title: string; icon: typeof Layers }[] = [
-  { mode: "all", title: "Tutti i team", icon: Layers },
-  { mode: "myteam", title: "Il mio team", icon: Building2 },
-  { mode: "member", title: "Vista membro", icon: Eye },
+  { mode: "all", title: "All Teams", icon: Layers },
+  { mode: "myteam", title: "My View", icon: Building2 },
+  { mode: "member", title: "Member View", icon: Eye },
 ];
 
 function AppSidebarContent() {
