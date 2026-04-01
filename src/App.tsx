@@ -79,18 +79,18 @@ const App = () => (
                 }
               />
               <Route
-                path="/grow"
+                path="/tools"
                 element={
                   <ProtectedRoute>
-                    <AppLayout><Grow /></AppLayout>
+                    <AppLayout><Tools /></AppLayout>
                   </ProtectedRoute>
                 }
               />
               <Route
-                path="/perform"
+                path="/grow"
                 element={
                   <ProtectedRoute>
-                    <AppLayout><Perform /></AppLayout>
+                    <AppLayout><Grow /></AppLayout>
                   </ProtectedRoute>
                 }
               />
