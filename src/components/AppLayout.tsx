@@ -28,7 +28,6 @@ const navItems = [
 
 const adminItems = [
   { title: "Crescita", url: "/grow", icon: TrendingUp, comingSoon: false },
-  { title: "Performance", url: "/perform", icon: BarChart3, comingSoon: true },
   { title: "Team", url: "/people", icon: Users, comingSoon: false },
   { title: "Impostazioni", url: "/settings", icon: Settings, comingSoon: false },
 ];
