@@ -461,14 +461,14 @@ export default function Learn() {
     });
 
     // Compute global stats only on visible modules
-    const visibleModules = publishedModules.filter(m =>
-      filteredPublishedCollections.some(c => c.id === m.curriculum_id)
+    const visibleModules = (modules ?? []).filter(m =>
+      m.status !== "archived" && filteredCollections.some(c => c.id === m.curriculum_id)
     );
     const globalCompleted = visibleModules.filter(m => completions?.some(c => c.module_id === m.id)).length;
     const globalPct = visibleModules.length > 0 ? Math.round((globalCompleted / visibleModules.length) * 100) : 0;
 
-    const repCollections = filteredPublishedCollections.map(c => {
-      const cModules = publishedModules.filter(m => m.curriculum_id === c.id);
+    const repCollections = filteredCollections.map(c => {
+      const cModules = (modules ?? []).filter(m => m.curriculum_id === c.id && m.status !== "archived");
       const cCompleted = cModules.filter(m => completions?.some(comp => comp.module_id === m.id)).length;
       const cPct = cModules.length > 0 ? Math.round((cCompleted / cModules.length) * 100) : 0;
       return { ...c, moduleCount: cModules.length, completedCount: cCompleted, pct: cPct };
