@@ -2,9 +2,10 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Plus, Send, Loader2, Trash2, MessageSquare } from "lucide-react";
+import { Plus, Send, Loader2, Trash2, MessageSquare, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card } from "@/components/ui/card";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
@@ -24,6 +25,7 @@ export default function AskKlaaryo() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [viewingDoc, setViewingDoc] = useState<{ id: string; title: string; content: string; highlight: string } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -322,7 +324,39 @@ export default function AskKlaaryo() {
                   >
                     {m.role === "assistant" ? (
                       <div className="prose prose-sm max-w-none [&>p]:my-1.5 [&>ul]:my-1.5 [&>ol]:my-1.5 [&>h1]:text-base [&>h2]:text-sm [&>h3]:text-sm">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            a: ({ href, children }) => {
+                              if (href?.startsWith("klaaryo-doc://")) {
+                                const parts = href.replace("klaaryo-doc://", "").split("/");
+                                const docId = parts[0];
+                                const label = typeof children === "string" ? children : String(children);
+                                return (
+                                  <button
+                                    onClick={async () => {
+                                      const { data } = await supabase
+                                        .from("knowledge_documents")
+                                        .select("id, title, content")
+                                        .eq("id", docId)
+                                        .single();
+                                      if (data) {
+                                        setViewingDoc({ id: data.id, title: data.title, content: data.content, highlight: "" });
+                                      }
+                                    }}
+                                    className="inline-flex items-center gap-1 text-primary hover:underline cursor-pointer font-medium text-sm"
+                                  >
+                                    <FileText className="h-3 w-3" />
+                                    {label}
+                                  </button>
+                                );
+                              }
+                              return <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{children}</a>;
+                            },
+                          }}
+                        >
+                          {m.content}
+                        </ReactMarkdown>
                       </div>
                     ) : (
                       <p className="text-sm">{m.content}</p>
@@ -380,6 +414,26 @@ export default function AskKlaaryo() {
           </div>
         </div>
       </div>
+
+      {/* Document viewer panel */}
+      {viewingDoc && (
+        <div className="w-96 border-l border-border bg-background flex flex-col shrink-0">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm font-medium truncate">{viewingDoc.title}</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setViewingDoc(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <ScrollArea className="flex-1 p-4">
+            <div className="prose prose-sm max-w-none text-foreground/80">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewingDoc.content}</ReactMarkdown>
+            </div>
+          </ScrollArea>
+        </div>
+      )}
     </div>
   );
 }

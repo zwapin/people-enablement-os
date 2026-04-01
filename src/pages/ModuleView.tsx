@@ -15,6 +15,7 @@ import {
   ArrowRight,
   RotateCcw,
   Lightbulb,
+  Loader2,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -554,14 +555,15 @@ export default function ModuleView() {
 
           {/* Actions */}
           <div className="flex justify-center gap-3 flex-wrap px-4">
-            {passed ? (
-              <Button size="lg" onClick={handleSaveAndContinue} disabled={saving}>
-                {nextModule
-                  ? "Continua al modulo successivo"
-                  : "Torna al curriculum"}
-                <ArrowRight className="h-4 w-4 ml-2" />
-              </Button>
-            ) : (
+            <Button size="lg" onClick={handleSaveAndContinue} disabled={saving}>
+              {saving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+              )}
+              Salva esito risposte
+            </Button>
+            {!passed && (
               <Button size="lg" variant="outline" onClick={handleRetry}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Riprova assessment
