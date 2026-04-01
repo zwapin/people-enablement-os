@@ -39,6 +39,7 @@ interface ModuleEditorProps {
 export default function ModuleEditor({ moduleId, onClose, collections = [] }: ModuleEditorProps) {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [autoSaved, setAutoSaved] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [sourceDocIds, setSourceDocIds] = useState<string[] | null>(null);
   const [sourceFaqIds, setSourceFaqIds] = useState<string[] | null>(null);
@@ -56,8 +57,10 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
   const [questionsOpen, setQuestionsOpen] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatingStep, setGeneratingStep] = useState(0);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const summaryRef = useRef<HTMLTextAreaElement>(null);
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cycling generation status messages
   const generationMessages = useMemo(() => [
