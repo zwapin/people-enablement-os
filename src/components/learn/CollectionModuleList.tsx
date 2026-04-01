@@ -98,7 +98,7 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleToggleStatus(mod)}
+                onClick={(e) => { e.stopPropagation(); handleToggleStatus(mod); }}
                 title={mod.status === "published" ? "Sposta in bozza" : "Pubblica"}
               >
                 {mod.status === "published" ? (
