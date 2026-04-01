@@ -53,15 +53,15 @@
     --module-table-header-bg: 200 90% 15%;
     --module-table-header-fg: 0 0% 100%;
 
-    --sidebar-background: 200 90% 15%;
-    --sidebar-foreground: 200 20% 85%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 200 90% 15%;
     --sidebar-primary: 189 100% 34%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 200 70% 20%;
-    --sidebar-accent-foreground: 200 20% 92%;
-    --sidebar-border: 200 60% 22%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 200 90% 15%;
+    --sidebar-border: 210 18% 90%;
     --sidebar-ring: 189 100% 34%;
-    --sidebar-muted: 200 15% 55%;
+    --sidebar-muted: 200 15% 46%;
   }
 }
 

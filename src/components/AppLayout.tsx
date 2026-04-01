@@ -23,7 +23,7 @@ import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 const navItems = [
   { title: "Home", url: "/home", icon: Home, comingSoon: false },
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
-  { title: "Tool", url: "/tools", icon: Wrench, comingSoon: false },
+  { title: "Tools", url: "/tools", icon: Wrench, comingSoon: false },
 ];
 
 const adminItems = [
@@ -61,9 +61,9 @@ function AppSidebarContent() {
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <div className="px-4 py-5 flex items-center gap-2">
         {!collapsed ? (
-          <img src={klaaryoLogo} alt="Klaaryo" className="h-6 w-auto brightness-0 invert" />
+          <img src={klaaryoLogo} alt="Klaaryo" className="h-6 w-auto" />
         ) : (
-          <img src={klaaryoLogo} alt="Klaaryo" className="h-5 w-5 object-contain object-left brightness-0 invert" />
+          <img src={klaaryoLogo} alt="Klaaryo" className="h-5 w-5 object-contain object-left" />
         )}
       </div>
 
