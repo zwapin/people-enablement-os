@@ -8,16 +8,20 @@ import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import Highlight from "@tiptap/extension-highlight";
 import Typography from "@tiptap/extension-typography";
+import Image from "@tiptap/extension-image";
+import Link from "@tiptap/extension-link";
 import TurndownService from "turndown";
 import Showdown from "showdown";
 import {
   Bold, Italic, Strikethrough, Heading2, Heading3,
   List, ListOrdered, Quote, Table as TableIcon,
   Minus, Highlighter, Sparkles, Undo, Redo,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import AIGeneratePopover from "./AIGeneratePopover";
+import { supabase } from "@/integrations/supabase/client";
 
 const turndown = new TurndownService({
   headingStyle: "atx",
@@ -41,6 +45,32 @@ turndown.addRule("table", {
     return "\n\n" + lines.join("\n") + "\n\n";
   },
 });
+// Preserve images in markdown
+turndown.addRule("image", {
+  filter: "img",
+  replacement: function (_content, node) {
+    const el = node as HTMLImageElement;
+    const alt = el.getAttribute("alt") || "";
+    const src = el.getAttribute("src") || "";
+    return `![${alt}](${src})`;
+  },
+});
+// Preserve iframes (videos) as raw HTML
+turndown.addRule("iframe", {
+  filter: "iframe",
+  replacement: function (_content, node) {
+    const el = node as HTMLIFrameElement;
+    return `\n\n${el.outerHTML}\n\n`;
+  },
+});
+// Preserve video tags as raw HTML
+turndown.addRule("video", {
+  filter: "video",
+  replacement: function (_content, node) {
+    const el = node as HTMLVideoElement;
+    return `\n\n${el.outerHTML}\n\n`;
+  },
+});
 
 const showdown = new Showdown.Converter({
   tables: true,
@@ -48,6 +78,33 @@ const showdown = new Showdown.Converter({
   tasklists: true,
   simpleLineBreaks: false,
 });
+
+async function uploadImageFile(file: File): Promise<string | null> {
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error } = await supabase.storage
+    .from("module-media")
+    .upload(path, file, { contentType: file.type, upsert: false });
+  if (error) {
+    console.error("Upload failed:", error);
+    return null;
+  }
+  const { data } = supabase.storage.from("module-media").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+async function uploadBase64Image(dataUrl: string): Promise<string | null> {
+  const match = dataUrl.match(/^data:(image\/\w+);base64,(.+)$/);
+  if (!match) return null;
+  const mime = match[1];
+  const ext = mime.split("/")[1] || "png";
+  const binaryStr = atob(match[2]);
+  const bytes = new Uint8Array(binaryStr.length);
+  for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+  const blob = new Blob([bytes], { type: mime });
+  const file = new File([blob], `pasted.${ext}`, { type: mime });
+  return uploadImageFile(file);
+}
 
 interface ModuleCanvasProps {
   content: string;
@@ -64,6 +121,7 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number } | null>(null);
   const slashMenuRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     extensions: [
@@ -77,6 +135,16 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
       TableHeader,
       Highlight,
       Typography,
+      Image.configure({
+        inline: false,
+        allowBase64: true,
+        HTMLAttributes: {
+          class: "rounded-lg max-w-full h-auto my-4",
+        },
+      }),
+      Link.configure({
+        openOnClick: false,
+      }),
     ],
     content: content ? showdown.makeHtml(content) : "",
     editable: !disabled,
@@ -108,6 +176,75 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
           }, 10);
         }
         return false;
+      },
+      // Handle pasted images and rich content
+      handlePaste: (view, event) => {
+        const clipboardData = event.clipboardData;
+        if (!clipboardData) return false;
+
+        // Check for pasted files (images)
+        const files = Array.from(clipboardData.files);
+        const imageFiles = files.filter(f => f.type.startsWith("image/"));
+        if (imageFiles.length > 0) {
+          event.preventDefault();
+          imageFiles.forEach(async (file) => {
+            const url = await uploadImageFile(file);
+            if (url && editor) {
+              editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+            }
+          });
+          return true;
+        }
+
+        // Check for HTML content with images (pasted from web)
+        const html = clipboardData.getData("text/html");
+        if (html) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const images = doc.querySelectorAll("img");
+          
+          if (images.length > 0) {
+            event.preventDefault();
+            // Process images: upload external/base64 images to storage
+            const processAndInsert = async () => {
+              for (const img of Array.from(images)) {
+                const src = img.getAttribute("src") || "";
+                if (src.startsWith("data:")) {
+                  // Upload base64 image
+                  const url = await uploadBase64Image(src);
+                  if (url) img.setAttribute("src", url);
+                } 
+                // External URLs are kept as-is
+              }
+              // Insert the processed HTML
+              const processedHtml = doc.body.innerHTML;
+              if (editor) {
+                editor.chain().focus().insertContent(processedHtml).run();
+              }
+            };
+            processAndInsert();
+            return true;
+          }
+        }
+
+        return false;
+      },
+      // Handle dropped images
+      handleDrop: (view, event) => {
+        const files = event.dataTransfer?.files;
+        if (!files || files.length === 0) return false;
+
+        const imageFiles = Array.from(files).filter(f => f.type.startsWith("image/"));
+        if (imageFiles.length === 0) return false;
+
+        event.preventDefault();
+        imageFiles.forEach(async (file) => {
+          const url = await uploadImageFile(file);
+          if (url && editor) {
+            editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+          }
+        });
+        return true;
       },
     },
   });
@@ -143,7 +280,6 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
 
   const executeSlashCommand = useCallback((command: string) => {
     if (!editor) return;
-    // Delete the "/" character
     editor.commands.deleteRange({
       from: editor.state.selection.from - 1,
       to: editor.state.selection.from,
@@ -172,10 +308,30 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
       case "divider":
         editor.chain().focus().setHorizontalRule().run();
         break;
+      case "image":
+        fileInputRef.current?.click();
+        break;
       case "ai":
         setShowAI(true);
         break;
     }
+  }, [editor]);
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || !editor) return;
+    for (const file of Array.from(files)) {
+      if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) continue;
+      const url = await uploadImageFile(file);
+      if (url) {
+        if (file.type.startsWith("video/")) {
+          editor.chain().focus().insertContent(`<video src="${url}" controls class="rounded-lg max-w-full my-4"></video>`).run();
+        } else {
+          editor.chain().focus().setImage({ src: url, alt: file.name }).run();
+        }
+      }
+    }
+    e.target.value = "";
   }, [editor]);
 
   const handleAIInsert = useCallback((markdown: string) => {
@@ -194,12 +350,23 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
     { id: "ordered", label: "Elenco numerato", icon: ListOrdered, desc: "Lista ordinata" },
     { id: "quote", label: "Citazione", icon: Quote, desc: "Blockquote" },
     { id: "table", label: "Tabella", icon: TableIcon, desc: "Tabella 3×3" },
+    { id: "image", label: "Immagine / Video", icon: ImageIcon, desc: "Carica un file media" },
     { id: "divider", label: "Separatore", icon: Minus, desc: "Linea orizzontale" },
     { id: "ai", label: "Modifica con AI", icon: Sparkles, desc: "Modifica o genera contenuto con AI" },
   ];
 
   return (
     <div className="relative" ref={editorRef}>
+      {/* Hidden file input for image/video upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*,video/*,.gif"
+        multiple
+        className="hidden"
+        onChange={handleFileSelect}
+      />
+
       {/* Top toolbar */}
       <div className="flex items-center gap-0.5 border-b border-border px-2 py-1.5 bg-background/80 backdrop-blur-sm sticky top-0 z-10 overflow-x-auto">
         <ToolbarBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} icon={Bold} tooltip="Grassetto" />
@@ -215,6 +382,7 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
         <ToolbarBtn active={editor.isActive("blockquote")} onClick={() => editor.chain().focus().toggleBlockquote().run()} icon={Quote} tooltip="Citazione" />
         <div className="w-px h-5 bg-border mx-1" />
         <ToolbarBtn active={false} onClick={() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()} icon={TableIcon} tooltip="Tabella" />
+        <ToolbarBtn active={false} onClick={() => fileInputRef.current?.click()} icon={ImageIcon} tooltip="Inserisci immagine/video" />
         <ToolbarBtn active={false} onClick={() => editor.chain().focus().setHorizontalRule().run()} icon={Minus} tooltip="Separatore" />
         <div className="w-px h-5 bg-border mx-1" />
         <ToolbarBtn active={false} onClick={() => editor.chain().focus().undo().run()} icon={Undo} tooltip="Annulla" />

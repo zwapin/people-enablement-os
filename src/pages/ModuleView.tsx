@@ -318,9 +318,18 @@ export default function ModuleView() {
               ),
               img: ({ src, alt }) => (
                 <figure className="my-6">
-                  <div className="rounded-lg border border-border bg-secondary/30 p-4 flex items-center justify-center min-h-[120px]">
-                    <span className="text-sm text-muted-foreground italic">📊 {alt || "Immagine dal playbook"}</span>
-                  </div>
+                  {src ? (
+                    <img
+                      src={src}
+                      alt={alt || ""}
+                      className="rounded-lg max-w-full h-auto border border-border"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="rounded-lg border border-border bg-secondary/30 p-4 flex items-center justify-center min-h-[120px]">
+                      <span className="text-sm text-muted-foreground italic">📊 {alt || "Immagine dal playbook"}</span>
+                    </div>
+                  )}
                   {alt && (
                     <figcaption className="text-xs text-muted-foreground text-center mt-2">{alt}</figcaption>
                   )}
