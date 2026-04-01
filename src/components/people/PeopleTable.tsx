@@ -42,6 +42,30 @@ interface PeopleTableProps {
 
 export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
   const isMobile = useIsMobile();
+  const [profileToDelete, setProfileToDelete] = useState<ProfileRow | null>(null);
+
+  const handleDeleteProfile = async (profile: ProfileRow) => {
+    try {
+      // Delete from profiles (cascade will handle user_roles via auth)
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_active: false })
+        .eq("id", profile.id);
+      
+      // Also invoke edge function to delete the auth user
+      const { error: fnError } = await supabase.functions.invoke("delete-user", {
+        body: { user_id: profile.user_id },
+      });
+
+      if (error) throw error;
+      
+      toast.success(`${profile.full_name} è stato rimosso`);
+      setProfileToDelete(null);
+      onRefresh();
+    } catch (err: any) {
+      toast.error(err.message || "Errore nella rimozione");
+    }
+  };
 
   const handleToggleActive = async (profile: ProfileRow) => {
     const { error } = await supabase
