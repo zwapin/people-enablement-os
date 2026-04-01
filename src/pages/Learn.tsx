@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
-import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus, Sparkles } from "lucide-react";
+import { BookOpen, RefreshCw, Loader2, CheckCheck, RotateCcw, Plus, Sparkles, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import ModuleEditor from "@/components/learn/ModuleEditor";
@@ -41,6 +43,8 @@ export default function Learn() {
   const { isImpersonating, impersonating } = useImpersonation();
   const viewAsRep = isImpersonating;
   const activeJobId = useRef<string | null>(null);
+  const [adminViewMode, setAdminViewMode] = useState<"all" | "myteam" | "member">("all");
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
   const { data: modules, isLoading, refetch } = useQuery({
     queryKey: ["modules"],
@@ -92,7 +96,7 @@ export default function Learn() {
       if (error) throw error;
       return data;
     },
-    enabled: isAdmin && !viewAsRep,
+    enabled: isAdmin,
   });
 
   const { data: allCompletions } = useQuery({
@@ -155,7 +159,20 @@ export default function Learn() {
     enabled: isAdmin && !viewAsRep,
   });
 
-  const refreshAll = () => {
+  // Query for member view completions (must be before early returns)
+  const { data: memberCompletions } = useQuery({
+    queryKey: ["member-completions", selectedMemberId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("module_completions")
+        .select("*")
+        .eq("user_id", selectedMemberId!);
+      if (error) throw error;
+      return data;
+    },
+    enabled: isAdmin && adminViewMode === "member" && !!selectedMemberId,
+  });
+
     refetch();
     refetchCurricula();
   };
@@ -587,6 +604,140 @@ export default function Learn() {
   const orphanPublished = orphanModules(["published"]);
   const orphanDraft = orphanModules(["draft"]);
 
+  // Determine admin's team key for "Il mio team" filter
+  const adminDepartmentToCategoryKey: Record<string, string> = {
+    Sales: "sales",
+    "Customer Success": "customer_success",
+    Operations: "operations",
+    Product: "product",
+    Management: "management",
+  };
+  const adminTeamKey = profile?.department ? adminDepartmentToCategoryKey[profile.department] : null;
+
+  // For "Vista membro" — selected member's completions
+  const selectedMember = repProfiles?.find((p) => p.user_id === selectedMemberId) ?? null;
+
+  // Helper: render member view (rep-like view for a specific member)
+  const renderMemberView = () => {
+    if (!selectedMember) {
+      return (
+        <Card className="p-8 text-center text-muted-foreground">
+          Seleziona un membro dal menù a tendina per vedere la sua visualizzazione.
+        </Card>
+      );
+    }
+
+    const memberTeamKey = selectedMember.department
+      ? adminDepartmentToCategoryKey[selectedMember.department]
+      : null;
+
+    const memberFilteredCollections = publishedCollections.filter((c) => {
+      const cats = getCollectionCategories(c.categories);
+      if (cats.includes("common")) return true;
+      if (!memberTeamKey) return true;
+      return cats.includes(memberTeamKey);
+    });
+
+    const memberVisibleModules = publishedModules.filter((m) =>
+      memberFilteredCollections.some((c) => c.id === m.curriculum_id)
+    );
+
+    const memberCompletionSet = new Set(memberCompletions?.map((c) => c.module_id) ?? []);
+    const memberCompleted = memberVisibleModules.filter((m) => memberCompletionSet.has(m.id)).length;
+    const memberPct = memberVisibleModules.length > 0 ? Math.round((memberCompleted / memberVisibleModules.length) * 100) : 0;
+
+    const memberCollections = memberFilteredCollections
+      .map((c) => {
+        const cModules = publishedModules.filter((m) => m.curriculum_id === c.id);
+        const cCompleted = cModules.filter((m) => memberCompletionSet.has(m.id)).length;
+        const cPct = cModules.length > 0 ? Math.round((cCompleted / cModules.length) * 100) : 0;
+        return { ...c, moduleCount: cModules.length, completedCount: cCompleted, pct: cPct };
+      })
+      .filter((c) => c.moduleCount > 0);
+
+    const getCats = (c: any): string[] => getCollectionCategories(c.categories);
+    const categorized = MACRO_CATEGORIES.map((cat) => ({
+      ...cat,
+      collections: memberCollections.filter((c) => getCats(c).includes(cat.key)),
+    }));
+
+    const renderMemberCard = (c: (typeof memberCollections)[0]) => (
+      <Card
+        key={c.id}
+        className="flex flex-col h-full p-5 bg-card border-border"
+      >
+        <div className="flex items-start gap-3 flex-1">
+          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <BookOpen className="h-5 w-5 text-primary" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <h3 className="font-semibold text-foreground leading-tight">{c.title}</h3>
+            {c.description && (
+              <p className="text-xs text-muted-foreground line-clamp-2">{c.description}</p>
+            )}
+          </div>
+        </div>
+        <div className="mt-4 space-y-2">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{c.completedCount}/{c.moduleCount} completati</span>
+            <span className="font-mono">{c.pct}%</span>
+          </div>
+          <Progress value={c.pct} className="h-1.5" />
+        </div>
+        {c.pct === 100 && (
+          <Badge className="mt-3 w-fit bg-primary/10 text-primary border-primary/20 text-[10px]">
+            ✓ Completata
+          </Badge>
+        )}
+      </Card>
+    );
+
+    return (
+      <div className="space-y-6">
+        <Card className="p-4 bg-card border-border space-y-2">
+          <div className="flex items-center justify-between text-sm flex-wrap gap-1">
+            <span className="text-muted-foreground">
+              Progresso di <span className="font-medium text-foreground">{selectedMember.full_name}</span>
+            </span>
+            <span className="font-mono text-foreground">
+              {memberCompleted}/{memberVisibleModules.length} moduli · {memberPct}%
+            </span>
+          </div>
+          <Progress value={memberPct} className="h-2" />
+        </Card>
+
+        {categorized
+          .filter((cat) => cat.collections.length > 0)
+          .map((cat) => (
+            <div key={cat.key} className="space-y-3">
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                {cat.label}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {cat.collections.map(renderMemberCard)}
+              </div>
+            </div>
+          ))}
+
+        {memberCollections.length === 0 && (
+          <Card className="p-8 text-center text-muted-foreground">
+            Nessuna collection pubblicata visibile per questo membro.
+          </Card>
+        )}
+      </div>
+    );
+  };
+
+  // Helper: filter collections for "Il mio team" admin view
+  const getMyTeamCollections = () => {
+    if (!adminTeamKey) return allCollections.filter((c) => c.status !== "archived");
+    return allCollections.filter((c) => {
+      if (c.status === "archived") return false;
+      const cats = getCollectionCategories(c.categories);
+      return cats.includes(adminTeamKey) || cats.includes("common");
+    });
+  };
+
   return (
     <div className="space-y-8 max-w-3xl mx-auto">
       {/* Header */}
@@ -598,6 +749,35 @@ export default function Learn() {
               L'AI analizza la Knowledge Base e propone la collection. Tu approvi.
             </p>
           </div>
+        </div>
+
+        {/* Admin view mode tabs */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Tabs value={adminViewMode} onValueChange={(v) => setAdminViewMode(v as any)}>
+            <TabsList>
+              <TabsTrigger value="all">Tutti i team</TabsTrigger>
+              <TabsTrigger value="myteam">Il mio team</TabsTrigger>
+              <TabsTrigger value="member">Vista membro</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {adminViewMode === "member" && (
+            <Select
+              value={selectedMemberId ?? ""}
+              onValueChange={(v) => setSelectedMemberId(v)}
+            >
+              <SelectTrigger className="w-48 h-9 text-sm">
+                <SelectValue placeholder="Seleziona membro" />
+              </SelectTrigger>
+              <SelectContent>
+                {(repProfiles ?? []).map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>
+                    {p.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
 
@@ -628,129 +808,140 @@ export default function Learn() {
         </div>
       )}
 
-      {/* Collections grouped by macro category */}
-      {(() => {
-        const activeCollectionsFiltered = allCollections.filter(c => c.status !== "archived");
-        const getCats = (c: any): string[] => getCollectionCategories(c.categories);
-        const uncategorized = activeCollectionsFiltered.filter(c => getCats(c).length === 0);
-        const categorized = MACRO_CATEGORIES.map(cat => ({
-          ...cat,
-          collections: activeCollectionsFiltered.filter(c => getCats(c).includes(cat.key)),
-        }));
+      {/* Member view mode */}
+      {adminViewMode === "member" && renderMemberView()}
 
-        const renderCollectionCard = (c: typeof allCollections[0]) => (
-          <CollectionCard
-            key={c.id}
-            collection={c}
-            modules={getModulesForCollection(c.id)}
-            isAdmin={true}
-            onRefresh={refreshAll}
-            repProfiles={repProfiles ?? undefined}
-            allCompletions={allCompletions ?? undefined}
-            assessmentCounts={allAssessmentQuestions ?? undefined}
-            docCount={allDocCounts?.[c.id] ?? 0}
-            faqCount={allFaqCounts?.[c.id] ?? 0}
-          />
-        );
+      {/* Admin collection management views (all / myteam) */}
+      {adminViewMode !== "member" && (
+        <>
+          {/* Collections grouped by macro category */}
+          {(() => {
+            const baseCollections = adminViewMode === "myteam"
+              ? getMyTeamCollections()
+              : allCollections.filter(c => c.status !== "archived");
 
-        return (
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-foreground">Collections</h2>
+            const getCats = (c: any): string[] => getCollectionCategories(c.categories);
+            const uncategorized = baseCollections.filter(c => getCats(c).length === 0);
+            const categorized = MACRO_CATEGORIES.map(cat => ({
+              ...cat,
+              collections: baseCollections.filter(c => getCats(c).includes(cat.key)),
+            }));
 
-            {categorized.map(cat => (
-              <div key={cat.key} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    {cat.label}
-                  </h3>
-                  <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Nuova
-                  </Button>
-                </div>
-                {cat.collections.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {cat.collections.map(renderCollectionCard)}
+            const renderCollectionCard = (c: typeof allCollections[0]) => (
+              <CollectionCard
+                key={c.id}
+                collection={c}
+                modules={getModulesForCollection(c.id)}
+                isAdmin={true}
+                onRefresh={refreshAll}
+                repProfiles={repProfiles ?? undefined}
+                allCompletions={allCompletions ?? undefined}
+                assessmentCounts={allAssessmentQuestions ?? undefined}
+                docCount={allDocCounts?.[c.id] ?? 0}
+                faqCount={allFaqCounts?.[c.id] ?? 0}
+              />
+            );
+
+            return (
+              <div className="space-y-6">
+                <h2 className="text-lg font-semibold text-foreground">Collections</h2>
+
+                {categorized.map(cat => (
+                  <div key={cat.key} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                        {cat.label}
+                      </h3>
+                      <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Nuova
+                      </Button>
+                    </div>
+                    {cat.collections.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {cat.collections.map(renderCollectionCard)}
+                      </div>
+                    ) : (
+                      <Card className="p-4 bg-card border-border text-sm text-muted-foreground">
+                        Nessuna collection in questa area al momento.
+                      </Card>
+                    )}
                   </div>
-                ) : (
-                  <Card className="p-4 bg-card border-border text-sm text-muted-foreground">
-                    Nessuna collection in questa area al momento.
-                  </Card>
+                ))}
+
+                {uncategorized.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      Non categorizzate
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {uncategorized.map(renderCollectionCard)}
+                    </div>
+                  </div>
                 )}
               </div>
-            ))}
+            );
+          })()}
 
-            {uncategorized.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Non categorizzate
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {uncategorized.map(renderCollectionCard)}
-                </div>
+          {/* Proposals Section */}
+          {proposedModules.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Proposte AI
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    ({proposedModules.length} moduli)
+                  </span>
+                </h2>
+                <Button variant="secondary" onClick={handleApproveAll}>
+                  <CheckCheck className="h-4 w-4 mr-2" />
+                  Approva tutti
+                </Button>
               </div>
-            )}
-          </div>
-        );
-      })()}
+              <ProposalsList
+                modules={proposedModules}
+                onEdit={handleEdit}
+                onRefresh={refreshAll}
+              />
+            </div>
+          )}
 
-      {/* Proposals Section */}
-      {proposedModules.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">
-              Proposte AI
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({proposedModules.length} moduli)
-              </span>
-            </h2>
-            <Button variant="secondary" onClick={handleApproveAll}>
-              <CheckCheck className="h-4 w-4 mr-2" />
-              Approva tutti
-            </Button>
-          </div>
-          <ProposalsList
-            modules={proposedModules}
-            onEdit={handleEdit}
-            onRefresh={refreshAll}
-          />
-        </div>
-      )}
+          {/* Orphan Published */}
+          {orphanPublished.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                Moduli non assegnati — Pubblicati
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({orphanPublished.length})
+                </span>
+              </h2>
+              <CollectionModuleList
+                modules={orphanPublished}
+                isAdmin={true}
+                onEdit={handleEdit}
+                onRefresh={refreshAll}
+              />
+            </div>
+          )}
 
-      {/* Orphan Published */}
-      {orphanPublished.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Moduli non assegnati — Pubblicati
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({orphanPublished.length})
-            </span>
-          </h2>
-          <CollectionModuleList
-            modules={orphanPublished}
-            isAdmin={true}
-            onEdit={handleEdit}
-            onRefresh={refreshAll}
-          />
-        </div>
-      )}
-
-      {/* Orphan Drafts */}
-      {orphanDraft.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Moduli non assegnati — Bozze
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({orphanDraft.length})
-            </span>
-          </h2>
-          <CollectionModuleList
-            modules={orphanDraft}
-            isAdmin={true}
-            onEdit={handleEdit}
-            onRefresh={refreshAll}
-          />
-        </div>
+          {/* Orphan Drafts */}
+          {orphanDraft.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                Moduli non assegnati — Bozze
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({orphanDraft.length})
+                </span>
+              </h2>
+              <CollectionModuleList
+                modules={orphanDraft}
+                isAdmin={true}
+                onEdit={handleEdit}
+                onRefresh={refreshAll}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
