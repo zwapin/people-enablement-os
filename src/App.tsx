@@ -14,10 +14,10 @@ import Learn from "./pages/Learn";
 import ModuleView from "./pages/ModuleView";
 import CollectionDetail from "./pages/CollectionDetail";
 import Grow from "./pages/Grow";
-import Perform from "./pages/Perform";
 import People from "./pages/People";
 import Settings from "./pages/Settings";
 import Home from "./pages/Home";
+import Tools from "./pages/Tools";
 
 import NotFound from "./pages/NotFound";
 import ChatAgentWidget from "./components/ChatAgentWidget";
