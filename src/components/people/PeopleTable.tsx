@@ -279,11 +279,12 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                 )}
               </div>
               <div className="flex items-center justify-between gap-2">
-                <Select value={p.role} onValueChange={(v) => handleRoleChange(p, v as "admin" | "rep")}>
-                  <SelectTrigger className="w-24 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <Select value={getCombinedRole(p)} onValueChange={(v) => handleCombinedRoleChange(p, v)}>
+                  <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="rep">Rep</SelectItem>
+                    <SelectItem value="new_klaaryan">New Klaaryan</SelectItem>
+                    <SelectItem value="veteran_klaaryan">Veteran Klaaryan</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex items-center gap-1">
