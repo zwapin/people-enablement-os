@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 
 const navItems = [
-  { title: "Home", url: "/home", icon: Home, comingSoon: false, repOnly: true },
+  { title: "Home", url: "/home", icon: Home, comingSoon: false },
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
   { title: "Crescita", url: "/grow", icon: TrendingUp, comingSoon: false },
   { title: "Performance", url: "/perform", icon: BarChart3, comingSoon: true },
@@ -42,7 +42,7 @@ function AppSidebarContent() {
   const viewAsRep = !isAdmin || isImpersonating;
   const allItems = viewAsRep
     ? navItems
-    : [...navItems.filter(i => !(i as any).repOnly), ...adminItems];
+    : [...navItems, ...adminItems];
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
