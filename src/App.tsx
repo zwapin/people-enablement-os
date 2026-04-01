@@ -93,6 +93,7 @@ const App = () => (
                     <AppLayout><AskKlaaryo /></AppLayout>
                   </ProtectedRoute>
                 }
+              />
               <Route
                 path="/grow"
                 element={
