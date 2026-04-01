@@ -414,6 +414,26 @@ export default function AskKlaaryo() {
           </div>
         </div>
       </div>
+
+      {/* Document viewer panel */}
+      {viewingDoc && (
+        <div className="w-96 border-l border-border bg-background flex flex-col shrink-0">
+          <div className="flex items-center justify-between p-3 border-b border-border">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText className="h-4 w-4 text-primary shrink-0" />
+              <span className="text-sm font-medium truncate">{viewingDoc.title}</span>
+            </div>
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => setViewingDoc(null)}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <ScrollArea className="flex-1 p-4">
+            <div className="prose prose-sm max-w-none text-foreground/80">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{viewingDoc.content}</ReactMarkdown>
+            </div>
+          </ScrollArea>
+        </div>
+      )}
     </div>
   );
 }
