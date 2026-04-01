@@ -808,129 +808,140 @@ export default function Learn() {
         </div>
       )}
 
-      {/* Collections grouped by macro category */}
-      {(() => {
-        const activeCollectionsFiltered = allCollections.filter(c => c.status !== "archived");
-        const getCats = (c: any): string[] => getCollectionCategories(c.categories);
-        const uncategorized = activeCollectionsFiltered.filter(c => getCats(c).length === 0);
-        const categorized = MACRO_CATEGORIES.map(cat => ({
-          ...cat,
-          collections: activeCollectionsFiltered.filter(c => getCats(c).includes(cat.key)),
-        }));
+      {/* Member view mode */}
+      {adminViewMode === "member" && renderMemberView()}
 
-        const renderCollectionCard = (c: typeof allCollections[0]) => (
-          <CollectionCard
-            key={c.id}
-            collection={c}
-            modules={getModulesForCollection(c.id)}
-            isAdmin={true}
-            onRefresh={refreshAll}
-            repProfiles={repProfiles ?? undefined}
-            allCompletions={allCompletions ?? undefined}
-            assessmentCounts={allAssessmentQuestions ?? undefined}
-            docCount={allDocCounts?.[c.id] ?? 0}
-            faqCount={allFaqCounts?.[c.id] ?? 0}
-          />
-        );
+      {/* Admin collection management views (all / myteam) */}
+      {adminViewMode !== "member" && (
+        <>
+          {/* Collections grouped by macro category */}
+          {(() => {
+            const baseCollections = adminViewMode === "myteam"
+              ? getMyTeamCollections()
+              : allCollections.filter(c => c.status !== "archived");
 
-        return (
-          <div className="space-y-6">
-            <h2 className="text-lg font-semibold text-foreground">Collections</h2>
+            const getCats = (c: any): string[] => getCollectionCategories(c.categories);
+            const uncategorized = baseCollections.filter(c => getCats(c).length === 0);
+            const categorized = MACRO_CATEGORIES.map(cat => ({
+              ...cat,
+              collections: baseCollections.filter(c => getCats(c).includes(cat.key)),
+            }));
 
-            {categorized.map(cat => (
-              <div key={cat.key} className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                    {cat.label}
-                  </h3>
-                  <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Nuova
-                  </Button>
-                </div>
-                {cat.collections.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {cat.collections.map(renderCollectionCard)}
+            const renderCollectionCard = (c: typeof allCollections[0]) => (
+              <CollectionCard
+                key={c.id}
+                collection={c}
+                modules={getModulesForCollection(c.id)}
+                isAdmin={true}
+                onRefresh={refreshAll}
+                repProfiles={repProfiles ?? undefined}
+                allCompletions={allCompletions ?? undefined}
+                assessmentCounts={allAssessmentQuestions ?? undefined}
+                docCount={allDocCounts?.[c.id] ?? 0}
+                faqCount={allFaqCounts?.[c.id] ?? 0}
+              />
+            );
+
+            return (
+              <div className="space-y-6">
+                <h2 className="text-lg font-semibold text-foreground">Collections</h2>
+
+                {categorized.map(cat => (
+                  <div key={cat.key} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                        {cat.label}
+                      </h3>
+                      <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
+                        <Plus className="h-4 w-4 mr-1" />
+                        Nuova
+                      </Button>
+                    </div>
+                    {cat.collections.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {cat.collections.map(renderCollectionCard)}
+                      </div>
+                    ) : (
+                      <Card className="p-4 bg-card border-border text-sm text-muted-foreground">
+                        Nessuna collection in questa area al momento.
+                      </Card>
+                    )}
                   </div>
-                ) : (
-                  <Card className="p-4 bg-card border-border text-sm text-muted-foreground">
-                    Nessuna collection in questa area al momento.
-                  </Card>
+                ))}
+
+                {uncategorized.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+                      Non categorizzate
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {uncategorized.map(renderCollectionCard)}
+                    </div>
+                  </div>
                 )}
               </div>
-            ))}
+            );
+          })()}
 
-            {uncategorized.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
-                  Non categorizzate
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {uncategorized.map(renderCollectionCard)}
-                </div>
+          {/* Proposals Section */}
+          {proposedModules.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                  Proposte AI
+                  <span className="ml-2 text-sm font-normal text-muted-foreground">
+                    ({proposedModules.length} moduli)
+                  </span>
+                </h2>
+                <Button variant="secondary" onClick={handleApproveAll}>
+                  <CheckCheck className="h-4 w-4 mr-2" />
+                  Approva tutti
+                </Button>
               </div>
-            )}
-          </div>
-        );
-      })()}
+              <ProposalsList
+                modules={proposedModules}
+                onEdit={handleEdit}
+                onRefresh={refreshAll}
+              />
+            </div>
+          )}
 
-      {/* Proposals Section */}
-      {proposedModules.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-foreground">
-              Proposte AI
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                ({proposedModules.length} moduli)
-              </span>
-            </h2>
-            <Button variant="secondary" onClick={handleApproveAll}>
-              <CheckCheck className="h-4 w-4 mr-2" />
-              Approva tutti
-            </Button>
-          </div>
-          <ProposalsList
-            modules={proposedModules}
-            onEdit={handleEdit}
-            onRefresh={refreshAll}
-          />
-        </div>
-      )}
+          {/* Orphan Published */}
+          {orphanPublished.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                Moduli non assegnati — Pubblicati
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({orphanPublished.length})
+                </span>
+              </h2>
+              <CollectionModuleList
+                modules={orphanPublished}
+                isAdmin={true}
+                onEdit={handleEdit}
+                onRefresh={refreshAll}
+              />
+            </div>
+          )}
 
-      {/* Orphan Published */}
-      {orphanPublished.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Moduli non assegnati — Pubblicati
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({orphanPublished.length})
-            </span>
-          </h2>
-          <CollectionModuleList
-            modules={orphanPublished}
-            isAdmin={true}
-            onEdit={handleEdit}
-            onRefresh={refreshAll}
-          />
-        </div>
-      )}
-
-      {/* Orphan Drafts */}
-      {orphanDraft.length > 0 && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            Moduli non assegnati — Bozze
-            <span className="ml-2 text-sm font-normal text-muted-foreground">
-              ({orphanDraft.length})
-            </span>
-          </h2>
-          <CollectionModuleList
-            modules={orphanDraft}
-            isAdmin={true}
-            onEdit={handleEdit}
-            onRefresh={refreshAll}
-          />
-        </div>
+          {/* Orphan Drafts */}
+          {orphanDraft.length > 0 && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-foreground">
+                Moduli non assegnati — Bozze
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  ({orphanDraft.length})
+                </span>
+              </h2>
+              <CollectionModuleList
+                modules={orphanDraft}
+                isAdmin={true}
+                onEdit={handleEdit}
+                onRefresh={refreshAll}
+              />
+            </div>
+          )}
+        </>
       )}
     </div>
   );
