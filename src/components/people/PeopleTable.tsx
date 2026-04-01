@@ -172,10 +172,22 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
     }
   };
 
-  const handleRoleChange = async (profile: ProfileRow, newRole: "admin" | "rep") => {
+  const handleCombinedRoleChange = async (profile: ProfileRow, newValue: string) => {
+    let newRole: "admin" | "rep";
+    let newMemberType: string;
+    if (newValue === "admin") {
+      newRole = "admin";
+      newMemberType = profile.member_type ?? "new_klaaryan";
+    } else if (newValue === "veteran_klaaryan") {
+      newRole = "rep";
+      newMemberType = "veteran_klaaryan";
+    } else {
+      newRole = "rep";
+      newMemberType = "new_klaaryan";
+    }
     const { error } = await supabase
       .from("profiles")
-      .update({ role: newRole })
+      .update({ role: newRole, member_type: newMemberType } as any)
       .eq("id", profile.id);
 
     if (error) {
@@ -183,6 +195,11 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
     } else {
       onRefresh();
     }
+  };
+
+  const getCombinedRole = (p: ProfileRow): string => {
+    if (p.role === "admin") return "admin";
+    return (p as any).member_type === "veteran_klaaryan" ? "veteran_klaaryan" : "new_klaaryan";
   };
 
   if (profiles.length === 0) {
@@ -245,28 +262,21 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                   <>
                     <MultiTeamSelect value={editValues.departments ?? []} onChange={(v) => setEditValues({ ...editValues, departments: v })} />
                     <Input value={editValues.job_role ?? ""} onChange={(e) => setEditValues({ ...editValues, job_role: e.target.value })} className="h-8 text-xs w-36" placeholder="Ruolo lavorativo" />
-                    <Select value={editValues.member_type ?? "new_klaaryan"} onValueChange={(v) => setEditValues({ ...editValues, member_type: v })}>
-                      <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new_klaaryan">New Klaaryan</SelectItem>
-                        <SelectItem value="veteran_klaaryan">Veteran Klaaryan</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </>
                 ) : (
                   <>
                     {renderTeamBadges(p)}
                     {p.job_role && <span className="text-muted-foreground">{p.job_role}</span>}
-                    {renderMemberType(p)}
                   </>
                 )}
               </div>
               <div className="flex items-center justify-between gap-2">
-                <Select value={p.role} onValueChange={(v) => handleRoleChange(p, v as "admin" | "rep")}>
-                  <SelectTrigger className="w-24 h-8 text-xs"><SelectValue /></SelectTrigger>
+                <Select value={getCombinedRole(p)} onValueChange={(v) => handleCombinedRoleChange(p, v)}>
+                  <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="rep">Rep</SelectItem>
+                    <SelectItem value="new_klaaryan">New Klaaryan</SelectItem>
+                    <SelectItem value="veteran_klaaryan">Veteran Klaaryan</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex items-center gap-1">
@@ -312,7 +322,6 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
             <TableHead>Email</TableHead>
             <TableHead>Team</TableHead>
             <TableHead>Ruolo lavorativo</TableHead>
-            <TableHead>Tipo</TableHead>
             <TableHead>Ruolo</TableHead>
             <TableHead>Ultima attività</TableHead>
             <TableHead>Attivo</TableHead>
@@ -345,22 +354,12 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                   ) : (p.job_role || <span className="text-muted-foreground">—</span>)}
                 </TableCell>
                 <TableCell>
-                  {isEditing ? (
-                    <Select value={editValues.member_type ?? "new_klaaryan"} onValueChange={(v) => setEditValues({ ...editValues, member_type: v })}>
-                      <SelectTrigger className="w-28 h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new_klaaryan">New Klaaryan</SelectItem>
-                        <SelectItem value="veteran_klaaryan">Veteran Klaaryan</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : renderMemberType(p)}
-                </TableCell>
-                <TableCell>
-                  <Select value={p.role} onValueChange={(v) => handleRoleChange(p, v as "admin" | "rep")}>
-                    <SelectTrigger className="w-24 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <Select value={getCombinedRole(p)} onValueChange={(v) => handleCombinedRoleChange(p, v)}>
+                    <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="rep">Rep</SelectItem>
+                      <SelectItem value="new_klaaryan">New Klaaryan</SelectItem>
+                      <SelectItem value="veteran_klaaryan">Veteran Klaaryan</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>

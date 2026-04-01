@@ -447,7 +447,12 @@ export default function Learn() {
     const userTeamKeys = departmentsToCategoryKeys(getProfileDepartments(activeProfile ?? {}));
 
     // Filter published collections: user sees only their team's collections + Common Knowledge
+    // Also filter by target_member_type if set on the collection
+    const userMemberType = activeProfile?.member_type ?? "new_klaaryan";
     const filteredPublishedCollections = publishedCollections.filter(c => {
+      // Check member type restriction
+      const tmt = (c as any).target_member_type;
+      if (tmt && tmt !== userMemberType) return false;
       const cats = getCollectionCategories(c.categories);
       if (cats.includes("common")) return true;
       if (userTeamKeys.length === 0) return true;
@@ -609,7 +614,10 @@ export default function Learn() {
 
     const memberTeamKeys = departmentsToCategoryKeys(getProfileDepartments(selectedMember));
 
+    const memberMemberType = (selectedMember as any)?.member_type ?? "new_klaaryan";
     const memberFilteredCollections = publishedCollections.filter((c) => {
+      const tmt = (c as any).target_member_type;
+      if (tmt && tmt !== memberMemberType) return false;
       const cats = getCollectionCategories(c.categories);
       if (cats.includes("common")) return true;
       if (memberTeamKeys.length === 0) return true;

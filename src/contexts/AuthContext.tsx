@@ -9,10 +9,12 @@ type Profile = {
   email: string;
   role: "admin" | "rep";
   department: string | null;
+  departments?: any;
   job_role: string | null;
   is_active: boolean;
   last_activity_at: string | null;
   created_at: string;
+  member_type?: string;
 };
 
 type AuthContextType = {
