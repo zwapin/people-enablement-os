@@ -58,16 +58,9 @@ export default function Home() {
   const activeUserId = isImpersonating ? impersonating?.user_id : user?.id;
   const firstName = activeProfile?.full_name?.split(" ")[0] || "utente";
 
-  const departmentToCategoryKey: Record<string, string> = {
-    Sales: "sales",
-    "Customer Success": "customer_success",
-    Operations: "operations",
-    Product: "product",
-    Management: "management",
-  };
-  const userTeamKey = activeProfile?.department
-    ? departmentToCategoryKey[activeProfile.department]
-    : null;
+  const userTeamKeys = departmentsToCategoryKeys(
+    getProfileDepartments(activeProfile ?? {})
+  );
 
   /* ── Queries ── */
   const { data: curricula } = useQuery({
