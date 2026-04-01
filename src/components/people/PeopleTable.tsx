@@ -330,7 +330,6 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
             <TableHead>Email</TableHead>
             <TableHead>Team</TableHead>
             <TableHead>Ruolo lavorativo</TableHead>
-            <TableHead>Tipo</TableHead>
             <TableHead>Ruolo</TableHead>
             <TableHead>Ultima attività</TableHead>
             <TableHead>Attivo</TableHead>
