@@ -139,7 +139,20 @@
 }
 
 .ProseMirror ol {
-  @apply my-5 space-y-2 pl-1 list-decimal list-inside;
+  @apply my-5 space-y-2 pl-1 list-none;
+  counter-reset: item;
+}
+
+.ProseMirror ol > li {
+  @apply flex items-start gap-2.5 leading-relaxed;
+  counter-increment: item;
+}
+
+.ProseMirror ol > li::before {
+  content: counter(item);
+  @apply mt-0.5 h-5 w-5 rounded-full text-xs font-bold shrink-0 inline-flex items-center justify-center;
+  background: hsl(var(--secondary) / 0.2);
+  color: hsl(var(--secondary));
 }
 
 .ProseMirror ul > li {
