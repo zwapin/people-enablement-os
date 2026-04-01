@@ -439,8 +439,8 @@ export default function Learn() {
     return <ModuleEditor moduleId={editingModuleId} onClose={handleEditorClose} collections={allCollections} />;
   }
 
-  // Rep view
-  if (!isAdmin || viewAsRep) {
+  // Rep view (only for actual reps, not admin in member view mode)
+  if (!isAdmin) {
     const activeProfile = isImpersonating ? impersonating : profile;
     const firstName = activeProfile?.full_name?.split(" ")[0] || "utente";
 
