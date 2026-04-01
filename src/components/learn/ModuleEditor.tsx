@@ -54,6 +54,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
   const [questions, setQuestions] = useState<QuestionForm[]>([]);
 
   const [keyPointsOpen, setKeyPointsOpen] = useState(true);
+  const [keyPointsRemoved, setKeyPointsRemoved] = useState(false);
   const [questionsOpen, setQuestionsOpen] = useState(true);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [generatingStep, setGeneratingStep] = useState(0);
