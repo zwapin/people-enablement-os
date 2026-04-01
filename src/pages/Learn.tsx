@@ -731,34 +731,6 @@ export default function Learn() {
           </div>
         </div>
 
-        {/* Admin view mode tabs */}
-        <div className="flex flex-wrap items-center gap-3">
-          <Tabs value={adminViewMode} onValueChange={(v) => setAdminViewMode(v as any)}>
-            <TabsList>
-              <TabsTrigger value="all">Tutti i team</TabsTrigger>
-              <TabsTrigger value="myteam">Il mio team</TabsTrigger>
-              <TabsTrigger value="member">Vista membro</TabsTrigger>
-            </TabsList>
-          </Tabs>
-
-          {adminViewMode === "member" && (
-            <Select
-              value={selectedMemberId ?? ""}
-              onValueChange={(v) => setSelectedMemberId(v)}
-            >
-              <SelectTrigger className="w-48 h-9 text-sm">
-                <SelectValue placeholder="Seleziona membro" />
-              </SelectTrigger>
-              <SelectContent>
-                {(repProfiles ?? []).map((p) => (
-                  <SelectItem key={p.user_id} value={p.user_id}>
-                    {p.full_name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
       </div>
 
       {/* Bulk generation progress */}
