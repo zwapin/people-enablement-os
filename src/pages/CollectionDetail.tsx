@@ -481,7 +481,7 @@ export default function CollectionDetail() {
     const visibleModules = currentModules.filter(m => m.status !== "archived");
 
     const collectionCompletions = (repCompletions ?? []).filter(c =>
-      publishedModules.some(m => m.id === c.module_id)
+      visibleModules.some(m => m.id === c.module_id)
     );
     const completedCount = collectionCompletions.length;
     const avgScore = completedCount > 0
