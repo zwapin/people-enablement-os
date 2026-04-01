@@ -264,28 +264,34 @@ export default function ModuleView() {
                 </h2>
               ),
               h3: ({ children }) => (
-                <h3 className="text-lg font-semibold text-foreground mt-8 mb-3 flex items-center gap-2">
-                  <span className="inline-block w-1 h-5 rounded-full bg-primary" />
+                <h3 className="text-lg font-semibold mt-8 mb-3 flex items-center gap-2" style={{ color: 'hsl(var(--secondary))' }}>
+                  <span className="inline-block w-1 h-5 rounded-full bg-secondary" />
                   {children}
                 </h3>
               ),
               blockquote: ({ children }) => (
-                <blockquote className="my-6 border-l-4 border-primary/50 bg-secondary/30 rounded-r-lg px-5 py-4 text-foreground/80 not-italic">
-                  {children}
+                <blockquote className="my-6 border-l-4 border-secondary/60 rounded-r-lg px-5 py-4 not-italic" style={{ background: 'hsl(var(--secondary) / 0.08)' }}>
+                  <div className="text-foreground/90 font-medium">{children}</div>
                 </blockquote>
               ),
               ul: ({ children }) => (
                 <ul className="my-5 space-y-2 pl-1">{children}</ul>
               ),
               ol: ({ children }) => (
-                <ol className="my-5 space-y-2 pl-1 list-decimal list-inside">{children}</ol>
+                <ol className="my-5 space-y-2 pl-0 list-none counter-reset-[item]">{children}</ol>
               ),
-              li: ({ children }) => (
-                <li className="flex items-start gap-2.5 text-foreground/80 leading-relaxed">
-                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                  <span>{children}</span>
-                </li>
-              ),
+              li: ({ children, node }) => {
+                // Detect if parent is ol by checking if ordered prop exists
+                const isOrdered = node?.position?.start?.line !== undefined && 
+                  (node as any)?.properties?.className?.includes?.('ordered');
+                // Simple heuristic: if this li's parent was an ol, we won't show a bullet
+                return (
+                  <li className="flex items-start gap-2.5 text-foreground/80 leading-relaxed">
+                    <span className="mt-2 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                    <span className="flex-1">{children}</span>
+                  </li>
+                );
+              },
               strong: ({ children }) => (
                 <strong className="text-foreground font-semibold bg-primary/10 px-1 rounded">
                   {children}
