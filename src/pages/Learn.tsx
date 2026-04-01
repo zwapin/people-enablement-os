@@ -587,7 +587,7 @@ export default function Learn() {
   const orphanDraft = orphanModules(["draft"]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-3xl mx-auto">
       {/* Header */}
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
