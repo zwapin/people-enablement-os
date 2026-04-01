@@ -71,7 +71,7 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
   return (
     <div className="space-y-2">
       {modules.map((mod, index) => (
-        <Card key={mod.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-card border-border">
+        <Card key={mod.id} className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-card border-border cursor-pointer hover:border-primary/40 transition-colors" onClick={() => onEdit(mod.id)}>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-muted-foreground">
@@ -98,7 +98,7 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleToggleStatus(mod)}
+                onClick={(e) => { e.stopPropagation(); handleToggleStatus(mod); }}
                 title={mod.status === "published" ? "Sposta in bozza" : "Pubblica"}
               >
                 {mod.status === "published" ? (
@@ -107,13 +107,13 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
                   <Eye className="h-4 w-4" />
                 )}
               </Button>
-              <Button variant="ghost" size="icon" onClick={() => onEdit(mod.id)}>
+              <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(mod.id); }}>
                 <Pencil className="h-4 w-4" />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleArchive(mod)}
+                onClick={(e) => { e.stopPropagation(); handleArchive(mod); }}
                 title="Archivia"
                 className="text-muted-foreground hover:text-foreground"
               >
@@ -126,6 +126,7 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
                     size="icon"
                     title="Elimina"
                     className="text-destructive hover:text-destructive"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

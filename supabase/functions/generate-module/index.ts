@@ -147,7 +147,7 @@ async function handleChildJob(
     return new Response(JSON.stringify({ error: "Job not found" }), { status: 404 });
   }
 
-  const { module_id, module_title, source_document_ids, source_faq_ids, relevant_sections } = job.input;
+  const { module_id, module_title, source_document_ids, source_faq_ids, relevant_sections, custom_instructions } = job.input;
 
   await supabase
     .from("generation_jobs")
@@ -194,10 +194,14 @@ async function handleChildJob(
       ? `\nSEZIONI RILEVANTI DEL DOCUMENTO SORGENTE DA CUI ESTRARRE IL CONTENUTO:\n${relevant_sections}\nConcentrati su queste sezioni ma includi anche contesto utile dalle altre parti.\n`
       : "";
 
+    const customInstructionsBlock = custom_instructions
+      ? `\n\nISTRUZIONI PERSONALIZZATE DELL'AMMINISTRATORE (PRIORITÀ ALTA):\n${custom_instructions}\n`
+      : "";
+
     const systemPrompt = `Sei un esperto di contenuti formativi per la vendita. Genera il contenuto completo per UN singolo modulo formativo.
 
 Modulo: "${module_title}"
-${sectionHint}
+${sectionHint}${customInstructionsBlock}
 ${sourceContext}
 
 ISTRUZIONI:

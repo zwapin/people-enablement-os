@@ -84,6 +84,7 @@ export default function CollectionDetail() {
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [customInstructions, setCustomInstructions] = useState("");
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
+  const [generateDialogMode, setGenerateDialogMode] = useState<"outline" | "content">("outline");
 
   // Outline review dialog
   const [outlineReviewOpen, setOutlineReviewOpen] = useState(false);
@@ -288,10 +289,14 @@ export default function CollectionDetail() {
       return;
     }
     setSelectedDocIds((collectionDocs ?? []).map(d => d.id));
+    setGenerateDialogMode("outline");
     setGenerateDialogOpen(true);
   };
 
   const doGenerate = async () => {
+    if (generateDialogMode === "content") {
+      return doBulkGenerate();
+    }
     setGenerateDialogOpen(false);
     setGenerating(true);
     setProgress(2);
@@ -323,6 +328,14 @@ export default function CollectionDetail() {
       toast.info("Tutti i moduli hanno già contenuto.");
       return;
     }
+    setSelectedDocIds((collectionDocs ?? []).map(d => d.id));
+    setGenerateDialogMode("content");
+    setGenerateDialogOpen(true);
+  };
+
+  const doBulkGenerate = async () => {
+    setGenerateDialogOpen(false);
+    const targetModules = modules?.filter(m => !m.content_body) ?? [];
 
     setBulkGenerating(true);
     setBulkProgress({ current: 0, total: targetModules.length, label: "Avvio..." });
@@ -338,16 +351,26 @@ export default function CollectionDetail() {
       });
 
       try {
+        const jobInput: any = {
+          module_id: mod.id,
+          module_title: mod.title,
+          source_document_ids: mod.source_document_ids ?? selectedDocIds,
+          source_faq_ids: mod.source_faq_ids ?? [],
+        };
+        if (customInstructions.trim()) {
+          jobInput.custom_instructions = customInstructions.trim();
+        }
+
         const { data: job, error: jobErr } = await supabase
           .from("generation_jobs")
-          .insert({ job_type: "generate-module", status: "pending", input: { module_id: mod.id } })
+          .insert({ job_type: "generate-module", status: "pending", input: jobInput })
           .select("id")
           .single();
 
         if (jobErr || !job) throw new Error("Job creation failed");
 
         const { error: fnErr } = await supabase.functions.invoke("generate-module", {
-          body: { jobId: job.id },
+          body: { job_id: job.id },
         });
         if (fnErr) throw fnErr;
 
@@ -721,9 +744,11 @@ export default function CollectionDetail() {
       <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Genera moduli</DialogTitle>
+            <DialogTitle>{generateDialogMode === "outline" ? "Genera moduli" : "Genera contenuti"}</DialogTitle>
             <DialogDescription>
-              L'AI analizzerà i documenti e le FAQ per creare i moduli formativi. Puoi fornire istruzioni personalizzate per guidare la generazione.
+              {generateDialogMode === "outline"
+                ? "L'AI analizzerà i documenti e le FAQ per creare i moduli formativi. Puoi fornire istruzioni personalizzate per guidare la generazione."
+                : "L'AI genererà il contenuto per tutti i moduli senza contenuto. Puoi fornire istruzioni personalizzate per guidare la generazione."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
