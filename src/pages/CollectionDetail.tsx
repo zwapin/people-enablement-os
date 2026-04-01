@@ -290,6 +290,7 @@ export default function CollectionDetail() {
       return;
     }
     setSelectedDocIds((collectionDocs ?? []).map(d => d.id));
+    setGenerateDialogMode("outline");
     setGenerateDialogOpen(true);
   };
 
