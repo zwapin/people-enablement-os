@@ -1,0 +1,1 @@
+ALTER TABLE public.curricula ADD COLUMN target_member_type text DEFAULT NULL;

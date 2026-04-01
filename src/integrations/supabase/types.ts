@@ -63,6 +63,7 @@ export type Database = {
           id: string
           order_index: number
           status: Database["public"]["Enums"]["module_status"]
+          target_member_type: string | null
           title: string
           track: string
           updated_at: string
@@ -74,6 +75,7 @@ export type Database = {
           id?: string
           order_index?: number
           status?: Database["public"]["Enums"]["module_status"]
+          target_member_type?: string | null
           title: string
           track?: string
           updated_at?: string
@@ -85,6 +87,7 @@ export type Database = {
           id?: string
           order_index?: number
           status?: Database["public"]["Enums"]["module_status"]
+          target_member_type?: string | null
           title?: string
           track?: string
           updated_at?: string
