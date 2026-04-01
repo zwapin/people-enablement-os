@@ -666,11 +666,44 @@ export default function CollectionDetail() {
 
       {/* Moduli */}
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
-          <BookOpen className="h-5 w-5" />
-          Moduli
-          <span className="text-sm font-normal text-muted-foreground">({currentModules.length})</span>
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <BookOpen className="h-5 w-5" />
+            Moduli
+            <span className="text-sm font-normal text-muted-foreground">({currentModules.length})</span>
+          </h2>
+          {isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={async () => {
+                const maxOrder = currentModules.length > 0
+                  ? Math.max(...currentModules.map(m => m.order_index)) + 1
+                  : 0;
+                const { data, error } = await supabase
+                  .from("modules")
+                  .insert({
+                    curriculum_id: curriculumId!,
+                    title: "Nuovo modulo",
+                    status: "draft",
+                    order_index: maxOrder,
+                    track: collection.track || "Generale",
+                  })
+                  .select("id")
+                  .single();
+                if (error) {
+                  toast.error("Errore nella creazione del modulo");
+                } else if (data) {
+                  refreshAll();
+                  handleEdit(data.id);
+                }
+              }}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Crea modulo
+            </Button>
+          )}
+        </div>
         {hasProposedModules && (
           <div className="flex items-center gap-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
             <Sparkles className="h-4 w-4 text-primary shrink-0" />
