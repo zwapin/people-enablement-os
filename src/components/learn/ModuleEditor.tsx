@@ -606,13 +606,21 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
       {/* Sticky action bar */}
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/80 backdrop-blur-sm">
         <div className="max-w-3xl mx-auto flex items-center justify-end gap-3 px-4 py-3">
+          {saving && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Salvataggio...
+            </span>
+          )}
+          {autoSaved && !saving && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Check className="h-3 w-3 text-green-500" />
+              Salvato
+            </span>
+          )}
+          <div className="flex-1" />
           <Button variant="ghost" onClick={onClose} className="text-sm">
-            Annulla
-          </Button>
-          <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving} className="text-sm gap-1.5">
-            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            <Save className="h-3.5 w-3.5" />
-            Salva bozza
+            Chiudi
           </Button>
           <Button onClick={() => handleSave("published")} disabled={saving} className="text-sm">
             {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
