@@ -374,11 +374,12 @@ export default function PeopleTable({ profiles, onRefresh }: PeopleTableProps) {
                   ) : renderMemberType(p)}
                 </TableCell>
                 <TableCell>
-                  <Select value={p.role} onValueChange={(v) => handleRoleChange(p, v as "admin" | "rep")}>
-                    <SelectTrigger className="w-24 h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <Select value={getCombinedRole(p)} onValueChange={(v) => handleCombinedRoleChange(p, v)}>
+                    <SelectTrigger className="w-36 h-8 text-xs"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="rep">Rep</SelectItem>
+                      <SelectItem value="new_klaaryan">New Klaaryan</SelectItem>
+                      <SelectItem value="veteran_klaaryan">Veteran Klaaryan</SelectItem>
                     </SelectContent>
                   </Select>
                 </TableCell>
