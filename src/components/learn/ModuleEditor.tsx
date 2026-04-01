@@ -450,22 +450,6 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
           disabled={generating}
           moduleTitle={title}
           moduleId={moduleId || undefined}
-          renderToolbarExtra={moduleId ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerate}
-              disabled={generating || saving}
-              className="text-xs gap-1.5 shrink-0"
-            >
-              {generating ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Sparkles className="h-3 w-3" />
-              )}
-              {generating ? "Generazione..." : contentBody ? "Rigenera tutto" : "Genera con AI"}
-            </Button>
-          ) : undefined}
         />
       </div>
 

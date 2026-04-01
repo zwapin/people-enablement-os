@@ -478,10 +478,10 @@ export default function CollectionDetail() {
 
   // Rep view: show roadmap with stats
   if (!isAdmin) {
-    const publishedModules = currentModules.filter(m => m.status === "published");
+    const visibleModules = currentModules.filter(m => m.status !== "archived");
 
     const collectionCompletions = (repCompletions ?? []).filter(c =>
-      publishedModules.some(m => m.id === c.module_id)
+      visibleModules.some(m => m.id === c.module_id)
     );
     const completedCount = collectionCompletions.length;
     const avgScore = completedCount > 0
@@ -523,21 +523,21 @@ export default function CollectionDetail() {
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1.5">
               <BookOpen className="h-4 w-4" />
-              {completedCount}/{publishedModules.length} completati
+              {completedCount}/{visibleModules.length} completati
             </span>
             <span>·</span>
             <span>Punteggio medio: <strong className="text-foreground">{avgScore}</strong></span>
           </div>
         )}
 
-        {publishedModules.length === 0 ? (
+        {visibleModules.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center space-y-3">
             <BookOpen className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Nessun modulo pubblicato in questa collection.</p>
+            <p className="text-sm text-muted-foreground">Nessun modulo in questa collection.</p>
           </div>
         ) : (
           <RepRoadmap
-            modules={publishedModules}
+            modules={visibleModules}
             completions={repCompletions ?? []}
           />
         )}
@@ -615,36 +615,6 @@ export default function CollectionDetail() {
 
         {isAdmin && (
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleGenerate}
-              disabled={generating}
-            >
-              {generating ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : hasExistingModules ? (
-                <RefreshCw className="h-4 w-4 mr-2" />
-              ) : (
-                <Sparkles className="h-4 w-4 mr-2" />
-              )}
-              {moduliButtonLabel}
-            </Button>
-            {showContenutiButton && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleBulkGenerate}
-                disabled={bulkGenerating}
-              >
-                {bulkGenerating ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
-                )}
-                {contenutiButtonLabel}
-              </Button>
-            )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">

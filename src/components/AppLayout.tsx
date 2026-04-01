@@ -1,4 +1,4 @@
-import { Home, BookOpen, TrendingUp, BarChart3, Users, LogOut, Settings, Eye, Layers, Building2, User } from "lucide-react";
+import { Home, BookOpen, TrendingUp, Users, LogOut, Settings, Eye, Layers, Building2, User, Wrench } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/contexts/AuthContext";
 import { useImpersonation, AdminViewMode } from "@/contexts/ImpersonationContext";
@@ -23,11 +23,11 @@ import klaaryoLogo from "@/assets/klaaryo_logo_black.png";
 const navItems = [
   { title: "Home", url: "/home", icon: Home, comingSoon: false },
   { title: "Formazione", url: "/learn", icon: BookOpen, comingSoon: false },
+  { title: "Tool", url: "/tools", icon: Wrench, comingSoon: false },
 ];
 
 const adminItems = [
   { title: "Crescita", url: "/grow", icon: TrendingUp, comingSoon: false },
-  { title: "Performance", url: "/perform", icon: BarChart3, comingSoon: true },
   { title: "Team", url: "/people", icon: Users, comingSoon: false },
   { title: "Impostazioni", url: "/settings", icon: Settings, comingSoon: false },
 ];

@@ -22,7 +22,6 @@ import {
 } from "lucide-react";
 import { getCollectionCategories, departmentsToCategoryKeys, getProfileDepartments } from "@/lib/constants";
 import OnboardingPlanSection from "@/components/home/OnboardingPlanSection";
-import ToolsSection from "@/components/home/ToolsSection";
 import CollectionProgressSection from "@/components/home/CollectionProgressSection";
 
 /* ── Badge tiers based on % of total published modules completed ── */
@@ -101,28 +100,28 @@ export default function Home() {
   });
 
   /* ── Computed ── */
-  const publishedCollections =
-    curricula?.filter((c) => c.status === "published") ?? [];
+  const allCollections =
+    curricula?.filter((c) => c.status !== "archived") ?? [];
 
-  const filteredCollections = publishedCollections.filter((c) => {
+  const filteredCollections = allCollections.filter((c) => {
     const cats = getCollectionCategories(c.categories);
     if (cats.includes("common")) return true;
     if (userTeamKeys.length === 0) return true;
     return userTeamKeys.some((k) => cats.includes(k));
   });
 
-  const publishedModules =
+  const visibleModules =
     modules?.filter(
       (m) =>
-        m.status === "published" &&
+        m.status !== "archived" &&
         filteredCollections.some((c) => c.id === m.curriculum_id)
     ) ?? [];
 
   const completionSet = new Set(completions?.map((c) => c.module_id) ?? []);
-  const completedCount = publishedModules.filter((m) =>
+  const completedCount = visibleModules.filter((m) =>
     completionSet.has(m.id)
   ).length;
-  const totalModules = publishedModules.length;
+  const totalModules = visibleModules.length;
   const globalPct =
     totalModules > 0 ? Math.round((completedCount / totalModules) * 100) : 0;
 
@@ -133,7 +132,7 @@ export default function Home() {
   /* ── Per-collection stats for encouragement ── */
   const collectionStats = filteredCollections
     .map((c) => {
-      const cModules = publishedModules.filter(
+      const cModules = visibleModules.filter(
         (m) => m.curriculum_id === c.id
       );
       const cCompleted = cModules.filter((m) => completionSet.has(m.id)).length;
@@ -343,8 +342,6 @@ export default function Home() {
       {/* ── Onboarding plan ── */}
       {activeUserId && <OnboardingPlanSection userId={activeUserId} />}
 
-      {/* ── Tools ── */}
-      <ToolsSection departments={getProfileDepartments(activeProfile ?? {})} />
 
 
       {/* ── CTA if everything is done ── */}

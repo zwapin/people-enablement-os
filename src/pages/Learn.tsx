@@ -446,10 +446,11 @@ export default function Learn() {
 
     const userTeamKeys = departmentsToCategoryKeys(getProfileDepartments(activeProfile ?? {}));
 
-    // Filter published collections: user sees only their team's collections + Common Knowledge
+    // Filter collections: user sees only their team's collections + Common Knowledge
     // Also filter by target_member_type if set on the collection
     const userMemberType = activeProfile?.member_type ?? "new_klaaryan";
-    const filteredPublishedCollections = publishedCollections.filter(c => {
+    const filteredCollections = allCollections.filter(c => {
+      if (c.status === "archived") return false;
       // Check member type restriction
       const tmt = (c as any).target_member_type;
       if (tmt && tmt !== userMemberType) return false;
@@ -460,14 +461,14 @@ export default function Learn() {
     });
 
     // Compute global stats only on visible modules
-    const visibleModules = publishedModules.filter(m =>
-      filteredPublishedCollections.some(c => c.id === m.curriculum_id)
+    const visibleModules = (modules ?? []).filter(m =>
+      m.status !== "archived" && filteredCollections.some(c => c.id === m.curriculum_id)
     );
     const globalCompleted = visibleModules.filter(m => completions?.some(c => c.module_id === m.id)).length;
     const globalPct = visibleModules.length > 0 ? Math.round((globalCompleted / visibleModules.length) * 100) : 0;
 
-    const repCollections = filteredPublishedCollections.map(c => {
-      const cModules = publishedModules.filter(m => m.curriculum_id === c.id);
+    const repCollections = filteredCollections.map(c => {
+      const cModules = (modules ?? []).filter(m => m.curriculum_id === c.id && m.status !== "archived");
       const cCompleted = cModules.filter(m => completions?.some(comp => comp.module_id === m.id)).length;
       const cPct = cModules.length > 0 ? Math.round((cCompleted / cModules.length) * 100) : 0;
       return { ...c, moduleCount: cModules.length, completedCount: cCompleted, pct: cPct };
@@ -841,28 +842,6 @@ export default function Learn() {
             );
           })()}
 
-          {/* Proposals Section */}
-          {proposedModules.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-foreground">
-                  Proposte AI
-                  <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({proposedModules.length} moduli)
-                  </span>
-                </h2>
-                <Button variant="secondary" onClick={handleApproveAll}>
-                  <CheckCheck className="h-4 w-4 mr-2" />
-                  Approva tutti
-                </Button>
-              </div>
-              <ProposalsList
-                modules={proposedModules}
-                onEdit={handleEdit}
-                onRefresh={refreshAll}
-              />
-            </div>
-          )}
 
           {/* Orphan Published */}
           {orphanPublished.length > 0 && (
