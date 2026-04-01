@@ -110,7 +110,9 @@ export default function Home() {
   );
   const effectiveTeamKeys = isAdmin && adminViewMode === "myteam" ? adminTeamKeys : userTeamKeys;
 
+  const showAll = isAdmin && adminViewMode === "all";
   const filteredCollections = allCollections.filter((c) => {
+    if (showAll) return true;
     const cats = getCollectionCategories(c.categories);
     if (cats.includes("common")) return true;
     if (effectiveTeamKeys.length === 0) return true;
