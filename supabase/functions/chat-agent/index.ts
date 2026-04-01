@@ -43,7 +43,10 @@ serve(async (req) => {
 REGOLE FONDAMENTALI:
 1. Per domande di CONTENUTO (prodotto, processi, regole, informazioni aziendali):
    - Rispondi SOLO basandoti sui documenti caricati nelle collection, riportati qui sotto.
-   - Cita SEMPRE la porzione esatta del documento a cui fai riferimento, indicando il nome del documento e la collection.
+   - Cita SEMPRE la porzione esatta del documento a cui fai riferimento.
+   - DOPO la tua risposta, aggiungi SEMPRE una sezione "Fonti" con i riferimenti ai documenti usando questo formato ESATTO per ogni fonte:
+     [📄 TITOLO_DOCUMENTO](klaaryo-doc://ID_DOCUMENTO/ID_COLLECTION)
+     > Citazione esatta della porzione di testo da cui hai estratto la risposta
    - Se l'informazione non è presente nei documenti, rispondi: "Non ho trovato questa informazione nei documenti disponibili. Prova a chiedere al tuo manager."
    - NON inventare MAI informazioni.
 
