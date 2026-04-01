@@ -113,7 +113,7 @@ export default function CurriculumList({ modules, isAdmin, onEdit, onRefresh }: 
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleArchive(mod)}
+                onClick={(e) => { e.stopPropagation(); handleArchive(mod); }}
                 title="Archivia"
                 className="text-muted-foreground hover:text-foreground"
               >
