@@ -4,10 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Loader2, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
 import { TEAMS } from "@/lib/constants";
 
 interface InviteDialogProps {
@@ -19,8 +21,15 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
   const [loading, setLoading] = useState(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [department, setDepartment] = useState("");
+  const [departments, setDepartments] = useState<string[]>([]);
   const [jobRole, setJobRole] = useState("");
+  const [memberType, setMemberType] = useState("new_klaaryan");
+
+  const toggleTeam = (team: string) => {
+    setDepartments((prev) =>
+      prev.includes(team) ? prev.filter((t) => t !== team) : [...prev, team]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,8 +41,10 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
         body: {
           full_name: fullName.trim(),
           email: email.trim().toLowerCase(),
-          department: department || null,
+          department: departments[0] || null,
+          departments,
           job_role: jobRole.trim() || null,
+          member_type: memberType,
         },
       });
 
@@ -54,8 +65,9 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
   const resetForm = () => {
     setFullName("");
     setEmail("");
-    setDepartment("");
+    setDepartments([]);
     setJobRole("");
+    setMemberType("new_klaaryan");
   };
 
   return (
@@ -63,7 +75,7 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
       <DialogTrigger asChild>
         <Button>
           <Plus className="h-4 w-4 mr-2" />
-          Invita un New Klaaryan
+          Invita membro
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -73,46 +85,55 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-2">
             <Label htmlFor="fullName">Nome completo</Label>
-            <Input
-              id="fullName"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Jane Smith"
-              required
-            />
+            <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Jane Smith" required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="jane@company.com"
-              required
-            />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jane@company.com" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="department">Team</Label>
-            <Select value={department} onValueChange={setDepartment}>
+            <Label>Team</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-between">
+                  {departments.length === 0 ? "Seleziona team" : `${departments.length} team selezionati`}
+                  <ChevronDown className="h-4 w-4 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-2">
+                <div className="space-y-1">
+                  {TEAMS.map((team) => (
+                    <label key={team} className="flex items-center gap-2 px-2 py-1.5 text-sm rounded hover:bg-accent cursor-pointer">
+                      <Checkbox checked={departments.includes(team)} onCheckedChange={() => toggleTeam(team)} />
+                      {team}
+                    </label>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {departments.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {departments.map((d) => (
+                  <Badge key={d} variant="secondary" className="text-xs">{d}</Badge>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="jobRole">Ruolo lavorativo</Label>
+            <Input id="jobRole" value={jobRole} onChange={(e) => setJobRole(e.target.value)} placeholder="Account Executive" />
+          </div>
+          <div className="space-y-2">
+            <Label>Tipo membro</Label>
+            <Select value={memberType} onValueChange={setMemberType}>
               <SelectTrigger>
-                <SelectValue placeholder="Seleziona team" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {TEAMS.map((d) => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))}
+                <SelectItem value="new_klaaryan">New Klaaryan</SelectItem>
+                <SelectItem value="veteran_klaaryan">Veteran Klaaryan</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="jobRole">Ruolo</Label>
-            <Input
-              id="jobRole"
-              value={jobRole}
-              onChange={(e) => setJobRole(e.target.value)}
-              placeholder="Account Executive"
-            />
           </div>
           <Button type="submit" className="w-full" disabled={loading}>
             {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
