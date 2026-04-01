@@ -457,48 +457,65 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
       {/* Separator */}
       <hr className="border-border" />
 
-      {/* Key Points — collapsible */}
-      <Collapsible open={keyPointsOpen} onOpenChange={setKeyPointsOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 w-full group">
-          <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${keyPointsOpen ? "" : "-rotate-90"}`} />
-          <Lightbulb className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">Punti Chiave</span>
-          {keyPoints.length > 0 && (
-            <Badge variant="secondary" className="text-[10px] ml-1">{keyPoints.length}</Badge>
-          )}
-          <div className="flex-1" />
-          <Button
-            variant="ghost"
-            size="sm"
-            className="opacity-0 group-hover:opacity-100 transition-opacity h-6 text-xs"
-            onClick={(e) => { e.stopPropagation(); addKeyPoint(); }}
-          >
-            <Plus className="h-3 w-3 mr-1" />Aggiungi
-          </Button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-3 space-y-2 pl-6">
-          {keyPoints.length === 0 && (
-            <p className="text-xs text-muted-foreground italic">Nessun punto chiave. Clicca "Aggiungi" per iniziare.</p>
-          )}
-          {keyPoints.map((kp, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <span className="text-primary text-sm">•</span>
-              <Input
-                value={kp}
-                onChange={(e) => updateKeyPoint(i, e.target.value)}
-                placeholder={`Punto chiave ${i + 1}`}
-                className="flex-1 h-8 text-sm border-transparent hover:border-input focus:border-input transition-colors bg-transparent"
-              />
-              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 hover:opacity-100 focus:opacity-100" onClick={() => removeKeyPoint(i)}>
-                <Trash2 className="h-3 w-3 text-muted-foreground" />
-              </Button>
-            </div>
-          ))}
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Key Points — collapsible, removable */}
+      {!keyPointsRemoved && (
+        <>
+        <Collapsible open={keyPointsOpen} onOpenChange={setKeyPointsOpen}>
+          <CollapsibleTrigger className="flex items-center gap-2 w-full group">
+            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${keyPointsOpen ? "" : "-rotate-90"}`} />
+            <Lightbulb className="h-4 w-4 text-primary" />
+            <span className="text-sm font-semibold text-foreground">Punti Chiave</span>
+            {keyPoints.length > 0 && (
+              <Badge variant="secondary" className="text-[10px] ml-1">{keyPoints.length}</Badge>
+            )}
+            <div className="flex-1" />
+            <Button
+              variant="ghost"
+              size="sm"
+              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 text-xs"
+              onClick={(e) => { e.stopPropagation(); addKeyPoint(); }}
+            >
+              <Plus className="h-3 w-3 mr-1" />Aggiungi
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="opacity-0 group-hover:opacity-100 transition-opacity h-6 text-xs text-destructive hover:text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                setKeyPoints([]);
+                setKeyPointsRemoved(true);
+                triggerAutosave();
+              }}
+            >
+              <Trash2 className="h-3 w-3 mr-1" />Rimuovi
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="mt-3 space-y-2 pl-6">
+            {keyPoints.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">Nessun punto chiave. Clicca "Aggiungi" per iniziare.</p>
+            )}
+            {keyPoints.map((kp, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-primary text-sm">•</span>
+                <Input
+                  value={kp}
+                  onChange={(e) => updateKeyPoint(i, e.target.value)}
+                  placeholder={`Punto chiave ${i + 1}`}
+                  className="flex-1 h-8 text-sm border-transparent hover:border-input focus:border-input transition-colors bg-transparent"
+                />
+                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 hover:opacity-100 focus:opacity-100" onClick={() => removeKeyPoint(i)}>
+                  <Trash2 className="h-3 w-3 text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
 
-      {/* Separator */}
-      <hr className="border-border" />
+        {/* Separator */}
+        <hr className="border-border" />
+        </>
+      )}
 
       {/* Assessment Questions — collapsible */}
       <Collapsible open={questionsOpen} onOpenChange={setQuestionsOpen}>
