@@ -85,7 +85,6 @@ export default function CollectionDetail() {
   const [customInstructions, setCustomInstructions] = useState("");
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
   const [generateDialogMode, setGenerateDialogMode] = useState<"outline" | "content">("outline");
-  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([]);
 
   // Outline review dialog
   const [outlineReviewOpen, setOutlineReviewOpen] = useState(false);
