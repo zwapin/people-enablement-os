@@ -235,7 +235,12 @@ export default function CollectionCard({
 
   const handleCardClick = () => {
     if (!editing) {
-      navigate(`/learn/${collection.id}`);
+      // If collection has exactly 1 module, navigate directly to module view
+      if (modules.length === 1) {
+        navigate(`/learn/${collection.id}/module/${modules[0].id}`);
+      } else {
+        navigate(`/learn/${collection.id}`);
+      }
     }
   };
 
