@@ -132,7 +132,7 @@ export default function Home() {
   /* ── Per-collection stats for encouragement ── */
   const collectionStats = filteredCollections
     .map((c) => {
-      const cModules = publishedModules.filter(
+      const cModules = visibleModules.filter(
         (m) => m.curriculum_id === c.id
       );
       const cCompleted = cModules.filter((m) => completionSet.has(m.id)).length;
