@@ -17,7 +17,7 @@ import CollectionModuleList from "@/components/learn/CollectionModuleList";
 import CollectionCard from "@/components/learn/CollectionCard";
 import ProposalsList from "@/components/learn/ProposalsList";
 import RepRoadmap from "@/components/learn/RepRoadmap";
-import { MACRO_CATEGORIES, getCollectionCategories } from "@/lib/constants";
+import { MACRO_CATEGORIES, getCollectionCategories, departmentsToCategoryKeys, getProfileDepartments } from "@/lib/constants";
 import {
   AlertDialog,
   AlertDialogAction,
