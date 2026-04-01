@@ -87,6 +87,13 @@ const App = () => (
                 }
               />
               <Route
+                path="/ask"
+                element={
+                  <ProtectedRoute>
+                    <AppLayout><AskKlaaryo /></AppLayout>
+                  </ProtectedRoute>
+                }
+              <Route
                 path="/grow"
                 element={
                   <ProtectedRoute>
