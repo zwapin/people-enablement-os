@@ -356,6 +356,8 @@ export default function Settings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ToolsManager />
     </div>
   );
 }
