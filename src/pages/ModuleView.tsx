@@ -301,10 +301,10 @@ export default function ModuleView() {
                 </div>
               ),
               thead: ({ children }) => (
-                <thead className="bg-muted/60">{children}</thead>
+                <thead style={{ background: 'hsl(var(--module-table-header-bg))' }}>{children}</thead>
               ),
               th: ({ children }) => (
-                <th className="px-4 py-3 text-left font-semibold text-foreground border-b border-border">
+                <th className="px-4 py-3 text-left font-semibold border-b border-border" style={{ color: 'hsl(var(--module-table-header-fg))' }}>
                   {children}
                 </th>
               ),
