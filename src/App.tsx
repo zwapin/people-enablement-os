@@ -20,6 +20,7 @@ import Settings from "./pages/Settings";
 import Home from "./pages/Home";
 
 import NotFound from "./pages/NotFound";
+import ChatAgentWidget from "./components/ChatAgentWidget";
 
 const queryClient = new QueryClient();
 
