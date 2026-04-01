@@ -107,8 +107,8 @@ export default function Home() {
   const filteredCollections = publishedCollections.filter((c) => {
     const cats = getCollectionCategories(c.categories);
     if (cats.includes("common")) return true;
-    if (!userTeamKey) return true;
-    return cats.includes(userTeamKey);
+    if (userTeamKeys.length === 0) return true;
+    return userTeamKeys.some((k) => cats.includes(k));
   });
 
   const publishedModules =
