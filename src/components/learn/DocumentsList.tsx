@@ -206,7 +206,7 @@ export default function DocumentsList({ collectionId, onUploadComplete }: Docume
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label>File (PDF, DOCX o TXT — max 10MB, selezione multipla)</Label>
+                <Label>File (PDF, DOCX o TXT — selezione multipla)</Label>
                 <Input
                   type="file"
                   multiple

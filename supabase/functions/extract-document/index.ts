@@ -111,9 +111,7 @@ async function extractTextWithAI(fileData: Blob, fileName: string): Promise<stri
   const buffer = await fileData.arrayBuffer();
   const bytes = new Uint8Array(buffer);
   
-  // Check size limit (~10MB base64)
-  if (bytes.length > 7_500_000) {
-    throw new Error("File too large for AI extraction (max ~7.5MB)");
+  // No size limit enforced
   }
 
   const base64 = btoa(
