@@ -744,9 +744,11 @@ export default function CollectionDetail() {
       <Dialog open={generateDialogOpen} onOpenChange={setGenerateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Genera moduli</DialogTitle>
+            <DialogTitle>{generateDialogMode === "outline" ? "Genera moduli" : "Genera contenuti"}</DialogTitle>
             <DialogDescription>
-              L'AI analizzerà i documenti e le FAQ per creare i moduli formativi. Puoi fornire istruzioni personalizzate per guidare la generazione.
+              {generateDialogMode === "outline"
+                ? "L'AI analizzerà i documenti e le FAQ per creare i moduli formativi. Puoi fornire istruzioni personalizzate per guidare la generazione."
+                : "L'AI genererà il contenuto per tutti i moduli senza contenuto. Puoi fornire istruzioni personalizzate per guidare la generazione."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
