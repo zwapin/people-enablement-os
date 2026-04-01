@@ -42,7 +42,7 @@ function AppSidebarContent() {
   const viewAsRep = !isAdmin || isImpersonating;
   const allItems = viewAsRep
     ? navItems
-    : [...navItems.filter(i => !(i as any).repOnly), ...adminItems];
+    : [...navItems, ...adminItems];
 
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
