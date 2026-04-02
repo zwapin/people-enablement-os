@@ -536,7 +536,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     mutationFn: async () => {
       const { error: planErr } = await supabase
         .from("onboarding_plans")
-        .update({ role_template: editedPlan.role_template, premessa: editedPlan.premessa, output_atteso: editedPlan.output_atteso })
+        .update({ rep_id: editedPlan.rep_id, role_template: editedPlan.role_template, premessa: editedPlan.premessa, output_atteso: editedPlan.output_atteso })
         .eq("id", editedPlan.id);
       if (planErr) throw planErr;
 
