@@ -3,6 +3,12 @@ import { TASK_SECTIONS } from "@/lib/constants";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -243,6 +249,20 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     },
   });
 
+  // Fetch distinct roles from key activity templates
+  const { data: templateRoles } = useQuery({
+    queryKey: ["template-roles"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("onboarding_key_activity_templates")
+        .select("role");
+      if (!data) return [];
+      const roles = [...new Set(data.map(r => r.role))].sort();
+      return roles;
+    },
+    enabled: isEditable,
+  });
+
   const collectionMap = new Map((collections || []).map((c) => [c.id, c.title]));
 
   useEffect(() => {
@@ -413,8 +433,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   }, [markChanged]);
 
   // --- Import key activities from templates ---
-  const handleImportKeyActivityTemplates = useCallback(async () => {
-    const role = editedPlan.role_template;
+  const handleImportKeyActivityTemplates = useCallback(async (role: string) => {
     if (!role) return;
     const { data: templates, error } = await supabase
       .from("onboarding_key_activity_templates")
@@ -446,8 +465,8 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
 
     setEditedKeyActivities(prev => [...prev, ...newActivities]);
     markChanged();
-    toast.success(`${newItems.length} attività importate dal template`);
-  }, [editedPlan.role_template, editedKeyActivities, plan.id, markChanged]);
+    toast.success(`${newItems.length} attività importate dal template "${role}"`);
+  }, [editedKeyActivities, plan.id, markChanged]);
 
   const updateKeyActivityTitle = useCallback((id: string, title: string) => {
     setEditedKeyActivities(prev => prev.map(a => a.id === id ? { ...a, title } : a));
@@ -681,12 +700,19 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
           </h1>
         </div>
         {isEditable ? (
-          <Input
+          <Select
             value={editedPlan.role_template || ""}
-            onChange={(e) => setPlanField("role_template", e.target.value)}
-            placeholder="Ruolo / Template..."
-            className="h-7 text-sm border-none bg-transparent px-0 font-medium text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
-          />
+            onValueChange={(v) => setPlanField("role_template", v)}
+          >
+            <SelectTrigger className="h-7 w-[200px] text-sm font-medium text-muted-foreground">
+              <SelectValue placeholder="Seleziona ruolo..." />
+            </SelectTrigger>
+            <SelectContent>
+              {(templateRoles || []).map((role) => (
+                <SelectItem key={role} value={role}>{role}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
           displayPlan.role_template && (
             <p className="text-sm text-muted-foreground font-medium">{displayPlan.role_template}</p>
@@ -723,17 +749,27 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
               Attività Chiave
             </h2>
             <div className="flex items-center gap-2">
-              {isEditable && displayPlan.role_template && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1.5"
-                  onClick={handleImportKeyActivityTemplates}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Importa da template
-                </Button>
+              {isEditable && (templateRoles || []).length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1.5"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Importa da template
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(templateRoles || []).map((role) => (
+                      <DropdownMenuItem key={role} onClick={() => handleImportKeyActivityTemplates(role)}>
+                        {role}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {kaTotal > 0 && (
                 <span className="text-xs font-mono text-muted-foreground">{kaCompleted}/{kaTotal}</span>
