@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -31,6 +31,8 @@ interface PlanCanvasProps {
 }
 
 export default function PlanCanvas({ content, onChange, placeholder, disabled, className }: PlanCanvasProps) {
+  const [isFocused, setIsFocused] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -45,6 +47,8 @@ export default function PlanCanvas({ content, onChange, placeholder, disabled, c
       const md = turndown.turndown(e.getHTML());
       onChange(md);
     },
+    onFocus: () => setIsFocused(true),
+    onBlur: () => setIsFocused(false),
   });
 
   useEffect(() => {
@@ -77,9 +81,18 @@ export default function PlanCanvas({ content, onChange, placeholder, disabled, c
   );
 
   return (
-    <div className={cn("rounded-md border border-input bg-background", className)}>
+    <div
+      className={cn(
+        "group relative rounded-md transition-colors",
+        isFocused ? "bg-muted/30" : "hover:bg-muted/20",
+        className
+      )}
+    >
       {!disabled && (
-        <div className="flex items-center gap-0.5 border-b border-border px-2 py-1">
+        <div className={cn(
+          "flex items-center gap-0.5 px-2 py-1 transition-opacity duration-150",
+          isFocused ? "opacity-100" : "opacity-0 group-hover:opacity-60"
+        )}>
           <ToolBtn active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
             <Bold className="h-3.5 w-3.5" />
           </ToolBtn>
@@ -102,7 +115,7 @@ export default function PlanCanvas({ content, onChange, placeholder, disabled, c
       )}
       <EditorContent
         editor={editor}
-        className="prose prose-sm max-w-none px-3 py-2 min-h-[80px] focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[60px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none"
+        className="prose prose-sm max-w-none px-3 py-2 min-h-[100px] focus-within:outline-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[80px] [&_.ProseMirror_p.is-editor-empty:first-child::before]:text-muted-foreground/60 [&_.ProseMirror_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)] [&_.ProseMirror_p.is-editor-empty:first-child::before]:float-left [&_.ProseMirror_p.is-editor-empty:first-child::before]:pointer-events-none [&_.ProseMirror_p.is-editor-empty:first-child::before]:italic"
       />
     </div>
   );

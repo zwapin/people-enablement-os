@@ -629,62 +629,52 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        {onBack && (
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-foreground">
-            {repName ? `Ecco il piano dei prossimi 90 giorni di ${repName}` : "Ecco il tuo piano dei prossimi 90 giorni"}
-          </h2>
-          {isEditable ? (
-            <Input
-              value={editedPlan.role_template || ""}
-              onChange={(e) => setPlanField("role_template", e.target.value)}
-              placeholder="Ruolo / Template..."
-              className="mt-1 h-7 text-sm border-none bg-transparent px-0 font-medium text-muted-foreground focus-visible:ring-1"
-            />
-          ) : (
-            displayPlan.role_template && (
-              <p className="text-sm text-muted-foreground font-medium">{displayPlan.role_template}</p>
-            )
+    <div className="space-y-10 max-w-3xl mx-auto">
+      {/* Header — document style */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
           )}
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            {repName ? `Piano 90 giorni — ${repName}` : "Il tuo piano dei prossimi 90 giorni"}
+          </h1>
+        </div>
+        {isEditable ? (
+          <Input
+            value={editedPlan.role_template || ""}
+            onChange={(e) => setPlanField("role_template", e.target.value)}
+            placeholder="Ruolo / Template..."
+            className="h-7 text-sm border-none bg-transparent px-0 font-medium text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
+          />
+        ) : (
+          displayPlan.role_template && (
+            <p className="text-sm text-muted-foreground font-medium">{displayPlan.role_template}</p>
+          )
+        )}
+        {/* Minimal progress bar */}
+        <div className="flex items-center gap-3 pt-2">
+          <Progress value={progressPct} className="h-1.5 flex-1" />
+          <span className="text-xs font-mono text-muted-foreground shrink-0">{completedCount}/{allTasks.length} · {progressPct}%</span>
         </div>
       </div>
 
-      {/* Premessa */}
+      {/* Premessa — borderless section */}
       {(isEditable || displayPlan.premessa) && (
-        <Card className="border-border bg-muted/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
-              Intro
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isEditable ? (
-              <PlanCanvas content={editedPlan.premessa || ""} onChange={(md) => setPlanField("premessa", md)} placeholder="Descrivi il contesto del ruolo..." />
-            ) : (
-              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{displayPlan.premessa}</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-2">
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            Intro
+          </h2>
+          {isEditable ? (
+            <PlanCanvas content={editedPlan.premessa || ""} onChange={(md) => setPlanField("premessa", md)} placeholder="Descrivi il contesto del ruolo..." />
+          ) : (
+            <p className="text-sm text-foreground whitespace-pre-line leading-relaxed pl-6">{displayPlan.premessa}</p>
+          )}
+        </div>
       )}
-
-      {/* Overall progress */}
-      <Card className="bg-card border-border">
-        <CardContent className="pt-4 space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progresso complessivo</span>
-            <span className="font-mono text-foreground">{completedCount}/{allTasks.length} · {progressPct}%</span>
-          </div>
-          <Progress value={progressPct} className="h-2" />
-        </CardContent>
-      </Card>
 
       {/* Key Activities — Evergreen section */}
       {(displayKeyActivities.length > 0 || isEditable) && (
