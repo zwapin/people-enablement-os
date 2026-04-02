@@ -25,6 +25,21 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
   const [departments, setDepartments] = useState<string[]>([]);
   const [jobRole, setJobRole] = useState("");
   const [memberType, setMemberType] = useState("new_klaaryan");
+  const [roleTemplate, setRoleTemplate] = useState("");
+
+  // Fetch distinct roles from onboarding_key_activity_templates
+  const { data: roleOptions } = useQuery({
+    queryKey: ["invite-role-templates"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("onboarding_key_activity_templates")
+        .select("role");
+      if (!data) return [];
+      const unique = [...new Set(data.map((r) => r.role))].sort();
+      return unique;
+    },
+    enabled: open,
+  });
 
   const toggleTeam = (team: string) => {
     setDepartments((prev) =>
