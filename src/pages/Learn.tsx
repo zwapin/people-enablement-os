@@ -775,15 +775,26 @@ export default function Learn() {
         <>
           {/* Collections grouped by macro category */}
           {(() => {
-            const baseCollections = adminViewMode === "myteam"
+            const isMyTeam = adminViewMode === "myteam";
+            const baseCollections = isMyTeam
               ? getMyTeamCollections()
               : allCollections.filter(c => c.status !== "archived");
 
             const getCats = (c: any): string[] => getCollectionCategories(c.categories);
-            const uncategorized = baseCollections.filter(c => getCats(c).length === 0);
+
+            // In "my view", only show collections that have at least one published module
+            const displayCollections = isMyTeam
+              ? baseCollections.filter(c => {
+                  if (c.status !== "published") return false;
+                  const cModules = (modules ?? []).filter(m => m.curriculum_id === c.id && m.status === "published");
+                  return cModules.length > 0;
+                })
+              : baseCollections;
+
+            const uncategorized = displayCollections.filter(c => getCats(c).length === 0);
             const categorized = MACRO_CATEGORIES.map(cat => ({
               ...cat,
-              collections: baseCollections.filter(c => getCats(c).includes(cat.key)),
+              collections: displayCollections.filter(c => getCats(c).includes(cat.key)),
             }));
 
             const renderCollectionCard = (c: typeof allCollections[0]) => (
