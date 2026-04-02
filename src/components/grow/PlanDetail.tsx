@@ -419,8 +419,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   }, [markChanged]);
 
   // --- Import key activities from templates ---
-  const handleImportKeyActivityTemplates = useCallback(async () => {
-    const role = editedPlan.role_template;
+  const handleImportKeyActivityTemplates = useCallback(async (role: string) => {
     if (!role) return;
     const { data: templates, error } = await supabase
       .from("onboarding_key_activity_templates")
@@ -452,8 +451,8 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
 
     setEditedKeyActivities(prev => [...prev, ...newActivities]);
     markChanged();
-    toast.success(`${newItems.length} attività importate dal template`);
-  }, [editedPlan.role_template, editedKeyActivities, plan.id, markChanged]);
+    toast.success(`${newItems.length} attività importate dal template "${role}"`);
+  }, [editedKeyActivities, plan.id, markChanged]);
 
   const updateKeyActivityTitle = useCallback((id: string, title: string) => {
     setEditedKeyActivities(prev => prev.map(a => a.id === id ? { ...a, title } : a));
