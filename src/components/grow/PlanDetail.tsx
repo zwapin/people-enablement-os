@@ -412,6 +412,43 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     markChanged();
   }, [markChanged]);
 
+  // --- Import key activities from templates ---
+  const handleImportKeyActivityTemplates = useCallback(async () => {
+    const role = editedPlan.role_template;
+    if (!role) return;
+    const { data: templates, error } = await supabase
+      .from("onboarding_key_activity_templates")
+      .select("*")
+      .eq("role", role)
+      .order("order_index");
+    if (error) { toast.error("Errore nel caricamento dei template"); return; }
+    if (!templates || templates.length === 0) { toast("Nessun template trovato per questo ruolo"); return; }
+
+    const existingTitles = new Set(editedKeyActivities.map(a => a.title.trim().toLowerCase()));
+    const newItems = templates.filter(t => !existingTitles.has(t.title.trim().toLowerCase()));
+
+    if (newItems.length === 0) {
+      toast("Tutte le attività del template sono già presenti");
+      return;
+    }
+
+    const startIndex = editedKeyActivities.length;
+    const newActivities: KeyActivity[] = newItems.map((t, i) => ({
+      id: `temp-${crypto.randomUUID()}`,
+      plan_id: plan.id,
+      title: t.title,
+      collection_id: t.collection_id || null,
+      completed: false,
+      completed_at: null,
+      order_index: startIndex + i,
+      created_at: new Date().toISOString(),
+    }));
+
+    setEditedKeyActivities(prev => [...prev, ...newActivities]);
+    markChanged();
+    toast.success(`${newItems.length} attività importate dal template`);
+  }, [editedPlan.role_template, editedKeyActivities, plan.id, markChanged]);
+
   const updateKeyActivityTitle = useCallback((id: string, title: string) => {
     setEditedKeyActivities(prev => prev.map(a => a.id === id ? { ...a, title } : a));
     markChanged();
