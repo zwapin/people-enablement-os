@@ -85,6 +85,7 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
     setDepartments([]);
     setJobRole("");
     setMemberType("new_klaaryan");
+    setRoleTemplate("");
   };
 
   return (
