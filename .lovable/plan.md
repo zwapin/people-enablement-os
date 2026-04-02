@@ -1,14 +1,13 @@
 
 
-## Piano: Spostare la barra Salva in alto (sticky top)
-
-### Cosa cambia
-Spostare la barra "Salva modifiche / Annulla / Modifiche non salvate" dalla posizione `sticky bottom` attuale a `sticky top`, subito dopo l'header del piano, così è sempre visibile senza dover scrollare fino in fondo.
+## Piano: Spostare "Output Atteso a 90 Giorni" subito dopo la Intro
 
 ### Modifica
 
 **File: `src/components/grow/PlanDetail.tsx`**
-- Spostare il blocco della save bar (righe 1073-1112) subito dopo l'header (dopo riga ~735, dopo la progress bar)
-- Cambiare le classi da `sticky bottom-0` a `sticky top-0`
-- Mantenere tutto il resto invariato (logica, stile backdrop-blur, bottoni)
+- Tagliare il blocco "Output Atteso" (righe 1099-1112) dalla posizione attuale (in fondo, dopo il DndContext)
+- Incollarlo subito dopo il blocco "Intro" (dopo riga 782), prima della sezione "Attività Chiave"
+- Nessuna modifica alla logica o allo stile, solo riposizionamento
+
+L'ordine delle sezioni diventerà: **Save bar → Intro → Output Atteso a 90 Giorni → Attività Chiave → Milestone → Coaching**
 
