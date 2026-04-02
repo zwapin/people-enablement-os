@@ -61,6 +61,7 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
           departments,
           job_role: jobRole.trim() || null,
           member_type: memberType,
+          role_template: roleTemplate || null,
         },
       });
 
