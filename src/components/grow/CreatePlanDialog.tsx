@@ -619,9 +619,94 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
                         onAdd={(v) => addListItem(mc.label, "kpis", v)}
                         onRemove={(i) => removeListItem(mc.label, "kpis", i)}
                       />
-                    </TabsContent>
-                  ))}
-                </Tabs>
+
+                      {/* Tasks per sezione */}
+                      <div className="space-y-3 pt-2 border-t border-border">
+                        <Label className="text-xs">Task per questa fase</Label>
+                        {TASK_SECTIONS.map((section) => {
+                          const sectionTasks = (milestoneTasks[mc.label] || []).filter(t => t.section === section);
+                          return (
+                            <div key={section} className="space-y-1.5">
+                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{section}</p>
+                              {sectionTasks.map((task) => (
+                                <div key={task.tempId} className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5">
+                                  <span className="flex-1 text-sm">{task.title}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                                    onClick={() => setMilestoneTasks(prev => ({
+                                      ...prev,
+                                      [mc.label]: prev[mc.label].filter(t => t.tempId !== task.tempId),
+                                    }))}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {sectionTasks.length === 0 && (
+                                <p className="text-xs text-muted-foreground/60 italic pl-1">Nessun task</p>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {/* Add new task inline */}
+                        <div className="flex gap-2 items-end pt-1">
+                          <div className="flex-1">
+                            <Input
+                              placeholder="Nuovo task..."
+                              value={newMilestoneTaskInputs[mc.label] || ""}
+                              onChange={(e) => setNewMilestoneTaskInputs(prev => ({ ...prev, [mc.label]: e.target.value }))}
+                              className="h-8 text-sm"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  const title = (newMilestoneTaskInputs[mc.label] || "").trim();
+                                  if (!title) return;
+                                  const section = newMilestoneTaskSections[mc.label] || TASK_SECTIONS[0];
+                                  setMilestoneTasks(prev => ({
+                                    ...prev,
+                                    [mc.label]: [...prev[mc.label], { tempId: crypto.randomUUID(), title, section }],
+                                  }));
+                                  setNewMilestoneTaskInputs(prev => ({ ...prev, [mc.label]: "" }));
+                                }
+                              }}
+                            />
+                          </div>
+                          <Select
+                            value={newMilestoneTaskSections[mc.label] || TASK_SECTIONS[0]}
+                            onValueChange={(v) => setNewMilestoneTaskSections(prev => ({ ...prev, [mc.label]: v }))}
+                          >
+                            <SelectTrigger className="h-8 w-[150px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TASK_SECTIONS.map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            disabled={!(newMilestoneTaskInputs[mc.label] || "").trim()}
+                            onClick={() => {
+                              const title = (newMilestoneTaskInputs[mc.label] || "").trim();
+                              if (!title) return;
+                              const section = newMilestoneTaskSections[mc.label] || TASK_SECTIONS[0];
+                              setMilestoneTasks(prev => ({
+                                ...prev,
+                                [mc.label]: [...prev[mc.label], { tempId: crypto.randomUUID(), title, section }],
+                              }));
+                              setNewMilestoneTaskInputs(prev => ({ ...prev, [mc.label]: "" }));
+                            }}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
               </div>
             )}
 
