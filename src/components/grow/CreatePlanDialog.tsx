@@ -34,7 +34,7 @@ const MILESTONE_CONFIG = [
 const ROLE_OPTIONS = ["AE", "SDR", "CSM", "SE", "Manager"];
 
 const STEPS = [
-  { id: 0, title: "Informazioni Base", subtitle: "Rep, ruolo e premessa", icon: User },
+  { id: 0, title: "Informazioni Base", subtitle: "Rep, ruolo e intro", icon: User },
   { id: 1, title: "Attività Chiave", subtitle: "Todo evergreen per ruolo", icon: ListChecks },
   { id: 2, title: "Milestone 30-60-90", subtitle: "Obiettivi, focus e KPI", icon: Target },
   { id: 3, title: "Output Atteso", subtitle: "Risultato a 90 giorni", icon: FileOutput },
