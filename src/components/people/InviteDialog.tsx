@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,6 +25,21 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
   const [departments, setDepartments] = useState<string[]>([]);
   const [jobRole, setJobRole] = useState("");
   const [memberType, setMemberType] = useState("new_klaaryan");
+  const [roleTemplate, setRoleTemplate] = useState("");
+
+  // Fetch distinct roles from onboarding_key_activity_templates
+  const { data: roleOptions } = useQuery({
+    queryKey: ["invite-role-templates"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("onboarding_key_activity_templates")
+        .select("role");
+      if (!data) return [];
+      const unique = [...new Set(data.map((r) => r.role))].sort();
+      return unique;
+    },
+    enabled: open,
+  });
 
   const toggleTeam = (team: string) => {
     setDepartments((prev) =>
@@ -45,6 +61,7 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
           departments,
           job_role: jobRole.trim() || null,
           member_type: memberType,
+          role_template: roleTemplate || null,
         },
       });
 
@@ -68,6 +85,7 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
     setDepartments([]);
     setJobRole("");
     setMemberType("new_klaaryan");
+    setRoleTemplate("");
   };
 
   return (
@@ -123,6 +141,22 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
             <Label htmlFor="jobRole">Ruolo lavorativo</Label>
             <Input id="jobRole" value={jobRole} onChange={(e) => setJobRole(e.target.value)} placeholder="Account Executive" />
           </div>
+          {memberType === "new_klaaryan" && (
+            <div className="space-y-2">
+              <Label>Ruolo Template (onboarding)</Label>
+              <Select value={roleTemplate} onValueChange={setRoleTemplate}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona ruolo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(roleOptions || []).map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Se selezionato, verrà creato automaticamente un piano di onboarding</p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Tipo membro</Label>
             <Select value={memberType} onValueChange={setMemberType}>
