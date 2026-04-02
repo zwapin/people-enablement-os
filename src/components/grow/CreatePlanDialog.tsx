@@ -286,38 +286,31 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
       const { error: msError } = await supabase.from("onboarding_milestones").insert(milestoneRows);
       if (msError) throw msError;
 
-      const { data: templates } = await supabase
-        .from("onboarding_templates")
-        .select("*")
-        .order("order_index");
+      // Insert tasks from milestoneTasks state (user-curated in stepper)
+      const { data: createdMilestones } = await supabase
+        .from("onboarding_milestones")
+        .select("id, label")
+        .eq("plan_id", plan.id);
 
-      if (templates && templates.length > 0) {
-        const { data: createdMilestones } = await supabase
-          .from("onboarding_milestones")
-          .select("id, label")
-          .eq("plan_id", plan.id);
-
-        if (createdMilestones) {
-          const milestoneMap = new Map(createdMilestones.map((m) => [m.label, m.id]));
-          const filteredTemplates = templates.filter((t) => {
-            const tRole = (t as any).role;
-            if (!tRole) return true;
-            return tRole === roleTemplate;
-          });
-          const taskRows = filteredTemplates
-            .filter((t) => milestoneMap.has(t.milestone_label))
-            .map((t) => ({
-              milestone_id: milestoneMap.get(t.milestone_label)!,
+      if (createdMilestones) {
+        const milestoneMap = new Map(createdMilestones.map((m) => [m.label, m.id]));
+        const taskRows: { milestone_id: string; title: string; type: string; section: string | null; order_index: number; is_common: boolean }[] = [];
+        for (const [label, tasks] of Object.entries(milestoneTasks)) {
+          const msId = milestoneMap.get(label);
+          if (!msId) continue;
+          tasks.forEach((t, i) => {
+            taskRows.push({
+              milestone_id: msId,
               title: t.title,
-              type: t.type,
-              section: t.section,
-              order_index: t.order_index,
+              type: "activity",
+              section: t.section || null,
+              order_index: i,
               is_common: true,
-            }));
-
-          if (taskRows.length > 0) {
-            await supabase.from("onboarding_tasks").insert(taskRows);
-          }
+            });
+          });
+        }
+        if (taskRows.length > 0) {
+          await supabase.from("onboarding_tasks").insert(taskRows);
         }
       }
 
