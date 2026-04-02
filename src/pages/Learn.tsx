@@ -562,15 +562,15 @@ export default function Learn() {
 
           return (
             <div className="space-y-6">
-              {categorized.map(cat => (
+              {categorized
+                .filter(cat => cat.collections.length > 0)
+                .map(cat => (
                 <div key={cat.key} className="space-y-3">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                     {cat.label}
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {cat.collections.length > 0
-                      ? cat.collections.map(renderCard)
-                      : renderEmptyCategory()}
+                    {cat.collections.map(renderCard)}
                   </div>
                 </div>
               ))}
@@ -775,15 +775,26 @@ export default function Learn() {
         <>
           {/* Collections grouped by macro category */}
           {(() => {
-            const baseCollections = adminViewMode === "myteam"
+            const isMyTeam = adminViewMode === "myteam";
+            const baseCollections = isMyTeam
               ? getMyTeamCollections()
               : allCollections.filter(c => c.status !== "archived");
 
             const getCats = (c: any): string[] => getCollectionCategories(c.categories);
-            const uncategorized = baseCollections.filter(c => getCats(c).length === 0);
+
+            // In "my view", only show collections that have at least one published module
+            const displayCollections = isMyTeam
+              ? baseCollections.filter(c => {
+                  if (c.status !== "published") return false;
+                  const cModules = (modules ?? []).filter(m => m.curriculum_id === c.id && m.status === "published");
+                  return cModules.length > 0;
+                })
+              : baseCollections;
+
+            const uncategorized = displayCollections.filter(c => getCats(c).length === 0);
             const categorized = MACRO_CATEGORIES.map(cat => ({
               ...cat,
-              collections: baseCollections.filter(c => getCats(c).includes(cat.key)),
+              collections: displayCollections.filter(c => getCats(c).includes(cat.key)),
             }));
 
             const renderCollectionCard = (c: typeof allCollections[0]) => (
@@ -805,16 +816,20 @@ export default function Learn() {
               <div className="space-y-6">
                 <h2 className="text-lg font-semibold text-foreground">Collections</h2>
 
-                {categorized.map(cat => (
+                {categorized
+                  .filter(cat => isMyTeam ? cat.collections.length > 0 : true)
+                  .map(cat => (
                   <div key={cat.key} className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                         {cat.label}
                       </h3>
-                      <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Nuova
-                      </Button>
+                      {!isMyTeam && (
+                        <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Nuova
+                        </Button>
+                      )}
                     </div>
                     {cat.collections.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
