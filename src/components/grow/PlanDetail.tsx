@@ -698,12 +698,19 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
           </h1>
         </div>
         {isEditable ? (
-          <Input
+          <Select
             value={editedPlan.role_template || ""}
-            onChange={(e) => setPlanField("role_template", e.target.value)}
-            placeholder="Ruolo / Template..."
-            className="h-7 text-sm border-none bg-transparent px-0 font-medium text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
-          />
+            onValueChange={(v) => setPlanField("role_template", v)}
+          >
+            <SelectTrigger className="h-7 w-[200px] text-sm font-medium text-muted-foreground">
+              <SelectValue placeholder="Seleziona ruolo..." />
+            </SelectTrigger>
+            <SelectContent>
+              {(templateRoles || []).map((role) => (
+                <SelectItem key={role} value={role}>{role}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         ) : (
           displayPlan.role_template && (
             <p className="text-sm text-muted-foreground font-medium">{displayPlan.role_template}</p>
