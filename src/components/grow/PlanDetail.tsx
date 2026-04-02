@@ -1096,20 +1096,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         </DragOverlay>
       </DndContext>
 
-      {/* Output Atteso — borderless section */}
-      {(isEditable || displayPlan.output_atteso) && (
-        <div className="space-y-2">
-          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
-            <Target className="h-4 w-4 text-muted-foreground" />
-            Output Atteso a 90 Giorni
-          </h2>
-          {isEditable ? (
-            <PlanCanvas content={editedPlan.output_atteso || ""} onChange={(md) => setPlanField("output_atteso", md)} placeholder="Descrivi l'output atteso..." />
-          ) : (
-            <p className="text-sm text-foreground whitespace-pre-line leading-relaxed pl-6">{displayPlan.output_atteso}</p>
-          )}
-        </div>
-      )}
 
     </div>
   );
