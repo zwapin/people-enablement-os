@@ -636,7 +636,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         )}
         <div className="flex-1">
           <h2 className="text-xl font-bold text-foreground">
-            {repName ? `${repName} · Piano 90 Giorni` : "Il tuo Piano di Onboarding"}
+            {repName ? `Ecco il piano dei prossimi 90 giorni di ${repName}` : "Ecco il tuo piano dei prossimi 90 giorni"}
           </h2>
           {isEditable ? (
             <Input
