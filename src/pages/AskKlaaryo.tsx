@@ -59,12 +59,12 @@ export default function AskKlaaryo() {
     enabled: !!activeConversationId,
   });
 
-  // Sync DB messages to local state when conversation changes
+  // Sync DB messages to local state when conversation changes (skip during streaming)
   useEffect(() => {
-    if (dbMessages) {
+    if (dbMessages && !isLoading) {
       setMessages(dbMessages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })));
     }
-  }, [dbMessages]);
+  }, [dbMessages, isLoading]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
