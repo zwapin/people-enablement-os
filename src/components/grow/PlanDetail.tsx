@@ -948,11 +948,11 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                     )}
 
                     {(isEditable || kpis.length > 0) && (
-                      <EditableList milestoneId={milestone.id} field="kpis" items={kpis} label="Milestone di fase" icon={<Target className="h-3.5 w-3.5" />} colorClass="bg-success/5 border border-success/10" />
+                      <EditableList milestoneId={milestone.id} field="kpis" items={kpis} label="Milestone di fase" icon={<Target className="h-3.5 w-3.5" />} />
                     )}
-                  </CardContent>
+                  </div>
                 </CollapsibleContent>
-              </Card>
+              </div>
             </Collapsible>
           );
         })}
