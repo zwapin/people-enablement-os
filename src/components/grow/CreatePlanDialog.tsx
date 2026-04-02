@@ -706,7 +706,10 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
                             <Plus className="h-3.5 w-3.5" />
                           </Button>
                         </div>
-                      </div>
+                       </div>
+                    </TabsContent>
+                  ))}
+                </Tabs>
               </div>
             )}
 
