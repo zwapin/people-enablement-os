@@ -438,7 +438,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Premessa (opzionale)</Label>
+                    <Label>Intro (opzionale)</Label>
                     <Button
                       variant="ghost"
                       size="sm"

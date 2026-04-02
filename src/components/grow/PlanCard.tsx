@@ -84,7 +84,7 @@ export default function PlanCard({ plan, repName, onClick }: PlanCardProps) {
           })}
         </div>
 
-        {/* Premessa preview */}
+        {/* Intro preview */}
         {plan.premessa && (
           <p className="text-xs text-muted-foreground line-clamp-2">{plan.premessa}</p>
         )}
