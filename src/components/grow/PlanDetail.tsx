@@ -261,6 +261,8 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
       return roles;
     },
     enabled: isEditable,
+  });
+
   const collectionMap = new Map((collections || []).map((c) => [c.id, c.title]));
 
   useEffect(() => {
