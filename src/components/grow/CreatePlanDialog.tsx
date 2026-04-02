@@ -83,6 +83,15 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     "90d": { obiettivo: "", focus: [], kpis: [] },
   });
 
+  // Milestone tasks (grouped by milestone label)
+  const [milestoneTasks, setMilestoneTasks] = useState<Record<string, TaskDraft[]>>({
+    "30d": [],
+    "60d": [],
+    "90d": [],
+  });
+  const [newMilestoneTaskInputs, setNewMilestoneTaskInputs] = useState<Record<string, string>>({});
+  const [newMilestoneTaskSections, setNewMilestoneTaskSections] = useState<Record<string, string>>({});
+
   // Step 3: Output
   const [outputAtteso, setOutputAtteso] = useState("");
 
