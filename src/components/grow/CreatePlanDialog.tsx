@@ -54,6 +54,12 @@ type KeyActivityDraft = {
   collection_title?: string;
 };
 
+type TaskDraft = {
+  tempId: string;
+  title: string;
+  section: string;
+};
+
 export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
