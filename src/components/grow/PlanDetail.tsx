@@ -137,9 +137,9 @@ const SortableTaskRow = React.forwardRef<HTMLDivElement, {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 rounded-md px-3 py-2.5 transition-colors ${
-        isSubtask ? "ml-8 border-l-2 border-border pl-3" : ""
-      } ${task.completed ? "bg-muted/30" : "hover:bg-muted/50"}`}
+      className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors ${
+        isSubtask ? "ml-8 border-l-2 border-border/50 pl-3" : ""
+      } ${task.completed ? "opacity-60" : "hover:bg-muted/30"}`}
     >
       {isEditable && (
         <button {...attributes} {...listeners} className="cursor-grab touch-none text-muted-foreground hover:text-foreground">
@@ -586,15 +586,15 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   const activeDragTask = activeDragId ? allTasks.find(t => t.id === activeDragId) : null;
 
   // --- Editable list component ---
-  const EditableList = ({ milestoneId, field, items, label, icon, colorClass }: {
-    milestoneId: string; field: "focus" | "kpis"; items: string[]; label: string; icon: React.ReactNode; colorClass?: string;
+  const EditableList = ({ milestoneId, field, items, label, icon }: {
+    milestoneId: string; field: "focus" | "kpis"; items: string[]; label: string; icon: React.ReactNode;
   }) => {
     const inputKey = `${milestoneId}-${field}`;
     const inputVal = (field === "focus" ? newFocusInputs : newKpiInputs)[inputKey] || "";
     const setInput = field === "focus" ? setNewFocusInputs : setNewKpiInputs;
 
     return (
-      <div className={colorClass ? `rounded-lg ${colorClass} p-3 space-y-2` : "space-y-2"}>
+      <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
           {icon} {label}
         </p>
@@ -629,83 +629,69 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        {onBack && (
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        )}
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-foreground">
-            {repName ? `Ecco il piano dei prossimi 90 giorni di ${repName}` : "Ecco il tuo piano dei prossimi 90 giorni"}
-          </h2>
-          {isEditable ? (
-            <Input
-              value={editedPlan.role_template || ""}
-              onChange={(e) => setPlanField("role_template", e.target.value)}
-              placeholder="Ruolo / Template..."
-              className="mt-1 h-7 text-sm border-none bg-transparent px-0 font-medium text-muted-foreground focus-visible:ring-1"
-            />
-          ) : (
-            displayPlan.role_template && (
-              <p className="text-sm text-muted-foreground font-medium">{displayPlan.role_template}</p>
-            )
+    <div className="space-y-10 max-w-3xl mx-auto">
+      {/* Header — document style */}
+      <div className="space-y-1">
+        <div className="flex items-center gap-3">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
           )}
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">
+            {repName ? `Piano 90 giorni — ${repName}` : "Il tuo piano dei prossimi 90 giorni"}
+          </h1>
+        </div>
+        {isEditable ? (
+          <Input
+            value={editedPlan.role_template || ""}
+            onChange={(e) => setPlanField("role_template", e.target.value)}
+            placeholder="Ruolo / Template..."
+            className="h-7 text-sm border-none bg-transparent px-0 font-medium text-muted-foreground focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
+          />
+        ) : (
+          displayPlan.role_template && (
+            <p className="text-sm text-muted-foreground font-medium">{displayPlan.role_template}</p>
+          )
+        )}
+        {/* Minimal progress bar */}
+        <div className="flex items-center gap-3 pt-2">
+          <Progress value={progressPct} className="h-1.5 flex-1" />
+          <span className="text-xs font-mono text-muted-foreground shrink-0">{completedCount}/{allTasks.length} · {progressPct}%</span>
         </div>
       </div>
 
-      {/* Premessa */}
+      {/* Premessa — borderless section */}
       {(isEditable || displayPlan.premessa) && (
-        <Card className="border-border bg-muted/30">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
-              Intro
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isEditable ? (
-              <PlanCanvas content={editedPlan.premessa || ""} onChange={(md) => setPlanField("premessa", md)} placeholder="Descrivi il contesto del ruolo..." />
-            ) : (
-              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{displayPlan.premessa}</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-2">
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <FileText className="h-4 w-4 text-muted-foreground" />
+            Intro
+          </h2>
+          {isEditable ? (
+            <PlanCanvas content={editedPlan.premessa || ""} onChange={(md) => setPlanField("premessa", md)} placeholder="Descrivi il contesto del ruolo..." />
+          ) : (
+            <p className="text-sm text-foreground whitespace-pre-line leading-relaxed pl-6">{displayPlan.premessa}</p>
+          )}
+        </div>
       )}
 
-      {/* Overall progress */}
-      <Card className="bg-card border-border">
-        <CardContent className="pt-4 space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Progresso complessivo</span>
-            <span className="font-mono text-foreground">{completedCount}/{allTasks.length} · {progressPct}%</span>
-          </div>
-          <Progress value={progressPct} className="h-2" />
-        </CardContent>
-      </Card>
-
-      {/* Key Activities — Evergreen section */}
+      {/* Key Activities — borderless section */}
       {(displayKeyActivities.length > 0 || isEditable) && (
-        <Card className="border-border bg-accent/30">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-primary" />
-                Attività Chiave
-              </CardTitle>
-              {kaTotal > 0 && (
-                <Badge variant="outline" className="text-[10px] font-mono">
-                  {kaCompleted}/{kaTotal}
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Attività evergreen indipendenti dalla timeline</p>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              Attività Chiave
+            </h2>
+            {kaTotal > 0 && (
+              <span className="text-xs font-mono text-muted-foreground">{kaCompleted}/{kaTotal}</span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1">Attività evergreen indipendenti dalla timeline</p>
+          <div className="space-y-0.5">
             {displayKeyActivities.map((activity) => (
-              <div key={activity.id} className={`flex items-center gap-2 rounded-md px-3 py-2.5 transition-colors ${activity.completed ? "bg-muted/30" : "hover:bg-muted/50"}`}>
+              <div key={activity.id} className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors ${activity.completed ? "opacity-60" : "hover:bg-muted/40"}`}>
                 <Checkbox
                   checked={activity.completed}
                   disabled={isEditable || toggleKeyActivity.isPending}
@@ -720,16 +706,15 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                     <Input
                       value={activity.title}
                       onChange={(e) => updateKeyActivityTitle(activity.id, e.target.value)}
-                      className="h-7 text-sm border-none bg-transparent px-0 focus-visible:ring-1"
+                      className="h-7 text-sm border-none bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
                     />
                   ) : (
-                    <p className={`text-sm ${activity.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                    <p className={`text-sm leading-relaxed ${activity.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
                       {activity.title}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Collection link */}
                   {isEditable ? (
                     <Select
                       value={activity.collection_id || "none"}
@@ -770,35 +755,34 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                 </div>
               </div>
             ))}
+          </div>
 
-            {/* Add new key activity */}
-            {isEditable && (
-              <div className="flex gap-1.5 pt-2 border-t border-border">
-                <Input
-                  value={newKeyActivityTitle}
-                  onChange={(e) => setNewKeyActivityTitle(e.target.value)}
-                  placeholder="Aggiungi attività chiave..."
-                  className="h-8 text-sm flex-1"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyActivity(); } }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1"
-                  disabled={!newKeyActivityTitle.trim()}
-                  onClick={addKeyActivity}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
+          {isEditable && (
+            <div className="flex gap-1.5 pt-2 border-t border-border/50">
+              <Input
+                value={newKeyActivityTitle}
+                onChange={(e) => setNewKeyActivityTitle(e.target.value)}
+                placeholder="Aggiungi attività chiave..."
+                className="h-8 text-sm flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyActivity(); } }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-muted-foreground"
+                disabled={!newKeyActivityTitle.trim()}
+                onClick={addKeyActivity}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
 
-            {displayKeyActivities.length === 0 && !isEditable && (
-              <p className="text-sm text-muted-foreground py-2 text-center">Nessuna attività chiave</p>
-            )}
-          </CardContent>
-        </Card>
+          {displayKeyActivities.length === 0 && !isEditable && (
+            <p className="text-sm text-muted-foreground py-2">Nessuna attività chiave</p>
+          )}
+        </div>
       )}
 
       {/* Milestones */}
@@ -819,46 +803,44 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
               open={isOpen}
               onOpenChange={(open) => setOpenMilestones(prev => ({ ...prev, [milestone.label]: open }))}
             >
-              <Card className="border-border overflow-hidden">
+              <div className="border-b border-border/50 pb-6">
                 <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+                  <div className="cursor-pointer hover:bg-muted/20 rounded-md transition-colors py-3 px-2 -mx-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "" : "-rotate-90"}`} />
                         <div>
-                          <CardTitle className="text-base">{MILESTONE_LABELS[milestone.label] || milestone.label}</CardTitle>
+                          <h3 className="text-lg font-semibold text-foreground">{MILESTONE_LABELS[milestone.label] || milestone.label}</h3>
                           {MILESTONE_SUBTITLES[milestone.label] && (
                             <p className="text-xs text-muted-foreground mt-0.5">{MILESTONE_SUBTITLES[milestone.label]}</p>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Progress value={mPct} className="h-1.5 w-20" />
-                        <Badge variant="outline" className="text-[10px] font-mono">{mDone}/{mTotal}</Badge>
+                        <Progress value={mPct} className="h-1 w-16" />
+                        <span className="text-[10px] font-mono text-muted-foreground">{mDone}/{mTotal}</span>
                       </div>
                     </div>
-                  </CardHeader>
+                  </div>
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
-                  <CardContent className="space-y-4 pt-0">
+                  <div className="space-y-4 pt-2 pl-2">
                     {/* Obiettivo */}
-                    <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
-                      <div className="flex items-start gap-2">
-                        <Target className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Obiettivo</p>
-                          {isEditable ? (
-                            <Textarea
-                              value={milestone.obiettivo || ""}
-                              onChange={(e) => setMilestoneField(milestone.id, "obiettivo", e.target.value)}
-                              placeholder="Obiettivo della fase..."
-                              className="min-h-[40px] text-sm border-none bg-transparent px-0 resize-none focus-visible:ring-1"
-                            />
-                          ) : (
-                            milestone.obiettivo && <p className="text-sm text-foreground">{milestone.obiettivo}</p>
-                          )}
-                        </div>
+                    <div className="flex items-start gap-2">
+                      <Target className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Obiettivo</p>
+                        {isEditable ? (
+                          <Textarea
+                            value={milestone.obiettivo || ""}
+                            onChange={(e) => setMilestoneField(milestone.id, "obiettivo", e.target.value)}
+                            placeholder="Obiettivo della fase..."
+                            className="min-h-[40px] text-sm border-none bg-transparent px-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
+                          />
+                        ) : (
+                          milestone.obiettivo && <p className="text-sm text-foreground">{milestone.obiettivo}</p>
+                        )}
                       </div>
                     </div>
 
@@ -966,11 +948,11 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                     )}
 
                     {(isEditable || kpis.length > 0) && (
-                      <EditableList milestoneId={milestone.id} field="kpis" items={kpis} label="Milestone di fase" icon={<Target className="h-3.5 w-3.5" />} colorClass="bg-success/5 border border-success/10" />
+                      <EditableList milestoneId={milestone.id} field="kpis" items={kpis} label="Milestone di fase" icon={<Target className="h-3.5 w-3.5" />} />
                     )}
-                  </CardContent>
+                  </div>
                 </CollapsibleContent>
-              </Card>
+              </div>
             </Collapsible>
           );
         })}
@@ -985,23 +967,19 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         </DragOverlay>
       </DndContext>
 
-      {/* Output Atteso */}
+      {/* Output Atteso — borderless section */}
       {(isEditable || displayPlan.output_atteso) && (
-        <Card className="border-border bg-primary/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
-              Output Atteso a 90 Giorni
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isEditable ? (
-              <PlanCanvas content={editedPlan.output_atteso || ""} onChange={(md) => setPlanField("output_atteso", md)} placeholder="Descrivi l'output atteso..." />
-            ) : (
-              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{displayPlan.output_atteso}</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-2">
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            Output Atteso a 90 Giorni
+          </h2>
+          {isEditable ? (
+            <PlanCanvas content={editedPlan.output_atteso || ""} onChange={(md) => setPlanField("output_atteso", md)} placeholder="Descrivi l'output atteso..." />
+          ) : (
+            <p className="text-sm text-foreground whitespace-pre-line leading-relaxed pl-6">{displayPlan.output_atteso}</p>
+          )}
+        </div>
       )}
 
       {/* Persistent save bar in edit mode */}
