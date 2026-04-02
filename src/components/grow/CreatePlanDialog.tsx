@@ -155,6 +155,11 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
   });
 
   const prevRoleRef = useRef(roleTemplate);
+
+  // Auto-populate key activities when templates load for the selected role
+  useEffect(() => {
+    if (!activityTemplates?.length || !roleTemplate) return;
+    if (prevRoleRef.current !== roleTemplate || keyActivities.length === 0) {
       const fromTemplates: KeyActivityDraft[] = activityTemplates.map((t) => ({
         tempId: crypto.randomUUID(),
         title: t.title,
@@ -165,6 +170,27 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
       prevRoleRef.current = roleTemplate;
     }
   }, [activityTemplates, roleTemplate, collections]);
+
+  // Auto-populate milestone tasks when task templates load
+  const prevTaskRoleRef = useRef(roleTemplate);
+  useEffect(() => {
+    if (!taskTemplates?.length || !roleTemplate) return;
+    if (prevTaskRoleRef.current !== roleTemplate || Object.values(milestoneTasks).every(arr => arr.length === 0)) {
+      const grouped: Record<string, TaskDraft[]> = { "30d": [], "60d": [], "90d": [] };
+      for (const t of taskTemplates) {
+        const label = t.milestone_label;
+        if (grouped[label]) {
+          grouped[label].push({
+            tempId: crypto.randomUUID(),
+            title: t.title,
+            section: t.section || TASK_SECTIONS[0],
+          });
+        }
+      }
+      setMilestoneTasks(grouped);
+      prevTaskRoleRef.current = roleTemplate;
+    }
+  }, [taskTemplates, roleTemplate]);
 
   const handleRoleChange = (role: string) => {
     setRoleTemplate(role);
