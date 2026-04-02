@@ -710,23 +710,43 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
             </Button>
           )}
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            {repName ? `Piano 90 giorni — ${repName}` : "Il tuo piano dei prossimi 90 giorni"}
+            {(() => {
+              const dynamicName = isEditable
+                ? profiles?.find(p => p.user_id === editedPlan.rep_id)?.full_name
+                : repName;
+              return dynamicName ? `Piano 90 giorni — ${dynamicName}` : "Il tuo piano dei prossimi 90 giorni";
+            })()}
           </h1>
         </div>
         {isEditable ? (
-          <Select
-            value={editedPlan.role_template || ""}
-            onValueChange={(v) => setPlanField("role_template", v)}
-          >
-            <SelectTrigger className="h-7 w-[200px] text-sm font-medium text-muted-foreground">
-              <SelectValue placeholder="Seleziona ruolo..." />
-            </SelectTrigger>
-            <SelectContent>
-              {(templateRoles || []).map((role) => (
-                <SelectItem key={role} value={role}>{role}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Select
+              value={editedPlan.rep_id}
+              onValueChange={(v) => setPlanField("rep_id", v)}
+            >
+              <SelectTrigger className="h-7 w-[200px] text-sm font-medium text-muted-foreground">
+                <SelectValue placeholder="Seleziona destinatario..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(profiles || []).map((p) => (
+                  <SelectItem key={p.user_id} value={p.user_id}>{p.full_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select
+              value={editedPlan.role_template || ""}
+              onValueChange={(v) => setPlanField("role_template", v)}
+            >
+              <SelectTrigger className="h-7 w-[200px] text-sm font-medium text-muted-foreground">
+                <SelectValue placeholder="Seleziona ruolo..." />
+              </SelectTrigger>
+              <SelectContent>
+                {(templateRoles || []).map((role) => (
+                  <SelectItem key={role} value={role}>{role}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         ) : (
           displayPlan.role_template && (
             <p className="text-sm text-muted-foreground font-medium">{displayPlan.role_template}</p>
