@@ -747,17 +747,27 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
               Attività Chiave
             </h2>
             <div className="flex items-center gap-2">
-              {isEditable && displayPlan.role_template && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs gap-1.5"
-                  onClick={handleImportKeyActivityTemplates}
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Importa da template
-                </Button>
+              {isEditable && (templateRoles || []).length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1.5"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      Importa da template
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(templateRoles || []).map((role) => (
+                      <DropdownMenuItem key={role} onClick={() => handleImportKeyActivityTemplates(role)}>
+                        {role}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
               {kaTotal > 0 && (
                 <span className="text-xs font-mono text-muted-foreground">{kaCompleted}/{kaTotal}</span>
