@@ -938,6 +938,19 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                           className="h-8 text-sm flex-1"
                           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTask(milestone.id); } }}
                         />
+                        <Select
+                          value={newTaskSections[milestone.id] || TASK_SECTIONS[0]}
+                          onValueChange={(v) => setNewTaskSections(prev => ({ ...prev, [milestone.id]: v }))}
+                        >
+                          <SelectTrigger className="h-8 w-[150px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TASK_SECTIONS.map((s) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Button
                           type="button"
                           variant="outline"
