@@ -816,16 +816,20 @@ export default function Learn() {
               <div className="space-y-6">
                 <h2 className="text-lg font-semibold text-foreground">Collections</h2>
 
-                {categorized.map(cat => (
+                {categorized
+                  .filter(cat => isMyTeam ? cat.collections.length > 0 : true)
+                  .map(cat => (
                   <div key={cat.key} className="space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                         {cat.label}
                       </h3>
-                      <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
-                        <Plus className="h-4 w-4 mr-1" />
-                        Nuova
-                      </Button>
+                      {!isMyTeam && (
+                        <Button variant="outline" size="sm" onClick={() => handleCreateCollection([cat.key])}>
+                          <Plus className="h-4 w-4 mr-1" />
+                          Nuova
+                        </Button>
+                      )}
                     </div>
                     {cat.collections.length > 0 ? (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
