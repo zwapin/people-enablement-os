@@ -1070,46 +1070,6 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         </div>
       )}
 
-      {/* Persistent save bar in edit mode */}
-      {isEditable && (
-        <div className="sticky bottom-0 z-10 -mx-4 px-4 py-3 bg-background/95 backdrop-blur border-t border-border flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-sm">
-            {hasChanges ? (
-              <span className="text-warning font-medium flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-warning animate-pulse" />
-                Modifiche non salvate
-              </span>
-            ) : (
-              <span className="text-muted-foreground">Nessuna modifica</span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!hasChanges || saveMutation.isPending}
-              onClick={() => {
-                setEditedPlan(clonePlan(plan));
-                setEditedKeyActivities(JSON.parse(JSON.stringify(keyActivities || [])));
-                setHasChanges(false);
-                setDeletedTaskIds([]);
-                setDeletedKeyActivityIds([]);
-              }}
-            >
-              Annulla
-            </Button>
-            <Button
-              size="sm"
-              disabled={!hasChanges || saveMutation.isPending}
-              onClick={() => saveMutation.mutate()}
-              className="gap-1.5"
-            >
-              <Save className="h-3.5 w-3.5" />
-              {saveMutation.isPending ? "Salvataggio..." : "Salva modifiche"}
-            </Button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
