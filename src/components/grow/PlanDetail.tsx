@@ -249,6 +249,20 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     },
   });
 
+  // Fetch active profiles for rep selector
+  const { data: profiles } = useQuery({
+    queryKey: ["profiles-for-plan"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .eq("is_active", true)
+        .order("full_name");
+      return data || [];
+    },
+    enabled: isEditable,
+  });
+
   // Fetch distinct roles from key activity templates
   const { data: templateRoles } = useQuery({
     queryKey: ["template-roles"],
