@@ -1,40 +1,28 @@
 
 
-## Plan: White Sidebar + Tools Admin View
+## Piano: Rinominare "Premessa" in "Intro" e aggiungere titolo personalizzato
 
-### 1. White sidebar theme
+### Modifiche
 
-Update CSS variables in `src/index.css` (lines 56–64) to switch the sidebar from dark navy to white:
+**1. `src/components/grow/PlanDetail.tsx`**
 
-```
---sidebar-background: 0 0% 100%;
---sidebar-foreground: 200 90% 15%;
---sidebar-primary: 189 100% 34%;
---sidebar-primary-foreground: 0 0% 100%;
---sidebar-accent: 210 20% 96%;
---sidebar-accent-foreground: 200 90% 15%;
---sidebar-border: 210 18% 90%;
---sidebar-ring: 189 100% 34%;
---sidebar-muted: 200 15% 46%;
-```
+- **Titolo hero sopra tutto** (riga ~638): Cambiare il titolo da `{repName} · Piano 90 Giorni` / `Il tuo Piano di Onboarding` a:
+  - Per i member: **"Ecco il tuo piano dei prossimi 90 giorni, {Nome}"**
+  - Per la vista admin con rep selezionato: **"Ecco il piano dei prossimi 90 giorni di {NomeRep}"**
 
-Update `src/components/AppLayout.tsx`:
-- Remove `brightness-0 invert` filters from the Klaaryo logo (no longer needed on white background)
-- Rename "Tool" to "Tools" in `navItems`
+- **Rinominare "Premessa" → "Intro"** (riga ~662): Cambiare il label della CardTitle da `Premessa` a `Intro`
 
-### 2. Tools page: show admin ToolsManager
+**2. `src/components/grow/CreatePlanDialog.tsx`**
 
-Update `src/pages/Tools.tsx`:
-- Import `useAuth` and check if the user is admin
-- If admin, render the `ToolsManager` component (from `src/components/settings/ToolsManager.tsx`) instead of or in addition to the member tools grid
-- Rename the page title accordingly
+- Rinominare il label "Premessa (opzionale)" → "Intro (opzionale)" (riga ~441)
+- Aggiornare il subtitle dello step 0 da "Rep, ruolo e premessa" → "Rep, ruolo e intro" (riga ~37)
+- Aggiornare il toast "Premessa generata" → "Intro generata" (riga ~188)
 
-### 3. Sidebar nav label
+**3. `src/components/grow/PlanCard.tsx`**
 
-Update `navItems` in `AppLayout.tsx` to use "Tools" instead of "Tool".
+- Aggiornare il commento/label "Premessa preview" (riga ~87) — cosmetico
 
-### Files to modify
-- `src/index.css` — sidebar CSS variables
-- `src/components/AppLayout.tsx` — logo styling, nav label
-- `src/pages/Tools.tsx` — conditional admin view with ToolsManager
+### Note tecniche
+- Il campo database resta `premessa` (nessuna migrazione necessaria), cambia solo il testo visibile nella UI
+- Nessun impatto su logica di salvataggio o generazione AI
 
