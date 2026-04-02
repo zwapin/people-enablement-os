@@ -341,6 +341,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     const key = parentTaskId || milestoneId;
     const title = newTaskInputs[key]?.trim();
     if (!title) return;
+    const section = parentTaskId ? null : (newTaskSections[milestoneId] || TASK_SECTIONS[0]);
     const tempId = `temp-${crypto.randomUUID()}`;
     const newTask: Task = {
       id: tempId,
@@ -352,7 +353,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
       completed_at: null,
       order_index: 999,
       is_common: false,
-      section: null,
+      section,
       module_id: null,
     };
     setEditedPlan(prev => ({
@@ -363,7 +364,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     }));
     setNewTaskInputs(prev => ({ ...prev, [key]: "" }));
     markChanged();
-  }, [newTaskInputs, markChanged]);
+  }, [newTaskInputs, newTaskSections, markChanged]);
 
   // --- Subtask prompt state ---
   const [subtaskPromptParentId, setSubtaskPromptParentId] = useState<string | null>(null);
