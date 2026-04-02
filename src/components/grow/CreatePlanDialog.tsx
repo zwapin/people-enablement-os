@@ -185,7 +185,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
 
       if (type === "premessa" && data.premessa) {
         setPremessa(data.premessa);
-        toast.success("Premessa generata — puoi modificarla");
+        toast.success("Intro generata — puoi modificarla");
       } else if (type === "milestones" && data["30d"]) {
         setMilestones({
           "30d": { obiettivo: data["30d"].obiettivo || "", focus: data["30d"].focus || [], kpis: data["30d"].kpis || [] },
