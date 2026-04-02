@@ -967,23 +967,19 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         </DragOverlay>
       </DndContext>
 
-      {/* Output Atteso */}
+      {/* Output Atteso — borderless section */}
       {(isEditable || displayPlan.output_atteso) && (
-        <Card className="border-border bg-primary/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Target className="h-4 w-4 text-primary" />
-              Output Atteso a 90 Giorni
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isEditable ? (
-              <PlanCanvas content={editedPlan.output_atteso || ""} onChange={(md) => setPlanField("output_atteso", md)} placeholder="Descrivi l'output atteso..." />
-            ) : (
-              <p className="text-sm text-foreground whitespace-pre-line leading-relaxed">{displayPlan.output_atteso}</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-2">
+          <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+            <Target className="h-4 w-4 text-muted-foreground" />
+            Output Atteso a 90 Giorni
+          </h2>
+          {isEditable ? (
+            <PlanCanvas content={editedPlan.output_atteso || ""} onChange={(md) => setPlanField("output_atteso", md)} placeholder="Descrivi l'output atteso..." />
+          ) : (
+            <p className="text-sm text-foreground whitespace-pre-line leading-relaxed pl-6">{displayPlan.output_atteso}</p>
+          )}
+        </div>
       )}
 
       {/* Persistent save bar in edit mode */}
