@@ -141,6 +141,22 @@ export default function InviteDialog({ onInvited }: InviteDialogProps) {
             <Label htmlFor="jobRole">Ruolo lavorativo</Label>
             <Input id="jobRole" value={jobRole} onChange={(e) => setJobRole(e.target.value)} placeholder="Account Executive" />
           </div>
+          {memberType === "new_klaaryan" && (
+            <div className="space-y-2">
+              <Label>Ruolo Template (onboarding)</Label>
+              <Select value={roleTemplate} onValueChange={setRoleTemplate}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleziona ruolo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(roleOptions || []).map((r) => (
+                    <SelectItem key={r} value={r}>{r}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Se selezionato, verrà creato automaticamente un piano di onboarding</p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Tipo membro</Label>
             <Select value={memberType} onValueChange={setMemberType}>
