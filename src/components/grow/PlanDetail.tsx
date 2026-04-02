@@ -803,46 +803,44 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
               open={isOpen}
               onOpenChange={(open) => setOpenMilestones(prev => ({ ...prev, [milestone.label]: open }))}
             >
-              <Card className="border-border overflow-hidden">
+              <div className="border-b border-border/50 pb-6">
                 <CollapsibleTrigger asChild>
-                  <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors pb-3">
+                  <div className="cursor-pointer hover:bg-muted/20 rounded-md transition-colors py-3 px-2 -mx-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "" : "-rotate-90"}`} />
                         <div>
-                          <CardTitle className="text-base">{MILESTONE_LABELS[milestone.label] || milestone.label}</CardTitle>
+                          <h3 className="text-lg font-semibold text-foreground">{MILESTONE_LABELS[milestone.label] || milestone.label}</h3>
                           {MILESTONE_SUBTITLES[milestone.label] && (
                             <p className="text-xs text-muted-foreground mt-0.5">{MILESTONE_SUBTITLES[milestone.label]}</p>
                           )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Progress value={mPct} className="h-1.5 w-20" />
-                        <Badge variant="outline" className="text-[10px] font-mono">{mDone}/{mTotal}</Badge>
+                        <Progress value={mPct} className="h-1 w-16" />
+                        <span className="text-[10px] font-mono text-muted-foreground">{mDone}/{mTotal}</span>
                       </div>
                     </div>
-                  </CardHeader>
+                  </div>
                 </CollapsibleTrigger>
 
                 <CollapsibleContent>
-                  <CardContent className="space-y-4 pt-0">
+                  <div className="space-y-4 pt-2 pl-2">
                     {/* Obiettivo */}
-                    <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
-                      <div className="flex items-start gap-2">
-                        <Target className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-xs font-semibold text-primary uppercase tracking-wide mb-1">Obiettivo</p>
-                          {isEditable ? (
-                            <Textarea
-                              value={milestone.obiettivo || ""}
-                              onChange={(e) => setMilestoneField(milestone.id, "obiettivo", e.target.value)}
-                              placeholder="Obiettivo della fase..."
-                              className="min-h-[40px] text-sm border-none bg-transparent px-0 resize-none focus-visible:ring-1"
-                            />
-                          ) : (
-                            milestone.obiettivo && <p className="text-sm text-foreground">{milestone.obiettivo}</p>
-                          )}
-                        </div>
+                    <div className="flex items-start gap-2">
+                      <Target className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">Obiettivo</p>
+                        {isEditable ? (
+                          <Textarea
+                            value={milestone.obiettivo || ""}
+                            onChange={(e) => setMilestoneField(milestone.id, "obiettivo", e.target.value)}
+                            placeholder="Obiettivo della fase..."
+                            className="min-h-[40px] text-sm border-none bg-transparent px-0 resize-none focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
+                          />
+                        ) : (
+                          milestone.obiettivo && <p className="text-sm text-foreground">{milestone.obiettivo}</p>
+                        )}
                       </div>
                     </div>
 
