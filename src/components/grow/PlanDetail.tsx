@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { TASK_SECTIONS } from "@/lib/constants";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
