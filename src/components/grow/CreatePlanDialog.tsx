@@ -294,7 +294,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
 
       if (createdMilestones) {
         const milestoneMap = new Map(createdMilestones.map((m) => [m.label, m.id]));
-        const taskRows: { milestone_id: string; title: string; type: string; section: string | null; order_index: number; is_common: boolean }[] = [];
+        const taskRows: { milestone_id: string; title: string; type: "activity" | "meeting" | "module_link"; section: string | null; order_index: number; is_common: boolean }[] = [];
         for (const [label, tasks] of Object.entries(milestoneTasks)) {
           const msId = milestoneMap.get(label);
           if (!msId) continue;
