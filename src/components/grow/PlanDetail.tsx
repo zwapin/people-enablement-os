@@ -685,9 +685,23 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
               <ClipboardList className="h-4 w-4 text-muted-foreground" />
               Attività Chiave
             </h2>
-            {kaTotal > 0 && (
-              <span className="text-xs font-mono text-muted-foreground">{kaCompleted}/{kaTotal}</span>
-            )}
+            <div className="flex items-center gap-2">
+              {isEditable && displayPlan.role_template && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1.5"
+                  onClick={handleImportKeyActivityTemplates}
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Importa da template
+                </Button>
+              )}
+              {kaTotal > 0 && (
+                <span className="text-xs font-mono text-muted-foreground">{kaCompleted}/{kaTotal}</span>
+              )}
+            </div>
           </div>
           <p className="text-xs text-muted-foreground -mt-1">Attività evergreen indipendenti dalla timeline</p>
           <div className="space-y-0.5">
