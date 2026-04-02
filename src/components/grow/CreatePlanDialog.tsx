@@ -34,7 +34,7 @@ const MILESTONE_CONFIG = [
 const ROLE_OPTIONS = ["AE", "SDR", "CSM", "SE", "Manager"];
 
 const STEPS = [
-  { id: 0, title: "Informazioni Base", subtitle: "Rep, ruolo e premessa", icon: User },
+  { id: 0, title: "Informazioni Base", subtitle: "Rep, ruolo e intro", icon: User },
   { id: 1, title: "Attività Chiave", subtitle: "Todo evergreen per ruolo", icon: ListChecks },
   { id: 2, title: "Milestone 30-60-90", subtitle: "Obiettivi, focus e KPI", icon: Target },
   { id: 3, title: "Output Atteso", subtitle: "Risultato a 90 giorni", icon: FileOutput },
@@ -185,7 +185,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
 
       if (type === "premessa" && data.premessa) {
         setPremessa(data.premessa);
-        toast.success("Premessa generata — puoi modificarla");
+        toast.success("Intro generata — puoi modificarla");
       } else if (type === "milestones" && data["30d"]) {
         setMilestones({
           "30d": { obiettivo: data["30d"].obiettivo || "", focus: data["30d"].focus || [], kpis: data["30d"].kpis || [] },
@@ -438,7 +438,7 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Premessa (opzionale)</Label>
+                    <Label>Intro (opzionale)</Label>
                     <Button
                       variant="ghost"
                       size="sm"
