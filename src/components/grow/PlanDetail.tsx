@@ -586,15 +586,15 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   const activeDragTask = activeDragId ? allTasks.find(t => t.id === activeDragId) : null;
 
   // --- Editable list component ---
-  const EditableList = ({ milestoneId, field, items, label, icon, colorClass }: {
-    milestoneId: string; field: "focus" | "kpis"; items: string[]; label: string; icon: React.ReactNode; colorClass?: string;
+  const EditableList = ({ milestoneId, field, items, label, icon }: {
+    milestoneId: string; field: "focus" | "kpis"; items: string[]; label: string; icon: React.ReactNode;
   }) => {
     const inputKey = `${milestoneId}-${field}`;
     const inputVal = (field === "focus" ? newFocusInputs : newKpiInputs)[inputKey] || "";
     const setInput = field === "focus" ? setNewFocusInputs : setNewKpiInputs;
 
     return (
-      <div className={colorClass ? `rounded-lg ${colorClass} p-3 space-y-2` : "space-y-2"}>
+      <div className="space-y-2">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
           {icon} {label}
         </p>
