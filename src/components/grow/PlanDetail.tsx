@@ -54,6 +54,7 @@ import {
   GripVertical,
   ClipboardList,
   ExternalLink,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Tables } from "@/integrations/supabase/types";
