@@ -676,26 +676,22 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
         </div>
       )}
 
-      {/* Key Activities — Evergreen section */}
+      {/* Key Activities — borderless section */}
       {(displayKeyActivities.length > 0 || isEditable) && (
-        <Card className="border-border bg-accent/30">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <ClipboardList className="h-4 w-4 text-primary" />
-                Attività Chiave
-              </CardTitle>
-              {kaTotal > 0 && (
-                <Badge variant="outline" className="text-[10px] font-mono">
-                  {kaCompleted}/{kaTotal}
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">Attività evergreen indipendenti dalla timeline</p>
-          </CardHeader>
-          <CardContent className="space-y-2">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-muted-foreground" />
+              Attività Chiave
+            </h2>
+            {kaTotal > 0 && (
+              <span className="text-xs font-mono text-muted-foreground">{kaCompleted}/{kaTotal}</span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1">Attività evergreen indipendenti dalla timeline</p>
+          <div className="space-y-0.5">
             {displayKeyActivities.map((activity) => (
-              <div key={activity.id} className={`flex items-center gap-2 rounded-md px-3 py-2.5 transition-colors ${activity.completed ? "bg-muted/30" : "hover:bg-muted/50"}`}>
+              <div key={activity.id} className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors ${activity.completed ? "opacity-60" : "hover:bg-muted/40"}`}>
                 <Checkbox
                   checked={activity.completed}
                   disabled={isEditable || toggleKeyActivity.isPending}
@@ -710,16 +706,15 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                     <Input
                       value={activity.title}
                       onChange={(e) => updateKeyActivityTitle(activity.id, e.target.value)}
-                      className="h-7 text-sm border-none bg-transparent px-0 focus-visible:ring-1"
+                      className="h-7 text-sm border-none bg-transparent px-0 focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
                     />
                   ) : (
-                    <p className={`text-sm ${activity.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                    <p className={`text-sm leading-relaxed ${activity.completed ? "text-muted-foreground line-through" : "text-foreground"}`}>
                       {activity.title}
                     </p>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  {/* Collection link */}
                   {isEditable ? (
                     <Select
                       value={activity.collection_id || "none"}
@@ -760,35 +755,34 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                 </div>
               </div>
             ))}
+          </div>
 
-            {/* Add new key activity */}
-            {isEditable && (
-              <div className="flex gap-1.5 pt-2 border-t border-border">
-                <Input
-                  value={newKeyActivityTitle}
-                  onChange={(e) => setNewKeyActivityTitle(e.target.value)}
-                  placeholder="Aggiungi attività chiave..."
-                  className="h-8 text-sm flex-1"
-                  onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyActivity(); } }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 gap-1"
-                  disabled={!newKeyActivityTitle.trim()}
-                  onClick={addKeyActivity}
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
+          {isEditable && (
+            <div className="flex gap-1.5 pt-2 border-t border-border/50">
+              <Input
+                value={newKeyActivityTitle}
+                onChange={(e) => setNewKeyActivityTitle(e.target.value)}
+                placeholder="Aggiungi attività chiave..."
+                className="h-8 text-sm flex-1 border-none bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 hover:bg-muted/30 rounded transition-colors"
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addKeyActivity(); } }}
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 gap-1 text-muted-foreground"
+                disabled={!newKeyActivityTitle.trim()}
+                onClick={addKeyActivity}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
 
-            {displayKeyActivities.length === 0 && !isEditable && (
-              <p className="text-sm text-muted-foreground py-2 text-center">Nessuna attività chiave</p>
-            )}
-          </CardContent>
-        </Card>
+          {displayKeyActivities.length === 0 && !isEditable && (
+            <p className="text-sm text-muted-foreground py-2">Nessuna attività chiave</p>
+          )}
+        </div>
       )}
 
       {/* Milestones */}
