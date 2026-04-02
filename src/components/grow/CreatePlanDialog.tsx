@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Loader2, X, BookOpen, Trash2, Sparkles, User, ListChecks, Target, FileOutput, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TASK_SECTIONS } from "@/lib/constants";
 
 const MILESTONE_CONFIG = [
   { label: "30d" as const, title: "Fase 1 — Giorni 1–30" },
