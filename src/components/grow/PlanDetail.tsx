@@ -208,6 +208,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   const [newKpiInputs, setNewKpiInputs] = useState<Record<string, string>>({});
   const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
   const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
+  const [newTaskSections, setNewTaskSections] = useState<Record<string, string>>({});
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   // Key activities state
