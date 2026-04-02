@@ -137,9 +137,9 @@ const SortableTaskRow = React.forwardRef<HTMLDivElement, {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 rounded-md px-3 py-2.5 transition-colors ${
-        isSubtask ? "ml-8 border-l-2 border-border pl-3" : ""
-      } ${task.completed ? "bg-muted/30" : "hover:bg-muted/50"}`}
+      className={`flex items-center gap-2 rounded-md px-3 py-2 transition-colors ${
+        isSubtask ? "ml-8 border-l-2 border-border/50 pl-3" : ""
+      } ${task.completed ? "opacity-60" : "hover:bg-muted/30"}`}
     >
       {isEditable && (
         <button {...attributes} {...listeners} className="cursor-grab touch-none text-muted-foreground hover:text-foreground">
