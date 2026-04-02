@@ -249,6 +249,18 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     },
   });
 
+  // Fetch distinct roles from key activity templates
+  const { data: templateRoles } = useQuery({
+    queryKey: ["template-roles"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("onboarding_key_activity_templates")
+        .select("role");
+      if (!data) return [];
+      const roles = [...new Set(data.map(r => r.role))].sort();
+      return roles;
+    },
+    enabled: isEditable,
   const collectionMap = new Map((collections || []).map((c) => [c.id, c.title]));
 
   useEffect(() => {
