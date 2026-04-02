@@ -353,6 +353,9 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
       "60d": { obiettivo: "", focus: [], kpis: [] },
       "90d": { obiettivo: "", focus: [], kpis: [] },
     });
+    setMilestoneTasks({ "30d": [], "60d": [], "90d": [] });
+    setNewMilestoneTaskInputs({});
+    setNewMilestoneTaskSections({});
   };
 
   const updateMilestone = (label: string, field: keyof MilestoneData, value: string | string[]) => {
