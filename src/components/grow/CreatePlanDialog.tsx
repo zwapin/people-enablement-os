@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Loader2, X, BookOpen, Trash2, Sparkles, User, ListChecks, Target, FileOutput, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TASK_SECTIONS } from "@/lib/constants";
 
 const MILESTONE_CONFIG = [
   { label: "30d" as const, title: "Fase 1 — Giorni 1–30" },
@@ -53,6 +54,12 @@ type KeyActivityDraft = {
   collection_title?: string;
 };
 
+type TaskDraft = {
+  tempId: string;
+  title: string;
+  section: string;
+};
+
 export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void }) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -75,6 +82,15 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     "60d": { obiettivo: "", focus: [], kpis: [] },
     "90d": { obiettivo: "", focus: [], kpis: [] },
   });
+
+  // Milestone tasks (grouped by milestone label)
+  const [milestoneTasks, setMilestoneTasks] = useState<Record<string, TaskDraft[]>>({
+    "30d": [],
+    "60d": [],
+    "90d": [],
+  });
+  const [newMilestoneTaskInputs, setNewMilestoneTaskInputs] = useState<Record<string, string>>({});
+  const [newMilestoneTaskSections, setNewMilestoneTaskSections] = useState<Record<string, string>>({});
 
   // Step 3: Output
   const [outputAtteso, setOutputAtteso] = useState("");
@@ -124,12 +140,25 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     enabled: open && !!roleTemplate && ROLE_OPTIONS.includes(roleTemplate),
   });
 
+  // Fetch milestone task templates when role changes
+  const { data: taskTemplates } = useQuery({
+    queryKey: ["milestone-task-templates", roleTemplate],
+    queryFn: async () => {
+      let q = supabase.from("onboarding_templates").select("*").order("order_index");
+      if (roleTemplate) {
+        q = q.or(`role.eq.${roleTemplate},role.is.null`);
+      }
+      const { data } = await q;
+      return data || [];
+    },
+    enabled: open && !!roleTemplate,
+  });
+
   const prevRoleRef = useRef(roleTemplate);
 
   // Auto-populate key activities when templates load for the selected role
   useEffect(() => {
     if (!activityTemplates?.length || !roleTemplate) return;
-    // Only auto-populate if role just changed or activities are empty
     if (prevRoleRef.current !== roleTemplate || keyActivities.length === 0) {
       const fromTemplates: KeyActivityDraft[] = activityTemplates.map((t) => ({
         tempId: crypto.randomUUID(),
@@ -141,6 +170,27 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
       prevRoleRef.current = roleTemplate;
     }
   }, [activityTemplates, roleTemplate, collections]);
+
+  // Auto-populate milestone tasks when task templates load
+  const prevTaskRoleRef = useRef(roleTemplate);
+  useEffect(() => {
+    if (!taskTemplates?.length || !roleTemplate) return;
+    if (prevTaskRoleRef.current !== roleTemplate || Object.values(milestoneTasks).every(arr => arr.length === 0)) {
+      const grouped: Record<string, TaskDraft[]> = { "30d": [], "60d": [], "90d": [] };
+      for (const t of taskTemplates) {
+        const label = t.milestone_label;
+        if (grouped[label]) {
+          grouped[label].push({
+            tempId: crypto.randomUUID(),
+            title: t.title,
+            section: t.section || TASK_SECTIONS[0],
+          });
+        }
+      }
+      setMilestoneTasks(grouped);
+      prevTaskRoleRef.current = roleTemplate;
+    }
+  }, [taskTemplates, roleTemplate]);
 
   const handleRoleChange = (role: string) => {
     setRoleTemplate(role);
@@ -236,38 +286,31 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
       const { error: msError } = await supabase.from("onboarding_milestones").insert(milestoneRows);
       if (msError) throw msError;
 
-      const { data: templates } = await supabase
-        .from("onboarding_templates")
-        .select("*")
-        .order("order_index");
+      // Insert tasks from milestoneTasks state (user-curated in stepper)
+      const { data: createdMilestones } = await supabase
+        .from("onboarding_milestones")
+        .select("id, label")
+        .eq("plan_id", plan.id);
 
-      if (templates && templates.length > 0) {
-        const { data: createdMilestones } = await supabase
-          .from("onboarding_milestones")
-          .select("id, label")
-          .eq("plan_id", plan.id);
-
-        if (createdMilestones) {
-          const milestoneMap = new Map(createdMilestones.map((m) => [m.label, m.id]));
-          const filteredTemplates = templates.filter((t) => {
-            const tRole = (t as any).role;
-            if (!tRole) return true;
-            return tRole === roleTemplate;
-          });
-          const taskRows = filteredTemplates
-            .filter((t) => milestoneMap.has(t.milestone_label))
-            .map((t) => ({
-              milestone_id: milestoneMap.get(t.milestone_label)!,
+      if (createdMilestones) {
+        const milestoneMap = new Map(createdMilestones.map((m) => [m.label, m.id]));
+        const taskRows: { milestone_id: string; title: string; type: "activity" | "meeting" | "module_link"; section: string | null; order_index: number; is_common: boolean }[] = [];
+        for (const [label, tasks] of Object.entries(milestoneTasks)) {
+          const msId = milestoneMap.get(label as "30d" | "60d" | "90d");
+          if (!msId) continue;
+          tasks.forEach((t, i) => {
+            taskRows.push({
+              milestone_id: msId,
               title: t.title,
-              type: t.type,
-              section: t.section,
-              order_index: t.order_index,
+              type: "activity",
+              section: t.section || null,
+              order_index: i,
               is_common: true,
-            }));
-
-          if (taskRows.length > 0) {
-            await supabase.from("onboarding_tasks").insert(taskRows);
-          }
+            });
+          });
+        }
+        if (taskRows.length > 0) {
+          await supabase.from("onboarding_tasks").insert(taskRows);
         }
       }
 
@@ -310,6 +353,9 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
       "60d": { obiettivo: "", focus: [], kpis: [] },
       "90d": { obiettivo: "", focus: [], kpis: [] },
     });
+    setMilestoneTasks({ "30d": [], "60d": [], "90d": [] });
+    setNewMilestoneTaskInputs({});
+    setNewMilestoneTaskSections({});
   };
 
   const updateMilestone = (label: string, field: keyof MilestoneData, value: string | string[]) => {
@@ -573,6 +619,94 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
                         onAdd={(v) => addListItem(mc.label, "kpis", v)}
                         onRemove={(i) => removeListItem(mc.label, "kpis", i)}
                       />
+
+                      {/* Tasks per sezione */}
+                      <div className="space-y-3 pt-2 border-t border-border">
+                        <Label className="text-xs">Task per questa fase</Label>
+                        {TASK_SECTIONS.map((section) => {
+                          const sectionTasks = (milestoneTasks[mc.label] || []).filter(t => t.section === section);
+                          return (
+                            <div key={section} className="space-y-1.5">
+                              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{section}</p>
+                              {sectionTasks.map((task) => (
+                                <div key={task.tempId} className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5">
+                                  <span className="flex-1 text-sm">{task.title}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6 text-muted-foreground hover:text-destructive shrink-0"
+                                    onClick={() => setMilestoneTasks(prev => ({
+                                      ...prev,
+                                      [mc.label]: prev[mc.label].filter(t => t.tempId !== task.tempId),
+                                    }))}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                              {sectionTasks.length === 0 && (
+                                <p className="text-xs text-muted-foreground/60 italic pl-1">Nessun task</p>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {/* Add new task inline */}
+                        <div className="flex gap-2 items-end pt-1">
+                          <div className="flex-1">
+                            <Input
+                              placeholder="Nuovo task..."
+                              value={newMilestoneTaskInputs[mc.label] || ""}
+                              onChange={(e) => setNewMilestoneTaskInputs(prev => ({ ...prev, [mc.label]: e.target.value }))}
+                              className="h-8 text-sm"
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  const title = (newMilestoneTaskInputs[mc.label] || "").trim();
+                                  if (!title) return;
+                                  const section = newMilestoneTaskSections[mc.label] || TASK_SECTIONS[0];
+                                  setMilestoneTasks(prev => ({
+                                    ...prev,
+                                    [mc.label]: [...prev[mc.label], { tempId: crypto.randomUUID(), title, section }],
+                                  }));
+                                  setNewMilestoneTaskInputs(prev => ({ ...prev, [mc.label]: "" }));
+                                }
+                              }}
+                            />
+                          </div>
+                          <Select
+                            value={newMilestoneTaskSections[mc.label] || TASK_SECTIONS[0]}
+                            onValueChange={(v) => setNewMilestoneTaskSections(prev => ({ ...prev, [mc.label]: v }))}
+                          >
+                            <SelectTrigger className="h-8 w-[150px] text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TASK_SECTIONS.map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                            disabled={!(newMilestoneTaskInputs[mc.label] || "").trim()}
+                            onClick={() => {
+                              const title = (newMilestoneTaskInputs[mc.label] || "").trim();
+                              if (!title) return;
+                              const section = newMilestoneTaskSections[mc.label] || TASK_SECTIONS[0];
+                              setMilestoneTasks(prev => ({
+                                ...prev,
+                                [mc.label]: [...prev[mc.label], { tempId: crypto.randomUUID(), title, section }],
+                              }));
+                              setNewMilestoneTaskInputs(prev => ({ ...prev, [mc.label]: "" }));
+                            }}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                       </div>
                     </TabsContent>
                   ))}
                 </Tabs>

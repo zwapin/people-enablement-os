@@ -7,6 +7,9 @@ export const MACRO_CATEGORIES = [
   { key: "common", label: "Common Knowledge" },
 ] as const;
 
+export const TASK_SECTIONS = ["Attività Chiave", "Coaching"] as const;
+export type TaskSection = (typeof TASK_SECTIONS)[number];
+
 export const TEAMS = ["Sales", "Customer Success", "Operations", "Product", "Management"] as const;
 
 export type MacroCategoryKey = (typeof MACRO_CATEGORIES)[number]["key"];

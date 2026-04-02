@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from "react";
+import { TASK_SECTIONS } from "@/lib/constants";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -207,6 +208,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
   const [newKpiInputs, setNewKpiInputs] = useState<Record<string, string>>({});
   const [deletedTaskIds, setDeletedTaskIds] = useState<string[]>([]);
   const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
+  const [newTaskSections, setNewTaskSections] = useState<Record<string, string>>({});
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   // Key activities state
@@ -339,6 +341,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     const key = parentTaskId || milestoneId;
     const title = newTaskInputs[key]?.trim();
     if (!title) return;
+    const section = parentTaskId ? null : (newTaskSections[milestoneId] || TASK_SECTIONS[0]);
     const tempId = `temp-${crypto.randomUUID()}`;
     const newTask: Task = {
       id: tempId,
@@ -350,7 +353,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
       completed_at: null,
       order_index: 999,
       is_common: false,
-      section: null,
+      section,
       module_id: null,
     };
     setEditedPlan(prev => ({
@@ -361,7 +364,7 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
     }));
     setNewTaskInputs(prev => ({ ...prev, [key]: "" }));
     markChanged();
-  }, [newTaskInputs, markChanged]);
+  }, [newTaskInputs, newTaskSections, markChanged]);
 
   // --- Subtask prompt state ---
   const [subtaskPromptParentId, setSubtaskPromptParentId] = useState<string | null>(null);
@@ -935,6 +938,19 @@ export default function PlanDetail({ plan, repName, canToggleTasks = false, isEd
                           className="h-8 text-sm flex-1"
                           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddTask(milestone.id); } }}
                         />
+                        <Select
+                          value={newTaskSections[milestone.id] || TASK_SECTIONS[0]}
+                          onValueChange={(v) => setNewTaskSections(prev => ({ ...prev, [milestone.id]: v }))}
+                        >
+                          <SelectTrigger className="h-8 w-[150px] text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TASK_SECTIONS.map((s) => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                         <Button
                           type="button"
                           variant="outline"
