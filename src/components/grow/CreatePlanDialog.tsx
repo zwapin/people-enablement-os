@@ -140,13 +140,21 @@ export default function CreatePlanDialog({ onCreated }: { onCreated?: () => void
     enabled: open && !!roleTemplate && ROLE_OPTIONS.includes(roleTemplate),
   });
 
-  const prevRoleRef = useRef(roleTemplate);
+  // Fetch milestone task templates when role changes
+  const { data: taskTemplates } = useQuery({
+    queryKey: ["milestone-task-templates", roleTemplate],
+    queryFn: async () => {
+      let q = supabase.from("onboarding_templates").select("*").order("order_index");
+      if (roleTemplate) {
+        q = q.or(`role.eq.${roleTemplate},role.is.null`);
+      }
+      const { data } = await q;
+      return data || [];
+    },
+    enabled: open && !!roleTemplate,
+  });
 
-  // Auto-populate key activities when templates load for the selected role
-  useEffect(() => {
-    if (!activityTemplates?.length || !roleTemplate) return;
-    // Only auto-populate if role just changed or activities are empty
-    if (prevRoleRef.current !== roleTemplate || keyActivities.length === 0) {
+  const prevRoleRef = useRef(roleTemplate);
       const fromTemplates: KeyActivityDraft[] = activityTemplates.map((t) => ({
         tempId: crypto.randomUUID(),
         title: t.title,
