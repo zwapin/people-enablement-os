@@ -1,19 +1,23 @@
 
 
-## Piano: Ripristinare l'account admin eliminato
+## Fix: Rendere cliccabili le collection in Vista Membro
 
 ### Problema
-L'account `federico@klaaryo.com` è stato eliminato (visibile nei log auth: `user_deleted`). I tentativi di login falliscono con "Invalid login credentials".
+La funzione `renderMemberCard` (riga 651-679 di `Learn.tsx`) non ha né `onClick` né `cursor-pointer`. Le card sono statiche.
 
 ### Soluzione
-Invocare la edge function `seed-admin` già esistente. Questa funzione:
-1. Ricrea l'utente `federico@klaaryo.com` con password `Klaaryo2025!`
-2. Conferma l'email automaticamente
-3. Imposta il profilo e il ruolo come **admin**
 
-### Azione
-- Chiamare `POST` alla edge function `seed-admin` (nessun body richiesto)
-- Dopo l'esecuzione, potrai fare login normalmente dalla pagina di login
+**File: `src/pages/Learn.tsx`** — riga 652-654
 
-Nessuna modifica al codice necessaria.
+Aggiungere `onClick` con navigazione e classi hover/cursor alla `<Card>`:
+
+```tsx
+<Card
+  key={c.id}
+  className="flex flex-col h-full p-5 bg-card border-border cursor-pointer hover:border-primary/40 hover:shadow-md transition-all"
+  onClick={() => navigate(`/learn/${c.id}?view=rep`)}
+>
+```
+
+Il parametro `?view=rep` mantiene il contesto di impersonazione dentro la collection.
 
