@@ -653,6 +653,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
             summary={summary}
             track={track}
             contentBody={contentBody}
+            contentHtml={contentHtml}
             keyPoints={keyPoints}
             questions={questions}
           />
