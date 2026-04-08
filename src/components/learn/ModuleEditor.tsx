@@ -49,6 +49,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
   const [summary, setSummary] = useState("");
   const [track, setTrack] = useState("Sales");
   const [contentBody, setContentBody] = useState("");
+  const [contentHtml, setContentHtml] = useState<string | null>(null);
   const [keyPoints, setKeyPoints] = useState<string[]>([]);
   const [status, setStatus] = useState<string>("draft");
   const [curriculumId, setCurriculumId] = useState<string | null>(null);
@@ -111,6 +112,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
       setSummary(m.summary || "");
       setTrack(m.track);
       setContentBody(m.content_body || "");
+      setContentHtml((m as any).content_html || null);
       setKeyPoints(Array.isArray(m.key_points) ? (m.key_points as string[]) : []);
       setStatus(m.status);
       setCurriculumId(m.curriculum_id || null);
@@ -148,6 +150,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
           summary: summary.trim() || null,
           track,
           content_body: contentBody.trim() || null,
+          content_html: contentHtml || null,
           key_points: keyPoints as unknown as Json,
           curriculum_id: curriculumId,
           updated_at: new Date().toISOString(),
@@ -176,7 +179,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
     } finally {
       setSaving(false);
     }
-  }, [moduleId, title, summary, track, contentBody, keyPoints, curriculumId, questions, generating]);
+  }, [moduleId, title, summary, track, contentBody, contentHtml, keyPoints, curriculumId, questions, generating]);
 
   useEffect(() => {
     if (initialLoad || !moduleId) return;
@@ -187,7 +190,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
     return () => {
       if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     };
-  }, [title, summary, track, contentBody, keyPoints, curriculumId, questions, doAutosave, initialLoad, moduleId]);
+  }, [title, summary, track, contentBody, contentHtml, keyPoints, curriculumId, questions, doAutosave, initialLoad, moduleId]);
 
   const handleSave = async (publishStatus?: string) => {
     if (!title.trim()) {
@@ -209,6 +212,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
             summary: summary.trim() || null,
             track,
             content_body: contentBody.trim() || null,
+            content_html: contentHtml || null,
             key_points: keyPoints as unknown as Json,
             status: finalStatus as any,
             curriculum_id: curriculumId,
@@ -232,6 +236,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
             summary: summary.trim() || null,
             track,
             content_body: contentBody.trim() || null,
+            content_html: contentHtml || null,
             key_points: keyPoints as unknown as Json,
             status: finalStatus as any,
             curriculum_id: curriculumId,
@@ -448,7 +453,10 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
 
         <ModuleCanvas
           content={contentBody}
-          onChange={setContentBody}
+          onChange={(md, html) => {
+            setContentBody(md);
+            if (html) setContentHtml(html);
+          }}
           disabled={generating}
           moduleTitle={title}
           moduleId={moduleId || undefined}
@@ -645,6 +653,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
             summary={summary}
             track={track}
             contentBody={contentBody}
+            contentHtml={contentHtml}
             keyPoints={keyPoints}
             questions={questions}
           />

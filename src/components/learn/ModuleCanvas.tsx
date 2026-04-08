@@ -10,6 +10,10 @@ import Highlight from "@tiptap/extension-highlight";
 import Typography from "@tiptap/extension-typography";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
+import { TextStyle } from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
+import Underline from "@tiptap/extension-underline";
+import TextAlign from "@tiptap/extension-text-align";
 import TurndownService from "turndown";
 import Showdown from "showdown";
 import {
@@ -108,7 +112,7 @@ async function uploadBase64Image(dataUrl: string): Promise<string | null> {
 
 interface ModuleCanvasProps {
   content: string;
-  onChange: (markdown: string) => void;
+  onChange: (markdown: string, html?: string) => void;
   disabled?: boolean;
   moduleTitle?: string;
   moduleId?: string;
@@ -135,6 +139,10 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
       TableHeader,
       Highlight,
       Typography,
+      TextStyle,
+      Color,
+      Underline,
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
       Image.configure({
         inline: false,
         allowBase64: true,
@@ -151,7 +159,7 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
       const md = turndown.turndown(html);
-      onChange(md);
+      onChange(md, html);
     },
     editorProps: {
       attributes: {
@@ -196,7 +204,7 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
           return true;
         }
 
-        // Check for HTML content with images (pasted from web)
+        // Check for HTML content (pasted from web)
         const html = clipboardData.getData("text/html");
         if (html) {
           const parser = new DOMParser();
@@ -210,13 +218,10 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
               for (const img of Array.from(images)) {
                 const src = img.getAttribute("src") || "";
                 if (src.startsWith("data:")) {
-                  // Upload base64 image
                   const url = await uploadBase64Image(src);
                   if (url) img.setAttribute("src", url);
                 } 
-                // External URLs are kept as-is
               }
-              // Insert the processed HTML
               const processedHtml = doc.body.innerHTML;
               if (editor) {
                 editor.chain().focus().insertContent(processedHtml).run();
@@ -225,6 +230,10 @@ export default function ModuleCanvas({ content, onChange, disabled, moduleTitle,
             processAndInsert();
             return true;
           }
+          
+          // HTML without images — let TipTap handle it natively
+          // so that TextStyle/Color/Underline extensions preserve inline styles
+          return false;
         }
 
         return false;

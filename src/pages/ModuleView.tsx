@@ -253,8 +253,13 @@ export default function ModuleView() {
         )}
       </header>
 
-      {/* Markdown content */}
-      {module.content_body && (
+      {/* Content */}
+      {(module as any).content_html ? (
+        <article
+          className="module-content module-html-content prose prose-invert prose-base max-w-none"
+          dangerouslySetInnerHTML={{ __html: (module as any).content_html }}
+        />
+      ) : module.content_body ? (
         <article className="module-content prose prose-invert prose-base max-w-none prose-headings:text-foreground prose-p:text-foreground/80 prose-strong:text-foreground prose-li:text-foreground/80 prose-headings:mt-8 prose-headings:mb-4 prose-p:mb-4 prose-p:leading-relaxed prose-ul:my-6 prose-ol:my-6">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -342,7 +347,7 @@ export default function ModuleView() {
             {module.content_body}
           </ReactMarkdown>
         </article>
-      )}
+      ) : null}
 
       {/* Key points */}
       {keyPoints.length > 0 && (

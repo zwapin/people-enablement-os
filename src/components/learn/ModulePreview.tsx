@@ -9,11 +9,12 @@ interface ModulePreviewProps {
   summary: string;
   track: string;
   contentBody: string;
+  contentHtml?: string | null;
   keyPoints: string[];
   questions: { question: string; options: string[]; correct_index: number }[];
 }
 
-export default function ModulePreview({ title, summary, track, contentBody, keyPoints, questions }: ModulePreviewProps) {
+export default function ModulePreview({ title, summary, track, contentBody, contentHtml, keyPoints, questions }: ModulePreviewProps) {
   const readingTime = contentBody ? Math.max(1, Math.ceil(contentBody.length / 1000)) : 1;
 
   return (
@@ -34,7 +35,12 @@ export default function ModulePreview({ title, summary, track, contentBody, keyP
       </header>
 
       {/* Content */}
-      {contentBody && (
+      {contentHtml ? (
+        <article
+          className="module-content module-html-content prose prose-invert prose-base max-w-none"
+          dangerouslySetInnerHTML={{ __html: contentHtml }}
+        />
+      ) : contentBody ? (
         <article className="module-content prose prose-invert prose-base max-w-none prose-headings:text-foreground prose-p:text-foreground/80 prose-strong:text-foreground prose-li:text-foreground/80 prose-headings:mt-8 prose-headings:mb-4 prose-p:mb-4 prose-p:leading-relaxed prose-ul:my-6 prose-ol:my-6">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
@@ -82,7 +88,7 @@ export default function ModulePreview({ title, summary, track, contentBody, keyP
             {contentBody}
           </ReactMarkdown>
         </article>
-      )}
+      ) : null}
 
       {/* Key Points */}
       {keyPoints.length > 0 && (

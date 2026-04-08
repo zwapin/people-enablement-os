@@ -205,6 +205,33 @@
   border-color: hsl(var(--border) / 0.5);
 }
 
+/* HTML content rendered from pasted rich text */
+.module-html-content {
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
+
+.module-html-content h1,
+.module-html-content h2,
+.module-html-content h3,
+.module-html-content h4,
+.module-html-content h5,
+.module-html-content h6 {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.module-html-content img {
+  @apply rounded-lg max-w-full h-auto my-4;
+}
+
+.module-html-content table {
+  @apply w-full text-sm my-6 border-collapse;
+}
+
+.module-html-content table th,
+.module-html-content table td {
+  @apply px-4 py-3 border border-border text-sm;
+}
+
 /* Generation progress overlay animation */
 @keyframes progress-indeterminate {
   0% { transform: translateX(-100%); }
