@@ -162,6 +162,9 @@ async function extractTextWithAI(fileData: Blob, fileName: string): Promise<stri
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Anthropic API error:", response.status, errorText);
+      if (response.status === 429) {
+        return "[Estrazione temporaneamente non disponibile per limiti di frequenza API. Il file è stato caricato correttamente. Riprova tra qualche minuto con 'Ri-estrai'.]";
+      }
       throw new Error(`AI extraction failed (${response.status})`);
     }
 
