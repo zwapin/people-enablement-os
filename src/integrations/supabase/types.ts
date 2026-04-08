@@ -315,6 +315,7 @@ export type Database = {
         Row: {
           ai_rationale: string | null
           content_body: string | null
+          content_html: string | null
           created_at: string
           curriculum_id: string | null
           id: string
@@ -331,6 +332,7 @@ export type Database = {
         Insert: {
           ai_rationale?: string | null
           content_body?: string | null
+          content_html?: string | null
           created_at?: string
           curriculum_id?: string | null
           id?: string
@@ -347,6 +349,7 @@ export type Database = {
         Update: {
           ai_rationale?: string | null
           content_body?: string | null
+          content_html?: string | null
           created_at?: string
           curriculum_id?: string | null
           id?: string

@@ -1,0 +1,1 @@
+ALTER TABLE modules ADD COLUMN content_html text;
