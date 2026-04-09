@@ -127,6 +127,7 @@ export default function ModuleCanvas({ content, contentHtml, onChange, disabled,
   const slashMenuRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isInternalUpdate = useRef(false);
 
   const editor = useEditor({
     extensions: [
