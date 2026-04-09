@@ -156,9 +156,10 @@ export default function ModuleCanvas({ content, contentHtml, onChange, disabled,
         openOnClick: false,
       }),
     ],
-    content: content ? showdown.makeHtml(content) : "",
+    content: contentHtml || (content ? showdown.makeHtml(content) : ""),
     editable: !disabled,
     onUpdate: ({ editor }) => {
+      isInternalUpdate.current = true;
       const html = editor.getHTML();
       const md = turndown.turndown(html);
       onChange(md, html);
@@ -281,13 +282,14 @@ export default function ModuleCanvas({ content, contentHtml, onChange, disabled,
 
   // Update content from outside
   useEffect(() => {
-    if (editor && content !== undefined) {
-      const currentMd = turndown.turndown(editor.getHTML());
-      if (currentMd !== content) {
-        editor.commands.setContent(showdown.makeHtml(content));
-      }
+    if (!editor) return;
+    if (isInternalUpdate.current) {
+      isInternalUpdate.current = false;
+      return;
     }
-  }, [content, editor]);
+    const newContent = contentHtml || (content ? showdown.makeHtml(content) : "");
+    editor.commands.setContent(newContent);
+  }, [content, contentHtml, editor]);
 
   const executeSlashCommand = useCallback((command: string) => {
     if (!editor) return;
