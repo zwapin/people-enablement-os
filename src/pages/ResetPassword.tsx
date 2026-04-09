@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+type FlowType = "recovery" | "invite" | null;
+
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -12,12 +14,17 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [valid, setValid] = useState(false);
+  const [flowType, setFlowType] = useState<FlowType>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.includes("type=recovery")) {
       setValid(true);
+      setFlowType("recovery");
+    } else if (hash.includes("type=invite") || hash.includes("type=signup")) {
+      setValid(true);
+      setFlowType("invite");
     }
   }, []);
 
@@ -37,7 +44,7 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       setSuccess(true);
-      setTimeout(() => navigate("/learn", { replace: true }), 2000);
+      setTimeout(() => navigate(flowType === "invite" ? "/home" : "/learn", { replace: true }), 2000);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -51,7 +58,7 @@ export default function ResetPassword() {
         <div className="w-full max-w-sm space-y-4 p-8 text-center">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Link non valido</h1>
           <p className="text-sm text-muted-foreground">
-            Questo link di recupero password non è valido o è scaduto.
+            Questo link non è valido o è scaduto.
           </p>
           <Button variant="outline" onClick={() => navigate("/login")}>
             Torna al login
@@ -65,7 +72,9 @@ export default function ResetPassword() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="w-full max-w-sm space-y-4 p-8 text-center">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Password aggiornata</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {flowType === "invite" ? "Account attivato!" : "Password aggiornata"}
+          </h1>
           <p className="text-sm text-muted-foreground">
             Verrai reindirizzato automaticamente...
           </p>
@@ -74,17 +83,23 @@ export default function ResetPassword() {
     );
   }
 
+  const isInvite = flowType === "invite";
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6 p-8">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Nuova password</h1>
-          <p className="text-sm text-muted-foreground">Inserisci la tua nuova password</p>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">
+            {isInvite ? "Benvenuto in Klaaryo Academy" : "Nuova password"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isInvite ? "Imposta la tua password per accedere" : "Inserisci la tua nuova password"}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="password">Nuova password</Label>
+            <Label htmlFor="password">{isInvite ? "Password" : "Nuova password"}</Label>
             <Input
               id="password"
               type="password"
@@ -109,7 +124,7 @@ export default function ResetPassword() {
           {error && <p className="text-sm text-destructive">{error}</p>}
 
           <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? "Aggiornamento..." : "Aggiorna password"}
+            {submitting ? "Aggiornamento..." : isInvite ? "Attiva account" : "Aggiorna password"}
           </Button>
         </form>
       </div>
