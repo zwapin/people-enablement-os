@@ -453,6 +453,7 @@ export default function ModuleEditor({ moduleId, onClose, collections = [] }: Mo
 
         <ModuleCanvas
           content={contentBody}
+          contentHtml={contentHtml}
           onChange={(md, html) => {
             setContentBody(md);
             if (html) setContentHtml(html);
