@@ -112,6 +112,7 @@ async function uploadBase64Image(dataUrl: string): Promise<string | null> {
 
 interface ModuleCanvasProps {
   content: string;
+  contentHtml?: string | null;
   onChange: (markdown: string, html?: string) => void;
   disabled?: boolean;
   moduleTitle?: string;
@@ -119,7 +120,7 @@ interface ModuleCanvasProps {
   renderToolbarExtra?: React.ReactNode;
 }
 
-export default function ModuleCanvas({ content, onChange, disabled, moduleTitle, moduleId, renderToolbarExtra }: ModuleCanvasProps) {
+export default function ModuleCanvas({ content, contentHtml, onChange, disabled, moduleTitle, moduleId, renderToolbarExtra }: ModuleCanvasProps) {
   const [showAI, setShowAI] = useState(false);
   const [slashMenuOpen, setSlashMenuOpen] = useState(false);
   const [slashMenuPos, setSlashMenuPos] = useState<{ top: number; left: number } | null>(null);
