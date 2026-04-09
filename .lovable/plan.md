@@ -1,42 +1,38 @@
 
 
-## Piano: Fix preservazione formattazione copy-paste nei moduli
+## Piano: Fix flusso primo accesso via link di invito
 
-### Problema identificato
+### Problema
+Quando un utente invitato clicca il link nell'email, Supabase redirige a `/reset-password#access_token=...&type=invite`. Ma la pagina `ResetPassword.tsx` accetta solo `type=recovery` — per qualsiasi altro tipo mostra "Link non valido". L'utente non riesce mai a impostare la password e ad accedere.
 
-Ci sono **3 bug** che impediscono il funzionamento:
+### Soluzione
 
-1. **L'editor non riceve mai `content_html`** — `ModuleCanvas` riceve solo `content` (markdown). Anche se `content_html` viene salvato nel DB, quando il modulo viene ricaricato l'editor si inizializza dal markdown, perdendo tutta la formattazione.
+**File: `src/pages/ResetPassword.tsx`**
 
-2. **Il sync esterno sovrascrive l'HTML** — L'`useEffect` a riga 281-288 confronta il markdown corrente con `content` e, se diverso, resetta l'editor con `showdown.makeHtml(content)`. Dopo ogni paste, il ciclo `onUpdate→onChange→setContentBody→useEffect` potrebbe ri-convertire tutto da markdown, cancellando gli stili.
+1. Estendere il check nel `useEffect` per accettare anche `type=invite` e `type=signup` (entrambi usati da Supabase per gli inviti)
+2. Tracciare il tipo di flusso (recovery vs invite) in uno state per mostrare messaggi contestuali
+3. Per il flusso invite: mostrare "Benvenuto in Klaaryo Academy — Imposta la tua password" invece di "Nuova password"
+4. Dopo il submit con successo, redirigere a `/home` (per i nuovi utenti) invece che `/learn`
 
-3. **Estensioni TipTap duplicate** — Il warning `Duplicate extension names: ['link', 'underline']` indica che queste estensioni vengono registrate due volte, causando potenziali conflitti.
+**File: `src/components/ProtectedRoute.tsx`**
 
-### Modifiche
+5. Aggiungere un check: se l'URL corrente è `/reset-password`, non redirigere a `/login` — la pagina deve restare accessibile anche quando la sessione è in fase di creazione dal token nell'hash (questo è già gestito perché `/reset-password` non è dentro `ProtectedRoute`, ma verificare che il flusso funzioni)
 
-**1. `ModuleCanvas.tsx`** — Aggiungere prop `contentHtml` e usarla come fonte primaria
+### Dettagli tecnici
 
-- Aggiungere `contentHtml?: string | null` alle props
-- Inizializzare l'editor con `contentHtml` (se presente) anziché convertire da markdown: `content: contentHtml || (content ? showdown.makeHtml(content) : "")`
-- Modificare l'`useEffect` di sync (riga 281-288): usare un flag `skipNextSync` ref per evitare che il ciclo `onUpdate→onChange→useEffect` sovrascriva l'HTML dopo un paste
-- Rimuovere le estensioni duplicate (verificare se `Link` o `Underline` sono già incluse da StarterKit o da un'altra dipendenza)
-
-**2. `ModuleEditor.tsx`** — Passare `contentHtml` al canvas
-
-- Aggiungere `contentHtml={contentHtml}` alla prop di `ModuleCanvas` (riga 454-463)
-
-**3. `ModuleCanvas.tsx`** — Fix logica sync
-
-- Usare un `useRef` (`isInternalUpdate`) settato a `true` dentro `onUpdate` e controllato nell'`useEffect` di sync, per distinguere aggiornamenti interni (paste/digitazione) da aggiornamenti esterni (caricamento modulo)
-
-```text
-Flusso corretto:
-  Caricamento modulo → content_html presente? → editor.setContent(content_html)
-                        content_html assente?  → editor.setContent(showdown(content_body))
-  
-  Paste/digitazione → onUpdate → onChange(md, html) → salva entrambi
-                    → useEffect NON resetta (è update interno)
-  
-  Cambio modulo     → useEffect resetta editor con nuovo contenuto
+```typescript
+// ResetPassword.tsx — useEffect aggiornato
+useEffect(() => {
+  const hash = window.location.hash;
+  if (hash.includes("type=recovery")) {
+    setValid(true);
+    setFlowType("recovery");
+  } else if (hash.includes("type=invite") || hash.includes("type=signup")) {
+    setValid(true);
+    setFlowType("invite");
+  }
+}, []);
 ```
+
+Il form rimane identico (due campi password + conferma), cambia solo il testo di intestazione e il messaggio di successo. Il client Supabase nell'`AuthContext` gestisce già automaticamente lo scambio del token dall'hash URL, quindi la sessione viene creata prima che l'utente invii il form.
 
